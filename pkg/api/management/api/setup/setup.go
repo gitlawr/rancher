@@ -13,6 +13,7 @@ import (
 	"github.com/rancher/rancher/pkg/api/management/api/authn"
 	"github.com/rancher/rancher/pkg/api/management/api/catalog"
 	"github.com/rancher/rancher/pkg/api/management/api/machine"
+	"github.com/rancher/rancher/pkg/api/management/api/pipeline"
 	"github.com/rancher/rancher/pkg/api/management/api/project"
 	"github.com/rancher/rancher/pkg/api/management/api/setting"
 	"github.com/rancher/rancher/pkg/api/management/api/stack"
@@ -47,6 +48,7 @@ func Schemas(ctx context.Context, management *config.ManagementContext, schemas 
 	SecretTypes(schemas, management)
 	Stack(schemas, management)
 	Setting(schemas)
+	Pipeline(schemas, management)
 
 	secretStore, err := machineconfig.NewStore(management)
 	if err != nil {
@@ -219,4 +221,36 @@ func Stack(schemas *types.Schemas, management *config.ManagementContext) {
 func Setting(schemas *types.Schemas) {
 	schema := schemas.Schema(&managementschema.Version, client.SettingType)
 	schema.Formatter = setting.Formatter
+}
+
+func Pipeline(schemas *types.Schemas, management *config.ManagementContext) {
+
+	clusterPipelineHandler := &pipeline.ClusterPipelineHandler{
+		Management: *management,
+	}
+	schema := schemas.Schema(&managementschema.Version, client.ClusterPipelineType)
+	schema.Formatter = pipeline.ClusterPipelineFormatter
+	schema.ActionHandler = clusterPipelineHandler.ActionHandler
+
+	pipelineHandler := &pipeline.Handler{
+		Management: *management,
+	}
+	schema = schemas.Schema(&managementschema.Version, client.PipelineType)
+	schema.Formatter = pipeline.Formatter
+	schema.ActionHandler = pipelineHandler.ActionHandler
+
+	pipelineHistoryHandler := &pipeline.HistoryHandler{
+		Management: *management,
+	}
+	schema = schemas.Schema(&managementschema.Version, client.PipelineHistoryType)
+	schema.Formatter = pipeline.HistoryFormatter
+	schema.ActionHandler = pipelineHistoryHandler.ActionHandler
+
+	RemoteAccountHandler := &pipeline.RemoteAccountHandler{
+		Management: *management,
+	}
+	schema = schemas.Schema(&managementschema.Version, client.RemoteAccountType)
+	schema.CollectionFormatter = pipeline.RemoteAccountCollectionFormatter
+	schema.Formatter = pipeline.RemoteAccountFormatter
+	schema.ActionHandler = RemoteAccountHandler.ActionHandler
 }
