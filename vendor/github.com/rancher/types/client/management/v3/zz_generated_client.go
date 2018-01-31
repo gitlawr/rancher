@@ -32,6 +32,14 @@ type Client struct {
 	DynamicSchema              DynamicSchemaOperations
 	Stack                      StackOperations
 	Preference                 PreferenceOperations
+	ClusterLogging             ClusterLoggingOperations
+	ProjectLogging             ProjectLoggingOperations
+	ClusterPipeline            ClusterPipelineOperations
+	Pipeline                   PipelineOperations
+	PipelineHistory            PipelineHistoryOperations
+	RemoteAccount              RemoteAccountOperations
+	GitRepoCache               GitRepoCacheOperations
+	PipelineLog                PipelineLogOperations
 	ListenConfig               ListenConfigOperations
 	Setting                    SettingOperations
 }
@@ -71,6 +79,14 @@ func NewClient(opts *clientbase.ClientOpts) (*Client, error) {
 	client.DynamicSchema = newDynamicSchemaClient(client)
 	client.Stack = newStackClient(client)
 	client.Preference = newPreferenceClient(client)
+	client.ClusterLogging = newClusterLoggingClient(client)
+	client.ProjectLogging = newProjectLoggingClient(client)
+	client.ClusterPipeline = newClusterPipelineClient(client)
+	client.Pipeline = newPipelineClient(client)
+	client.PipelineHistory = newPipelineHistoryClient(client)
+	client.RemoteAccount = newRemoteAccountClient(client)
+	client.GitRepoCache = newGitRepoCacheClient(client)
+	client.PipelineLog = newPipelineLogClient(client)
 	client.ListenConfig = newListenConfigClient(client)
 	client.Setting = newSettingClient(client)
 
