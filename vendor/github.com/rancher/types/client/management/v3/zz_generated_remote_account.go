@@ -12,19 +12,17 @@ const (
 	RemoteAccountFieldAvatarURL            = "avatarUrl"
 	RemoteAccountFieldCreated              = "created"
 	RemoteAccountFieldCreatorID            = "creatorId"
-	RemoteAccountFieldDisplayName          = "displayName"
 	RemoteAccountFieldHTMLURL              = "htmlUrl"
 	RemoteAccountFieldLabels               = "labels"
+	RemoteAccountFieldLogin                = "login"
 	RemoteAccountFieldName                 = "name"
-	RemoteAccountFieldNamespaceId          = "namespaceId"
 	RemoteAccountFieldOwnerReferences      = "ownerReferences"
 	RemoteAccountFieldRemoved              = "removed"
 	RemoteAccountFieldState                = "state"
 	RemoteAccountFieldStatus               = "status"
 	RemoteAccountFieldTransitioning        = "transitioning"
 	RemoteAccountFieldTransitioningMessage = "transitioningMessage"
-	RemoteAccountFieldType                 = "type"
-	RemoteAccountFieldUserId               = "userId"
+	RemoteAccountFieldUserID               = "userId"
 	RemoteAccountFieldUuid                 = "uuid"
 )
 
@@ -36,19 +34,17 @@ type RemoteAccount struct {
 	AvatarURL            string               `json:"avatarUrl,omitempty"`
 	Created              string               `json:"created,omitempty"`
 	CreatorID            string               `json:"creatorId,omitempty"`
-	DisplayName          string               `json:"displayName,omitempty"`
 	HTMLURL              string               `json:"htmlUrl,omitempty"`
 	Labels               map[string]string    `json:"labels,omitempty"`
+	Login                string               `json:"login,omitempty"`
 	Name                 string               `json:"name,omitempty"`
-	NamespaceId          string               `json:"namespaceId,omitempty"`
 	OwnerReferences      []OwnerReference     `json:"ownerReferences,omitempty"`
 	Removed              string               `json:"removed,omitempty"`
 	State                string               `json:"state,omitempty"`
 	Status               *RemoteAccountStatus `json:"status,omitempty"`
 	Transitioning        string               `json:"transitioning,omitempty"`
 	TransitioningMessage string               `json:"transitioningMessage,omitempty"`
-	Type                 string               `json:"type,omitempty"`
-	UserId               string               `json:"userId,omitempty"`
+	UserID               string               `json:"userId,omitempty"`
 	Uuid                 string               `json:"uuid,omitempty"`
 }
 type RemoteAccountCollection struct {

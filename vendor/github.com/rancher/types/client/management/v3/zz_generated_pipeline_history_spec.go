@@ -2,7 +2,6 @@ package client
 
 const (
 	PipelineHistorySpecType             = "pipelineHistorySpec"
-	PipelineHistorySpecFieldDisplayName = "displayName"
 	PipelineHistorySpecFieldPipeline    = "pipeline"
 	PipelineHistorySpecFieldProjectId   = "projectId"
 	PipelineHistorySpecFieldRunNumber   = "runNumber"
@@ -10,7 +9,6 @@ const (
 )
 
 type PipelineHistorySpec struct {
-	DisplayName string    `json:"displayName,omitempty"`
 	Pipeline    *Pipeline `json:"pipeline,omitempty"`
 	ProjectId   string    `json:"projectId,omitempty"`
 	RunNumber   *int64    `json:"runNumber,omitempty"`

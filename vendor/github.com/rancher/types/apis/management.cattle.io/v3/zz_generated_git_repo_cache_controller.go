@@ -23,9 +23,8 @@ var (
 	GitRepoCacheResource = metav1.APIResource{
 		Name:         "gitrepocaches",
 		SingularName: "gitrepocache",
-		Namespaced:   true,
-
-		Kind: GitRepoCacheGroupVersionKind.Kind,
+		Namespaced:   false,
+		Kind:         GitRepoCacheGroupVersionKind.Kind,
 	}
 )
 

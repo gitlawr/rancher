@@ -65,8 +65,6 @@ type PipelineLog struct {
 }
 
 type RemoteAccount struct {
-	types.Namespaced
-
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
@@ -75,8 +73,6 @@ type RemoteAccount struct {
 }
 
 type GitRepoCache struct {
-	types.Namespaced
-
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
@@ -134,10 +130,10 @@ type PipelineStatus struct {
 type PipelineSpec struct {
 	ProjectName string `json:"projectName" yaml:"projectName" norman:"required,type=reference[project]"`
 
-	Active      bool     `json:"active,omitempty" yaml:"active,omitempty" norman:"default=true"`
-	DisplayName string   `json:"displayName,omitempty" yaml:"displayName,omitempty" norman:"required"`
-	Triggers    Triggers `json:"triggers,omitempty" yaml:"triggers,omitempty"`
-	Stages      []Stage  `json:"stages,omitempty" yaml:"stages,omitempty" norman:"required"`
+	Active bool `json:"active,omitempty" yaml:"active,omitempty"`
+	//DisplayName string   `json:"displayName,omitempty" yaml:"displayName,omitempty" norman:"required"`
+	Triggers Triggers `json:"triggers,omitempty" yaml:"triggers,omitempty"`
+	Stages   []Stage  `json:"stages,omitempty" yaml:"stages,omitempty" norman:"required"`
 }
 
 type Triggers struct {
@@ -146,11 +142,11 @@ type Triggers struct {
 }
 
 type WebhookTrigger struct {
-	Active bool `json:"active,omitempty" yaml:"active,omitempty"norman:"default=true"`
+	Active bool `json:"active,omitempty" yaml:"active,omitempty"`
 }
 
 type CronTrigger struct {
-	Active   bool   `json:"active,omitempty" yaml:"active,omitempty"norman:"default=true"`
+	Active   bool   `json:"active,omitempty" yaml:"active,omitempty"`
 	Timezone string `json:"timezone,omitempty" yaml:"timezone,omitempty"`
 	Spec     string `json:"spec,omitempty" yaml:"spec,omitempty"`
 }
@@ -163,19 +159,17 @@ type Stage struct {
 type Step struct {
 	Type string `json:"type,omitempty" yaml:"type,omitempty" norman:"required,options=sourcecode|runscript|buildimage|pushimage,default=runscript"`
 
-	SourceCodeStepConfig *SourceCodeStepConfig `json:"sourceCodeStepConfig,omitempty" yaml:"sourceCodeStepConfig,omitempty"`
-	RunScriptStepConfig  *RunScriptStepConfig  `json:"runScriptStepConfig,omitempty" yaml:"runScriptStepConfig,omitempty"`
-	BuildImageStepConfig *BuildImageStepConfig `json:"buildImageStepConfig,omitempty" yaml:"buildImageStepConfig,omitempty"`
-	PushImageStepConfig  *PushImageStepConfig  `json:"pushImageStepConfig,omitempty" yaml:"pushImageStepConfig,omitempty"`
-
+	SourceCodeStepConfig   *SourceCodeStepConfig   `json:"sourceCodeStepConfig,omitempty" yaml:"sourceCodeStepConfig,omitempty"`
+	RunScriptStepConfig    *RunScriptStepConfig    `json:"runScriptStepConfig,omitempty" yaml:"runScriptStepConfig,omitempty"`
+	PublishImageStepConfig *PublishImageStepConfig `json:"publishImageStepConfig,omitempty" yaml:"publishImageStepConfig,omitempty"`
 	//Step timeout in minutes
 	Timeout int `json:"timeout,omitempty" yaml:"timeout,omitempty"`
 }
 
 type SourceCodeStepConfig struct {
-	Repository        string `json:"repository,omitempty" yaml:"repository,omitempty" norman:"required"`
-	Branch            string `json:"branch,omitempty" yaml:"branch,omitempty" norman:"required"`
-	RemoteAccountName string `json:"remoteAccountName,omitempty" yaml:"remoteAccountName,omitempty" norman:"required,type=reference[remoteaccount]"`
+	Repository        string `json:"repository,omitempty" yaml:"repository,omitempty" `
+	Branch            string `json:"branch,omitempty" yaml:"branch,omitempty" `
+	RemoteAccountName string `json:"remoteAccountName,omitempty" yaml:"remoteAccountName,omitempty" "`
 }
 
 type RunScriptStepConfig struct {
@@ -186,20 +180,16 @@ type RunScriptStepConfig struct {
 	Env         []string `json:"env,omitempty" yaml:"env,omitempty"`
 }
 
-type BuildImageStepConfig struct {
+type PublishImageStepConfig struct {
 	DockerfilePath string `json:"dockerFilePath,omittempty" yaml:"dockerFilePath,omitempty" norman:"required,default=./Dockerfile"`
-	BuildPath      string `json:"buildPath,omitempty" yaml:"buildPath,omitempty" norman:"required,default=."`
+	BuildContext   string `json:"buildContext,omitempty" yaml:"buildContext,omitempty" norman:"required,default=."`
 	ImageTag       string `json:"imageTag,omitempty" yaml:"imageTag,omitempty" norman:"required,default=${CICD_GIT_REPOSITORY_NAME}:${CICD_GIT_BRANCH}"`
-}
-
-type PushImageStepConfig struct {
-	ImageTag string `json:"imageTag,omitempty" yaml:"imageTag,omitempty" norman:"required,default=${CICD_GIT_REPOSITORY_NAME}:${CICD_GIT_BRANCH}"`
 }
 
 type PipelineHistorySpec struct {
 	ProjectName string `json:"projectName" norman:"required,type=reference[project]"`
 
-	DisplayName string   `json:"displayName,omitempty" norman:"required"`
+	//DisplayName string   `json:"displayName,omitempty" norman:"required"`
 	RunNumber   int      `json:"runNumber,omitempty" norman:"required,min=1"`
 	TriggerType string   `json:"triggerType,omitempty" norman:"required,options=manual|cron|webhook"`
 	Pipeline    Pipeline `json:"pipeline,omitempty" norman:"required"`
@@ -228,11 +218,12 @@ type StepStatus struct {
 }
 
 type RemoteAccountSpec struct {
-	DisplayName string `json:"displayName,omitempty" norman:"required"`
-	Type        string `json:"type,omitempty" norman:"required,options=github"`
-	UserName    string `json:"userName,omitempty" norman:"required,type=reference[user]"`
+	//DisplayName string `json:"displayName,omitempty" norman:"required"`
+	//RemoteType        string `json:"remoteType,omitempty" norman:"required,options=github"`
+	UserID      string `json:"userId" norman:"required,type=reference[user]"`
 	AvatarURL   string `json:"avatarUrl,omitempty"`
 	HTMLURL     string `json:"htmlUrl,omitempty"`
+	Login       string `json:"login,omitempty"`
 	AccountName string `json:"accountName,omitempty"`
 	AccessToken string `json:"accessToken,omitempty"`
 }
@@ -241,8 +232,8 @@ type RemoteAccountStatus struct {
 }
 
 type GitRepoCacheSpec struct {
-	Type              string          `json:"type,omitempty" norman:"required,options=github"`
-	UserName          string          `json:"userName,omitempty" norman:"required,type=reference[user]"`
+	RemoteType        string          `json:"remoteType,omitempty" norman:"required,options=github"`
+	UserID            string          `json:"userId" norman:"required,type=reference[user]"`
 	RemoteAccountName string          `json:"remoteAccountName,omitempty" norman:"required,type=reference[remoteaccount]`
 	Repositories      []GitRepository `json:"repositories,omitempty"`
 }

@@ -240,6 +240,7 @@ func pipelineTypes(schema *types.Schemas) *types.Schemas {
 			schema.ResourceActions = map[string]types.Action{
 				"deploy":  {},
 				"destroy": {},
+				"reset":   {},
 				"auth":    {},
 			}
 		}).
@@ -253,8 +254,9 @@ func pipelineTypes(schema *types.Schemas) *types.Schemas {
 		}).
 		MustImportAndCustomize(&Version, v3.PipelineHistory{}, func(schema *types.Schema) {
 			schema.ResourceActions = map[string]types.Action{
-				"stop":  {},
-				"rerun": {},
+				"stop":   {},
+				"rerun":  {},
+				"notify": {},
 			}
 		}).
 		MustImportAndCustomize(&Version, v3.RemoteAccount{}, func(schema *types.Schema) {

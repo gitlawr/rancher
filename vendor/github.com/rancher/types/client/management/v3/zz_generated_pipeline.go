@@ -10,7 +10,6 @@ const (
 	PipelineFieldAnnotations          = "annotations"
 	PipelineFieldCreated              = "created"
 	PipelineFieldCreatorID            = "creatorId"
-	PipelineFieldDisplayName          = "displayName"
 	PipelineFieldLabels               = "labels"
 	PipelineFieldName                 = "name"
 	PipelineFieldNamespaceId          = "namespaceId"
@@ -32,7 +31,6 @@ type Pipeline struct {
 	Annotations          map[string]string `json:"annotations,omitempty"`
 	Created              string            `json:"created,omitempty"`
 	CreatorID            string            `json:"creatorId,omitempty"`
-	DisplayName          string            `json:"displayName,omitempty"`
 	Labels               map[string]string `json:"labels,omitempty"`
 	Name                 string            `json:"name,omitempty"`
 	NamespaceId          string            `json:"namespaceId,omitempty"`
