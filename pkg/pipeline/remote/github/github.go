@@ -14,6 +14,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"strings"
 )
 
 const (
@@ -109,7 +110,7 @@ func (c *client) GetAccount(accessToken string) (*v3.RemoteAccount, error) {
 	return remoteAccount, nil
 }
 
-func (c *client) Repos(account *v3.RemoteAccount) ([]*v3.GitRepository, error) {
+func (c *client) Repos(account *v3.RemoteAccount) ([]v3.GitRepository, error) {
 	if account == nil {
 		return nil, fmt.Errorf("empty account")
 	}
@@ -147,17 +148,24 @@ func convertAccount(gitaccount *github.User) *v3.RemoteAccount {
 		return nil
 	}
 	account := &v3.RemoteAccount{}
-	account.Spec.Type = "github"
-	account.Spec.AvatarURL = *gitaccount.AvatarURL
-	account.Spec.HTMLURL = *gitaccount.HTMLURL
-	account.Spec.AccountName = *gitaccount.Login
-	account.Name = "github:" + *gitaccount.Name
-
+	if gitaccount.AvatarURL != nil {
+		account.Spec.AvatarURL = *gitaccount.AvatarURL
+	}
+	if gitaccount.HTMLURL != nil {
+		account.Spec.HTMLURL = *gitaccount.HTMLURL
+	}
+	if gitaccount.Login != nil {
+		account.Spec.Login = *gitaccount.Login
+	}
+	if gitaccount.Name != nil {
+		account.Spec.AccountName = *gitaccount.Name
+		account.Name = "github-" + strings.ToLower(*gitaccount.Name)
+	}
 	return account
 
 }
 
-func (c *client) getGithubRepos(githubAccessToken string) ([]*v3.GitRepository, error) {
+func (c *client) getGithubRepos(githubAccessToken string) ([]v3.GitRepository, error) {
 	url := c.API + "/user/repos"
 	var repos []github.Repository
 	responses, err := paginateGithub(githubAccessToken, url)
@@ -182,13 +190,19 @@ func (c *client) getGithubRepos(githubAccessToken string) ([]*v3.GitRepository, 
 	return convertRepos(repos), nil
 }
 
-func convertRepos(repos []github.Repository) []*v3.GitRepository {
-	result := []*v3.GitRepository{}
+func convertRepos(repos []github.Repository) []v3.GitRepository {
+	result := []v3.GitRepository{}
 	for _, repo := range repos {
-		r := &v3.GitRepository{}
-		r.CloneURL = *repo.CloneURL
-		r.Language = *repo.Language
-		r.Name = *repo.Name
+		r := v3.GitRepository{}
+		if repo.CloneURL != nil {
+			r.CloneURL = *repo.CloneURL
+		}
+		if repo.Language != nil {
+			r.Language = *repo.Language
+		}
+		if repo.Name != nil {
+			r.Name = *repo.Name
+		}
 		if repo.Permissions != nil {
 			if (*repo.Permissions)["pull"] == true {
 				r.Permissions.Pull = true

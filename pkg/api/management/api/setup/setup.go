@@ -253,4 +253,5 @@ func Pipeline(schemas *types.Schemas, management *config.ManagementContext) {
 	schema.CollectionFormatter = pipeline.RemoteAccountCollectionFormatter
 	schema.Formatter = pipeline.RemoteAccountFormatter
 	schema.ActionHandler = RemoteAccountHandler.ActionHandler
+	schema.LinkHandler = RemoteAccountHandler.LinkHandler
 }

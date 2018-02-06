@@ -13,7 +13,15 @@ func Register(cluster *config.ClusterContext) {
 	clusterPipelineClient.AddClusterScopedHandler("cluster-pipeline-maintainer", cluster.ClusterName, clusterPipelineLifecycle.Sync)
 
 	pipelineClient := cluster.Management.Management.Pipelines("")
-	pipelineLifecycle := &PipelineLifecycle{}
+	pipelineLifecycle := &PipelineLifecycle{
+		cluster: cluster,
+	}
 	pipelineClient.AddLifecycle("pipeline-controller", pipelineLifecycle)
+
+	pipelineHistoryClient := cluster.Management.Management.PipelineHistories("")
+	pipelineHistoryLifecycle := &PipelineHistoryLifecycle{
+		cluster: cluster,
+	}
+	pipelineHistoryClient.AddLifecycle("pipeline-history-controller", pipelineHistoryLifecycle)
 
 }

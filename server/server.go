@@ -9,6 +9,7 @@ import (
 	managementapi "github.com/rancher/rancher/pkg/api/management/server"
 	"github.com/rancher/rancher/pkg/auth/filter"
 	"github.com/rancher/rancher/pkg/auth/server"
+	"github.com/rancher/rancher/pkg/pipeline/handler"
 	"github.com/rancher/rancher/server/capabilities"
 	"github.com/rancher/rancher/server/proxy"
 	"github.com/rancher/rancher/server/ui"
@@ -67,6 +68,12 @@ func New(ctx context.Context, httpPort, httpsPort int, management *config.Manage
 	unauthed.Handle("index.html", uiContent)
 	unauthed.Handle("robots.txt", uiContent)
 	unauthed.Handle("VERSION.txt", uiContent)
+
+	//webhook endpoint for pipeline
+	webhookHandler := &handler.WebhookHandler{
+		Management: management,
+	}
+	unauthed.PathPrefix("/hook").Handler(webhookHandler)
 
 	registerHealth(unauthed)
 

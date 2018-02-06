@@ -3,13 +3,16 @@ package pipeline
 import (
 	"encoding/json"
 	"github.com/pkg/errors"
+	"github.com/rancher/norman/api/access"
 	"github.com/rancher/norman/types"
+	//"github.com/rancher/rancher/pkg/pipeline/remote/booter"
 	"github.com/rancher/rancher/pkg/pipeline/remote/booter"
 	"github.com/rancher/types/apis/management.cattle.io/v3"
 	"github.com/rancher/types/config"
 	"github.com/sirupsen/logrus"
 	"io/ioutil"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"net/http"
 	"strings"
 )
 
@@ -20,6 +23,7 @@ type ClusterPipelineHandler struct {
 func ClusterPipelineFormatter(apiContext *types.APIContext, resource *types.RawResource) {
 	resource.AddAction(apiContext, "deploy")
 	resource.AddAction(apiContext, "destroy")
+	resource.AddAction(apiContext, "reset")
 	resource.AddAction(apiContext, "auth")
 }
 
@@ -44,11 +48,23 @@ func (h *ClusterPipelineHandler) ActionHandler(actionName string, action *types.
 		clusterPipeline.Spec.Deploy = true
 	case "destroy":
 		clusterPipeline.Spec.Deploy = false
+	case "reset":
+		return h.reset(apiContext)
 	case "auth":
 		return h.auth(apiContext)
 	}
+
 	_, err = client.Update(clusterPipeline)
-	return err
+	if err != nil {
+		return err
+	}
+
+	data := map[string]interface{}{}
+	if err := access.ByID(apiContext, apiContext.Version, apiContext.Type, apiContext.ID, &data); err != nil {
+		return err
+	}
+	apiContext.WriteResponse(http.StatusOK, data)
+	return nil
 }
 
 func (h *ClusterPipelineHandler) auth(apiContext *types.APIContext) error {
@@ -127,13 +143,47 @@ func (h *ClusterPipelineHandler) auth(apiContext *types.APIContext) error {
 			return err
 		}
 	}
-	apiContext.WriteResponse(200, clusterPipeline)
+	data := map[string]interface{}{}
+	if err := access.ByID(apiContext, apiContext.Version, apiContext.Type, apiContext.ID, &data); err != nil {
+		return err
+	}
+
+	apiContext.WriteResponse(http.StatusOK, data)
 	return nil
 }
 
-func (h *ClusterPipelineHandler) auth_add_account(clusterPipeline *v3.ClusterPipeline, remoteType string, userName string, redirectURL string, code string) error {
+func (h *ClusterPipelineHandler) reset(apiContext *types.APIContext) error {
 
-	if userName == "" {
+	parts := strings.Split(apiContext.ID, ":")
+	if len(parts) <= 1 {
+		return errors.New("invalid ID")
+	}
+	ns := parts[0]
+	id := parts[1]
+
+	clusterPipeline, err := h.Management.Management.ClusterPipelines(ns).Get(id, metav1.GetOptions{})
+	if err != nil {
+		return err
+	}
+
+	clusterPipeline.Spec.GithubConfig = nil
+	_, err = h.Management.Management.ClusterPipelines(ns).Update(clusterPipeline)
+	if err != nil {
+		return err
+	}
+
+	data := map[string]interface{}{}
+	if err := access.ByID(apiContext, apiContext.Version, apiContext.Type, apiContext.ID, &data); err != nil {
+		return err
+	}
+
+	apiContext.WriteResponse(http.StatusOK, data)
+	return nil
+}
+
+func (h *ClusterPipelineHandler) auth_add_account(clusterPipeline *v3.ClusterPipeline, remoteType string, userID string, redirectURL string, code string) error {
+
+	if userID == "" {
 		return errors.New("unauth")
 	}
 
@@ -145,14 +195,15 @@ func (h *ClusterPipelineHandler) auth_add_account(clusterPipeline *v3.ClusterPip
 	if err != nil {
 		return err
 	}
-	account.Spec.UserName = userName
+	account.Spec.UserID = userID
 
-	if _, err := h.Management.Management.RemoteAccounts("user-" + userName).Create(account); err != nil {
+	if _, err := h.Management.Management.RemoteAccounts("").Create(account); err != nil {
 		return err
 	}
 	return nil
 }
 
+/*
 func (h *ClusterPipelineHandler) test_auth(apiContext *types.APIContext) error {
 
 	parts := strings.Split(apiContext.ID, ":")
@@ -236,32 +287,25 @@ func (h *ClusterPipelineHandler) test_auth(apiContext *types.APIContext) error {
 	return nil
 }
 
-func (h *ClusterPipelineHandler) test_auth_add_account(clusterPipeline *v3.ClusterPipeline, remoteType string, userName string, redirectURL string, code string) error {
-	/*
-		remote, err := booter.New(*clusterPipeline, scmType)
-		if err != nil {
-			return err
-		}
-		account, err := remote.Login(redirectURL, code)
-		if err != nil {
-			return err
-		}
-	*/
+func (h *ClusterPipelineHandler) test_auth_add_account(clusterPipeline *v3.ClusterPipeline, remoteType string, UserID string, redirectURL string, code string) error {
+
 	account := &v3.RemoteAccount{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "github-test",
+			Namespace: "user-" + UserID,
+			Name:      "github-test",
 		},
 		Spec: v3.RemoteAccountSpec{
 
 			Type: "github",
 		},
 	}
-	if userName == "" {
+	if UserID == "" {
 		return errors.New("unauth")
 	}
-	account.Spec.UserName = userName
-	if _, err := h.Management.Management.RemoteAccounts("user-" + userName).Create(account); err != nil {
+	account.Spec.UserID = UserID
+	if _, err := h.Management.Management.RemoteAccounts("user-" + UserID).Create(account); err != nil {
 		return err
 	}
 	return nil
 }
+*/

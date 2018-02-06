@@ -17,7 +17,7 @@ type Remote interface {
 	//Login handle oauth login
 	Login(redirectURL string, code string) (*v3.RemoteAccount, error)
 
-	Repos(account *v3.RemoteAccount) ([]*v3.GitRepository, error)
+	Repos(account *v3.RemoteAccount) ([]v3.GitRepository, error)
 
 	CreateHook()
 
