@@ -253,7 +253,7 @@ func pipelineTypes(schema *types.Schemas) *types.Schemas {
 					Input:  "authAppInput",
 					Output: "cluterPipeline",
 				},
-				"revokeApp": {},
+				"revokeapp": {},
 				"authuser": {
 					Input:  "authUserInput",
 					Output: "sourceCodeCredential",

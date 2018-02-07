@@ -95,6 +95,7 @@ type GithubConfig struct {
 	Host         string `json:"host,omitempty"`
 	ClientId     string `json:"clientId,omitempty"`
 	ClientSecret string `json:"clientSecret,omitempty"`
+	RedirectUrl  string `json:"redirectUrl,omitempty"`
 }
 
 var (
