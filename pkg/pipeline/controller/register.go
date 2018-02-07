@@ -18,7 +18,7 @@ func Register(cluster *config.ClusterContext) {
 	}
 	pipelineClient.AddLifecycle("pipeline-controller", pipelineLifecycle)
 
-	pipelineHistoryClient := cluster.Management.Management.PipelineHistories("")
+	pipelineHistoryClient := cluster.Management.Management.PipelineExecutions("")
 	pipelineHistoryLifecycle := &PipelineHistoryLifecycle{
 		cluster: cluster,
 	}

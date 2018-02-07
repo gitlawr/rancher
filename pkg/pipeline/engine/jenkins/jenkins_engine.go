@@ -60,13 +60,13 @@ func (j JenkinsEngine) UpdatePipelineJob(pipeline *v3.Pipeline) error {
 	return nil
 }
 
-func (j JenkinsEngine) RerunHistory(history *v3.PipelineHistory) error {
+func (j JenkinsEngine) RerunHistory(history *v3.PipelineExecution) error {
 	return j.RunPipeline(&history.Spec.Pipeline, TriggerTypeManual)
 }
 
-func (j JenkinsEngine) StopHistory(history *v3.PipelineHistory) error {
+func (j JenkinsEngine) StopHistory(history *v3.PipelineExecution) error {
 	jobName := JENKINS_JOB_PREFIX + history.Spec.Pipeline.Name
-	buildNumber := history.Spec.RunNumber
+	buildNumber := history.Spec.Run
 	info, err := j.Client.GetJobInfo(jobName)
 	if err == ErrJenkinsJobNotFound {
 		return nil
@@ -102,7 +102,7 @@ func (j JenkinsEngine) StopHistory(history *v3.PipelineHistory) error {
 }
 
 //OnActivityCompelte helps clean up
-func (j JenkinsEngine) OnHistoryCompelte(history *v3.PipelineHistory) {
+func (j JenkinsEngine) OnHistoryCompelte(history *v3.PipelineExecution) {
 	//TODO
 	return
 	/*
@@ -129,7 +129,7 @@ func (j JenkinsEngine) OnHistoryCompelte(history *v3.PipelineHistory) {
 	*/
 }
 
-func (j JenkinsEngine) GetStepLog(history *v3.PipelineHistory, stageOrdinal int, stepOrdinal int, paras map[string]interface{}) (string, error) {
+func (j JenkinsEngine) GetStepLog(history *v3.PipelineExecution, stageOrdinal int, stepOrdinal int, paras map[string]interface{}) (string, error) {
 	//TODO
 	return "", nil
 	/*

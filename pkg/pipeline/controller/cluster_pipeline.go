@@ -435,12 +435,12 @@ func (l *ClusterPipelineLifecycle) destroy() error {
 	}
 
 	//cleanup
-	rset, err := l.cluster.Management.Management.RemoteAccounts("").List(metav1.ListOptions{})
+	rset, err := l.cluster.Management.Management.SourceCodeCredentials("").List(metav1.ListOptions{})
 	if err != nil {
 		return err
 	}
 	for _, r := range rset.Items {
-		err := l.cluster.Management.Management.RemoteAccounts("").DeleteNamespaced(r.Namespace, r.Name, &metav1.DeleteOptions{})
+		err := l.cluster.Management.Management.SourceCodeCredentials("").DeleteNamespaced(r.Namespace, r.Name, &metav1.DeleteOptions{})
 		if err != nil {
 			return err
 		}
@@ -456,12 +456,12 @@ func (l *ClusterPipelineLifecycle) destroy() error {
 			return err
 		}
 	}
-	phset, err := l.cluster.Management.Management.PipelineHistories("").List(metav1.ListOptions{})
+	phset, err := l.cluster.Management.Management.PipelineExecutions("").List(metav1.ListOptions{})
 	if err != nil {
 		return err
 	}
 	for _, r := range phset.Items {
-		err := l.cluster.Management.Management.PipelineHistories(r.Namespace).Delete(r.Name, &metav1.DeleteOptions{})
+		err := l.cluster.Management.Management.PipelineExecutions(r.Namespace).Delete(r.Name, &metav1.DeleteOptions{})
 		if err != nil {
 			return err
 		}

@@ -15,9 +15,9 @@ type Remote interface {
 	CanHook() bool
 
 	//Login handle oauth login
-	Login(redirectURL string, code string) (*v3.RemoteAccount, error)
+	Login(redirectURL string, code string) (*v3.SourceCodeCredential, error)
 
-	Repos(account *v3.RemoteAccount) ([]v3.GitRepository, error)
+	Repos(account *v3.SourceCodeCredential) ([]v3.SourceCodeRepository, error)
 
 	CreateHook()
 

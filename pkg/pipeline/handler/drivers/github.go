@@ -12,7 +12,6 @@ import (
 	"github.com/rancher/types/apis/management.cattle.io/v3"
 	"github.com/rancher/types/config"
 	"github.com/sirupsen/logrus"
-	"golang.org/x/tools/go/gcimporter15/testdata"
 	"io/ioutil"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"strings"
@@ -56,7 +55,7 @@ func (g GithubDriver) Execute(apiContext types.APIContext) (int, error) {
 		logrus.Errorf("receive github webhook, got error:%v", err)
 		return 422, err
 	}
-	if match := VerifyGithubWebhookSignature([]byte(pipeline.Status.WebHookToken), signature, body); !match {
+	if match := VerifyGithubWebhookSignature([]byte(pipeline.Status.Token), signature, body); !match {
 		logrus.Errorf("receive github webhook, invalid signature")
 		return 422, errors.New("github webhook invalid signature")
 	}
@@ -66,9 +65,10 @@ func (g GithubDriver) Execute(apiContext types.APIContext) (int, error) {
 		logrus.Error("fail to parse github webhook payload")
 		return 422, err
 	}
-	if *payload.Ref != "refs/heads/"+p.Stages[0].Steps[0].Branch {
-		logrus.Warningf("branch not match:%v,%v", *payload.Ref, p.Stages[0].Steps[0].Branch)
-		return false
+	//TODO
+	if *payload.Ref != "refs/heads/"+pipeline.Spec.Stages[0].Steps[0].SourceCodeStepConfig.Branch {
+		logrus.Warningf("branch not match:%v,%v", *payload.Ref, pipeline.Spec.Stages[0].Steps[0].SourceCodeStepConfig.Branch)
+		return 500, errors.New("branch not match")
 	}
 
 	return 0, nil

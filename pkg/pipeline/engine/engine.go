@@ -8,10 +8,10 @@ import (
 
 type PipelineEngine interface {
 	RunPipeline(pipeline *v3.Pipeline, triggerType string) error
-	RerunHistory(history *v3.PipelineHistory) error
-	StopHistory(history *v3.PipelineHistory) error
-	GetStepLog(history *v3.PipelineHistory, stageOrdinal int, stepOrdinal int, paras map[string]interface{}) (string, error)
-	OnHistoryCompelte(history *v3.PipelineHistory)
+	RerunHistory(history *v3.PipelineExecution) error
+	StopHistory(history *v3.PipelineExecution) error
+	GetStepLog(history *v3.PipelineExecution, stageOrdinal int, stepOrdinal int, paras map[string]interface{}) (string, error)
+	OnHistoryCompelte(history *v3.PipelineExecution)
 }
 
 func New(cluster *config.ClusterContext, url string, user string, token string) (PipelineEngine, error) {

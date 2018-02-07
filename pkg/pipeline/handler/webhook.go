@@ -32,14 +32,14 @@ func (h *WebhookHandler) runPipeline(id string) error {
 	ns := pipeline.Namespace
 	pipelineClient := h.Management.Management.Pipelines(ns)
 
-	historyClient := h.Management.Management.PipelineHistories(ns)
-	history := &v3.PipelineHistory{
+	historyClient := h.Management.Management.PipelineExecutions(ns)
+	history := &v3.PipelineExecution{
 		ObjectMeta: v1.ObjectMeta{
 			Name: getNextHistoryName(pipeline),
 		},
-		Spec: v3.PipelineHistorySpec{
-			RunNumber:   pipeline.Status.NextRunNumber,
-			TriggerType: v3.TriggerTypeWebhook,
+		Spec: v3.PipelineExecutionSpec{
+			Run:         pipeline.Status.NextRun,
+			TriggeredBy: v3.TriggerTypeWebhook,
 			Pipeline:    *pipeline,
 			//DisplayName: getNextHistoryName(pipeline),
 		},
@@ -47,9 +47,9 @@ func (h *WebhookHandler) runPipeline(id string) error {
 	if _, err := historyClient.Create(history); err != nil {
 		return err
 	}
-	pipeline.Status.NextRunNumber++
-	pipeline.Status.LastRunId = history.Name
-	pipeline.Status.LastRunTime = time.Now().UnixNano() / int64(time.Millisecond)
+	pipeline.Status.NextRun++
+	pipeline.Status.LastExecutionId = history.Name
+	pipeline.Status.LastStarted = time.Now().String()
 
 	_, err = pipelineClient.Update(pipeline)
 	if err != nil {
@@ -62,5 +62,5 @@ func getNextHistoryName(p *v3.Pipeline) string {
 	if p == nil {
 		return ""
 	}
-	return fmt.Sprintf("%s-%d", p.Name, p.Status.NextRunNumber)
+	return fmt.Sprintf("%s-%d", p.Name, p.Status.NextRun)
 }

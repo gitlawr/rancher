@@ -63,21 +63,21 @@ func (h *HistoryHandler) notify(apiContext *types.APIContext) error {
 	parts = strings.Split(apiContext.ID, ":")
 	ns := parts[0]
 	id := parts[1]
-	pipelineHistoryClient := h.Management.Management.PipelineHistories(ns)
+	pipelineHistoryClient := h.Management.Management.PipelineExecutions(ns)
 	pipelineHistory, err := pipelineHistoryClient.Get(id, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
-	if len(pipelineHistory.Status.StageStatus) < stageOrdinal ||
-		len(pipelineHistory.Status.StageStatus[stageOrdinal].StepStatus) < stepOrdinal {
+	if len(pipelineHistory.Status.Stages) < stageOrdinal ||
+		len(pipelineHistory.Status.Stages[stageOrdinal].Steps) < stepOrdinal {
 		return errors.New("invalid status")
 	}
 	if state == "start" {
-		pipelineHistory.Status.StageStatus[stageOrdinal].StepStatus[stepOrdinal].State = v3.StateBuilding
+		pipelineHistory.Status.Stages[stageOrdinal].Steps[stepOrdinal].State = v3.StateBuilding
 	} else if state == "success" {
-		pipelineHistory.Status.StageStatus[stageOrdinal].StepStatus[stepOrdinal].State = v3.StateSuccess
+		pipelineHistory.Status.Stages[stageOrdinal].Steps[stepOrdinal].State = v3.StateSuccess
 	} else if state == "fail" {
-		pipelineHistory.Status.StageStatus[stageOrdinal].StepStatus[stepOrdinal].State = v3.StateFail
+		pipelineHistory.Status.Stages[stageOrdinal].Steps[stepOrdinal].State = v3.StateFail
 	} else {
 		return errors.New("unknown state")
 	}

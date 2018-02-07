@@ -41,7 +41,11 @@ func New(pipeline v3.ClusterPipeline) (remote.Remote, error) {
 	}
 	if pipeline.Spec.GithubConfig.Host != "" {
 		remote.Host = pipeline.Spec.GithubConfig.Host
-		remote.Scheme = pipeline.Spec.GithubConfig.Scheme
+		if pipeline.Spec.GithubConfig.TLS {
+			remote.Scheme = "https://"
+		} else {
+			remote.Scheme = "http://"
+		}
 		remote.API = remote.Scheme + remote.Host + gheAPI
 	} else {
 		remote.Scheme = "https://"
@@ -66,7 +70,7 @@ func (c *client) CanHook() bool {
 	return true
 }
 
-func (c *client) Login(redirectURL string, code string) (*v3.RemoteAccount, error) {
+func (c *client) Login(redirectURL string, code string) (*v3.SourceCodeCredential, error) {
 	githubOauthConfig := &oauth2.Config{
 		RedirectURL:  redirectURL,
 		ClientID:     c.ClientId,
@@ -100,7 +104,7 @@ func (c *client) ParseHook(r *http.Request) {
 
 }
 
-func (c *client) GetAccount(accessToken string) (*v3.RemoteAccount, error) {
+func (c *client) GetAccount(accessToken string) (*v3.SourceCodeCredential, error) {
 	account, err := c.getGithubUser(accessToken)
 	if err != nil {
 		return nil, err
@@ -110,7 +114,7 @@ func (c *client) GetAccount(accessToken string) (*v3.RemoteAccount, error) {
 	return remoteAccount, nil
 }
 
-func (c *client) Repos(account *v3.RemoteAccount) ([]v3.GitRepository, error) {
+func (c *client) Repos(account *v3.SourceCodeCredential) ([]v3.SourceCodeRepository, error) {
 	if account == nil {
 		return nil, fmt.Errorf("empty account")
 	}
@@ -142,12 +146,12 @@ func (c *client) getGithubUser(githubAccessToken string) (*github.User, error) {
 	return githubAcct, nil
 }
 
-func convertAccount(gitaccount *github.User) *v3.RemoteAccount {
+func convertAccount(gitaccount *github.User) *v3.SourceCodeCredential {
 
 	if gitaccount == nil {
 		return nil
 	}
-	account := &v3.RemoteAccount{}
+	account := &v3.SourceCodeCredential{}
 	if gitaccount.AvatarURL != nil {
 		account.Spec.AvatarURL = *gitaccount.AvatarURL
 	}
@@ -155,17 +159,17 @@ func convertAccount(gitaccount *github.User) *v3.RemoteAccount {
 		account.Spec.HTMLURL = *gitaccount.HTMLURL
 	}
 	if gitaccount.Login != nil {
-		account.Spec.Login = *gitaccount.Login
+		account.Spec.LoginName = *gitaccount.Login
 	}
 	if gitaccount.Name != nil {
-		account.Spec.AccountName = *gitaccount.Name
-		account.Name = "github-" + strings.ToLower(*gitaccount.Name)
+		account.Spec.DisplayName = *gitaccount.Name
+		account.Name = "github-" + strings.ToLower(*gitaccount.Login)
 	}
 	return account
 
 }
 
-func (c *client) getGithubRepos(githubAccessToken string) ([]v3.GitRepository, error) {
+func (c *client) getGithubRepos(githubAccessToken string) ([]v3.SourceCodeRepository, error) {
 	url := c.API + "/user/repos"
 	var repos []github.Repository
 	responses, err := paginateGithub(githubAccessToken, url)
@@ -190,28 +194,28 @@ func (c *client) getGithubRepos(githubAccessToken string) ([]v3.GitRepository, e
 	return convertRepos(repos), nil
 }
 
-func convertRepos(repos []github.Repository) []v3.GitRepository {
-	result := []v3.GitRepository{}
+func convertRepos(repos []github.Repository) []v3.SourceCodeRepository {
+	result := []v3.SourceCodeRepository{}
 	for _, repo := range repos {
-		r := v3.GitRepository{}
+		r := v3.SourceCodeRepository{}
 		if repo.CloneURL != nil {
-			r.CloneURL = *repo.CloneURL
+			r.Spec.Url = *repo.CloneURL
 		}
 		if repo.Language != nil {
-			r.Language = *repo.Language
+			r.Spec.Language = *repo.Language
 		}
 		if repo.Name != nil {
 			r.Name = *repo.Name
 		}
 		if repo.Permissions != nil {
 			if (*repo.Permissions)["pull"] == true {
-				r.Permissions.Pull = true
+				r.Spec.Permissions.Pull = true
 			}
 			if (*repo.Permissions)["push"] == true {
-				r.Permissions.Push = true
+				r.Spec.Permissions.Push = true
 			}
 			if (*repo.Permissions)["admin"] == true {
-				r.Permissions.Admin = true
+				r.Spec.Permissions.Admin = true
 			}
 		}
 		result = append(result, r)

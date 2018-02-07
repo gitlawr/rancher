@@ -8,6 +8,7 @@ import (
 	//"github.com/rancher/rancher/pkg/pipeline/remote/booter"
 	"github.com/rancher/rancher/pkg/pipeline/remote/booter"
 	"github.com/rancher/types/apis/management.cattle.io/v3"
+	"github.com/rancher/types/client/management/v3"
 	"github.com/rancher/types/config"
 	"github.com/sirupsen/logrus"
 	"io/ioutil"
@@ -23,8 +24,9 @@ type ClusterPipelineHandler struct {
 func ClusterPipelineFormatter(apiContext *types.APIContext, resource *types.RawResource) {
 	resource.AddAction(apiContext, "deploy")
 	resource.AddAction(apiContext, "destroy")
-	resource.AddAction(apiContext, "reset")
-	resource.AddAction(apiContext, "auth")
+	resource.AddAction(apiContext, "revokeapp")
+	resource.AddAction(apiContext, "authapp")
+	resource.AddAction(apiContext, "authuser")
 }
 
 func (h *ClusterPipelineHandler) ActionHandler(actionName string, action *types.Action, apiContext *types.APIContext) error {
@@ -48,10 +50,12 @@ func (h *ClusterPipelineHandler) ActionHandler(actionName string, action *types.
 		clusterPipeline.Spec.Deploy = true
 	case "destroy":
 		clusterPipeline.Spec.Deploy = false
-	case "reset":
-		return h.reset(apiContext)
-	case "auth":
-		return h.auth(apiContext)
+	case "revokeapp":
+		return h.revokeapp(apiContext)
+	case "authapp":
+		return h.authapp(apiContext)
+	case "authuser":
+		return h.authuser(apiContext)
 	}
 
 	_, err = client.Update(clusterPipeline)
@@ -67,7 +71,7 @@ func (h *ClusterPipelineHandler) ActionHandler(actionName string, action *types.
 	return nil
 }
 
-func (h *ClusterPipelineHandler) auth(apiContext *types.APIContext) error {
+func (h *ClusterPipelineHandler) authapp(apiContext *types.APIContext) error {
 
 	parts := strings.Split(apiContext.ID, ":")
 	if len(parts) <= 1 {
@@ -76,73 +80,37 @@ func (h *ClusterPipelineHandler) auth(apiContext *types.APIContext) error {
 	ns := parts[0]
 	id := parts[1]
 
-	requestBody := make(map[string]interface{})
+	authAppInput := v3.AuthAppInput{}
 	requestBytes, err := ioutil.ReadAll(apiContext.Request.Body)
 	if err != nil {
 		return err
 	}
-	if err := json.Unmarshal(requestBytes, &requestBody); err != nil {
+	if err := json.Unmarshal(requestBytes, &authAppInput); err != nil {
 		return err
 	}
-	var code, remoteType, clientID, clientSecret, redirectURL, scheme, host string
-
-	if requestBody["code"] != nil {
-		code = requestBody["code"].(string)
-	}
-	if requestBody["clientId"] != nil {
-		clientID = requestBody["clientId"].(string)
-	}
-	if requestBody["clientSecret"] != nil {
-		clientSecret = requestBody["clientSecret"].(string)
-	}
-	if requestBody["redirectUrl"] != nil {
-		redirectURL = requestBody["redirectUrl"].(string)
-	}
-	if requestBody["scheme"] != nil {
-		scheme = requestBody["scheme"].(string)
-	}
-	if requestBody["host"] != nil {
-		host = requestBody["host"].(string)
-	}
-	if requestBody["type"] != nil {
-		remoteType = requestBody["type"].(string)
-	}
-
 	clusterPipeline, err := h.Management.Management.ClusterPipelines(ns).Get(id, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
-	if clientID == "" || clientSecret == "" {
 
-		if clusterPipeline.Spec.GithubConfig == nil {
-			return errors.New("github not configured")
-		}
-
-		//oauth and add user
-		userName := apiContext.Request.Header.Get("Impersonate-User")
-		if err := h.auth_add_account(clusterPipeline, remoteType, userName, redirectURL, code); err != nil {
-			return err
-		}
-
-	} else {
-		if remoteType == "github" && clusterPipeline.Spec.GithubConfig == nil {
-			clusterPipeline.Spec.GithubConfig = &v3.GithubConfig{
-				Scheme:       scheme,
-				Host:         host,
-				ClientId:     clientID,
-				ClientSecret: clientSecret,
-			}
-		}
-		//oauth and add user
-		userName := apiContext.Request.Header.Get("Impersonate-User")
-		if err := h.auth_add_account(clusterPipeline, remoteType, userName, redirectURL, code); err != nil {
-			return err
-		}
-		//update cluster pipeline config
-		if _, err := h.Management.Management.ClusterPipelines(ns).Update(clusterPipeline); err != nil {
-			return err
+	if authAppInput.Type == "github" && clusterPipeline.Spec.GithubConfig == nil {
+		clusterPipeline.Spec.GithubConfig = &v3.GithubConfig{
+			TLS:          authAppInput.TLS,
+			Host:         authAppInput.Host,
+			ClientId:     authAppInput.ClientId,
+			ClientSecret: authAppInput.ClientSecret,
 		}
 	}
+	//oauth and add user
+	userName := apiContext.Request.Header.Get("Impersonate-User")
+	if _, err := h.auth_add_account(clusterPipeline, authAppInput.Type, userName, authAppInput.RedirectUrl, authAppInput.Code); err != nil {
+		return err
+	}
+	//update cluster pipeline config
+	if _, err := h.Management.Management.ClusterPipelines(ns).Update(clusterPipeline); err != nil {
+		return err
+	}
+
 	data := map[string]interface{}{}
 	if err := access.ByID(apiContext, apiContext.Version, apiContext.Type, apiContext.ID, &data); err != nil {
 		return err
@@ -152,7 +120,49 @@ func (h *ClusterPipelineHandler) auth(apiContext *types.APIContext) error {
 	return nil
 }
 
-func (h *ClusterPipelineHandler) reset(apiContext *types.APIContext) error {
+func (h *ClusterPipelineHandler) authuser(apiContext *types.APIContext) error {
+
+	parts := strings.Split(apiContext.ID, ":")
+	if len(parts) <= 1 {
+		return errors.New("invalid ID")
+	}
+	ns := parts[0]
+	id := parts[1]
+
+	authUserInput := v3.AuthUserInput{}
+	requestBytes, err := ioutil.ReadAll(apiContext.Request.Body)
+	if err != nil {
+		return err
+	}
+	if err := json.Unmarshal(requestBytes, &authUserInput); err != nil {
+		return err
+	}
+
+	clusterPipeline, err := h.Management.Management.ClusterPipelines(ns).Get(id, metav1.GetOptions{})
+	if err != nil {
+		return err
+	}
+
+	if authUserInput.Type == "github" && clusterPipeline.Spec.GithubConfig == nil {
+		return errors.New("github oauth app is not configured")
+	}
+
+	//oauth and add user
+	userName := apiContext.Request.Header.Get("Impersonate-User")
+	logrus.Debugf("try auth with %v,%v,%v,%v,%v", clusterPipeline, authUserInput.Type, userName, authUserInput.RedirectUrl, authUserInput.Code)
+	account, err := h.auth_add_account(clusterPipeline, authUserInput.Type, userName, authUserInput.RedirectUrl, authUserInput.Code)
+	if err != nil {
+		return err
+	}
+	data := map[string]interface{}{}
+	if err := access.ByID(apiContext, apiContext.Version, client.SourceCodeCredentialType, account.Name, &data); err != nil {
+		return err
+	}
+	apiContext.WriteResponse(http.StatusOK, data)
+	return nil
+}
+
+func (h *ClusterPipelineHandler) revokeapp(apiContext *types.APIContext) error {
 
 	parts := strings.Split(apiContext.ID, ":")
 	if len(parts) <= 1 {
@@ -181,26 +191,27 @@ func (h *ClusterPipelineHandler) reset(apiContext *types.APIContext) error {
 	return nil
 }
 
-func (h *ClusterPipelineHandler) auth_add_account(clusterPipeline *v3.ClusterPipeline, remoteType string, userID string, redirectURL string, code string) error {
+func (h *ClusterPipelineHandler) auth_add_account(clusterPipeline *v3.ClusterPipeline, remoteType string, userID string, redirectURL string, code string) (*v3.SourceCodeCredential, error) {
 
 	if userID == "" {
-		return errors.New("unauth")
+		return nil, errors.New("unauth")
 	}
 
 	remote, err := booter.New(*clusterPipeline, remoteType)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	account, err := remote.Login(redirectURL, code)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	account.Spec.UserID = userID
+	account.Spec.UserName = userID
 
-	if _, err := h.Management.Management.RemoteAccounts("").Create(account); err != nil {
-		return err
+	account, err = h.Management.Management.SourceCodeCredentials("").Create(account)
+	if err != nil {
+		return nil, err
 	}
-	return nil
+	return account, nil
 }
 
 /*

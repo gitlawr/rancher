@@ -18,11 +18,10 @@ func Test_convert(t *testing.T) {
 
 func Test_Convert_Step(t *testing.T) {
 	step := &v3.Step{
-		Type: "sourcecode",
 		SourceCodeStepConfig: &v3.SourceCodeStepConfig{
-			Repository:        "https://github.com/gitlawr/php.git",
-			Branch:            "master",
-			RemoteAccountName: "user-ld9",
+			Url:    "https://github.com/gitlawr/php.git",
+			Branch: "master",
+			SourceCodeCredentialName: "user-ld9",
 		},
 	}
 	result := convertStep(step, 1, 1)
@@ -34,11 +33,10 @@ func Test_Convert_Stage(t *testing.T) {
 		Name: "stage-name",
 		Steps: []v3.Step{
 			{
-				Type: "sourcecode",
 				SourceCodeStepConfig: &v3.SourceCodeStepConfig{
-					Repository:        "https://github.com/gitlawr/php.git",
-					Branch:            "master",
-					RemoteAccountName: "user-ld9",
+					Url:    "https://github.com/gitlawr/php.git",
+					Branch: "master",
+					SourceCodeCredentialName: "user-ld9",
 				},
 			},
 		},
@@ -56,11 +54,10 @@ func Test_Convert_Pipeline(t *testing.T) {
 				Name: "stage1",
 				Steps: []v3.Step{
 					{
-						Type: "scm",
 						SourceCodeStepConfig: &v3.SourceCodeStepConfig{
-							Repository:        "https://github.com/gitlawr/php.git",
-							Branch:            "master",
-							RemoteAccountName: "user-ld9",
+							Url:    "https://github.com/gitlawr/php.git",
+							Branch: "master",
+							SourceCodeCredentialName: "user-ld9",
 						},
 					},
 				},
@@ -68,7 +65,6 @@ func Test_Convert_Pipeline(t *testing.T) {
 				Name: "stage2",
 				Steps: []v3.Step{
 					{
-						Type: "task",
 						RunScriptStepConfig: &v3.RunScriptStepConfig{
 							Image:       "busybox",
 							ShellScript: "echo hi",

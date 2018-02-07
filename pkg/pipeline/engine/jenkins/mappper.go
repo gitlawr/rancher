@@ -24,23 +24,14 @@ func ConvertPipelineToJenkinsPipeline(pipeline *v3.Pipeline) PipelineJob {
 func convertStep(step *v3.Step, stageOrdinal int, stepOrdinal int) string {
 	stepContent := ""
 	stepName := fmt.Sprintf("step_%d_%d", stageOrdinal, stepOrdinal)
-	switch step.Type {
-	case "scm":
-		if step.SourceCodeStepConfig == nil {
-			return ""
-		}
-		stepContent = fmt.Sprintf("git '%s'", step.SourceCodeStepConfig.Repository)
-	case "task":
-		if step.RunScriptStepConfig == nil {
-			return ""
-		}
+
+	if step.SourceCodeStepConfig != nil {
+		stepContent = fmt.Sprintf("git '%s'", step.SourceCodeStepConfig.Url)
+	} else if step.RunScriptStepConfig == nil {
 		stepContent = fmt.Sprintf("sh \"\"\"\n%s\n\"\"\"", step.RunScriptStepConfig.ShellScript)
-	case "build":
-		if step.PublishImageStepConfig == nil {
-			return ""
-		}
+	} else if step.PublishImageStepConfig == nil {
 		stepContent = fmt.Sprintf(`sh """"\necho dopublishimage\n"""`)
-	default:
+	} else {
 		return ""
 	}
 	return fmt.Sprintf(stepBlock, stepName, stepName, stepName, stepContent)
@@ -67,14 +58,13 @@ func convertPipeline(pipeline *v3.Pipeline) string {
 		for k, step := range stage.Steps {
 			stepName := fmt.Sprintf("step_%d_%d", j+1, k+1)
 			image := ""
-			switch step.Type {
-			case "scm":
+			if step.SourceCodeStepConfig != nil {
 				image = "alpine/git"
-			case "task":
+			} else if step.RunScriptStepConfig != nil {
 				image = step.RunScriptStepConfig.Image
-			case "build":
+			} else if step.PublishImageStepConfig != nil {
 				image = "docker"
-			default:
+			} else {
 				return ""
 			}
 			containerDef := fmt.Sprintf(containerBlock, stepName, image)

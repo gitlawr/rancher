@@ -14,7 +14,7 @@ type PipelineHistoryLifecycle struct {
 	cluster *config.ClusterContext
 }
 
-func (l *PipelineHistoryLifecycle) Create(obj *v3.PipelineHistory) (*v3.PipelineHistory, error) {
+func (l *PipelineHistoryLifecycle) Create(obj *v3.PipelineExecution) (*v3.PipelineExecution, error) {
 
 	url, err := l.getJenkinsURL()
 	if err != nil {
@@ -24,25 +24,25 @@ func (l *PipelineHistoryLifecycle) Create(obj *v3.PipelineHistory) (*v3.Pipeline
 	if err != nil {
 		return l.errorHistory(obj)
 	}
-	if err := pipelineEngine.RunPipeline(&obj.Spec.Pipeline, obj.Spec.TriggerType); err != nil {
+	if err := pipelineEngine.RunPipeline(&obj.Spec.Pipeline, obj.Spec.TriggeredBy); err != nil {
 		return l.errorHistory(obj)
 	}
 	return obj, nil
 }
-func (l *PipelineHistoryLifecycle) errorHistory(obj *v3.PipelineHistory) (*v3.PipelineHistory, error) {
+func (l *PipelineHistoryLifecycle) errorHistory(obj *v3.PipelineExecution) (*v3.PipelineExecution, error) {
 	obj.Status.State = "error"
-	if _, err := l.cluster.Management.Management.PipelineHistories(obj.Namespace).Update(obj); err != nil {
+	if _, err := l.cluster.Management.Management.PipelineExecutions(obj.Namespace).Update(obj); err != nil {
 		logrus.Error(err)
 		return obj, err
 	}
 	return obj, nil
 }
 
-func (l *PipelineHistoryLifecycle) Updated(obj *v3.PipelineHistory) (*v3.PipelineHistory, error) {
+func (l *PipelineHistoryLifecycle) Updated(obj *v3.PipelineExecution) (*v3.PipelineExecution, error) {
 	return obj, nil
 }
 
-func (l *PipelineHistoryLifecycle) Remove(obj *v3.PipelineHistory) (*v3.PipelineHistory, error) {
+func (l *PipelineHistoryLifecycle) Remove(obj *v3.PipelineExecution) (*v3.PipelineExecution, error) {
 	return obj, nil
 }
 
