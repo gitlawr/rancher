@@ -433,39 +433,39 @@ func (l *ClusterPipelineLifecycle) destroy() error {
 			return err
 		}
 	}
-
-	//cleanup
-	rset, err := l.cluster.Management.Management.SourceCodeCredentials("").List(metav1.ListOptions{})
-	if err != nil {
-		return err
-	}
-	for _, r := range rset.Items {
-		err := l.cluster.Management.Management.SourceCodeCredentials("").DeleteNamespaced(r.Namespace, r.Name, &metav1.DeleteOptions{})
-		if err != nil {
-			return err
-		}
-
-	}
-	pset, err := l.cluster.Management.Management.Pipelines("").List(metav1.ListOptions{})
-	if err != nil {
-		return err
-	}
-	for _, r := range pset.Items {
-		err := l.cluster.Management.Management.Pipelines(r.Namespace).Delete(r.Name, &metav1.DeleteOptions{})
-		if err != nil {
-			return err
-		}
-	}
-	phset, err := l.cluster.Management.Management.PipelineExecutions("").List(metav1.ListOptions{})
-	if err != nil {
-		return err
-	}
-	for _, r := range phset.Items {
-		err := l.cluster.Management.Management.PipelineExecutions(r.Namespace).Delete(r.Name, &metav1.DeleteOptions{})
-		if err != nil {
-			return err
-		}
-	}
+	//
+	////cleanup
+	//rset, err := l.cluster.Management.Management.SourceCodeCredentials("").List(metav1.ListOptions{})
+	//if err != nil {
+	//	return err
+	//}
+	//for _, r := range rset.Items {
+	//	err := l.cluster.Management.Management.SourceCodeCredentials("").DeleteNamespaced(r.Namespace, r.Name, &metav1.DeleteOptions{})
+	//	if err != nil {
+	//		return err
+	//	}
+	//
+	//}
+	//pset, err := l.cluster.Management.Management.Pipelines("").List(metav1.ListOptions{})
+	//if err != nil {
+	//	return err
+	//}
+	//for _, r := range pset.Items {
+	//	err := l.cluster.Management.Management.Pipelines(r.Namespace).Delete(r.Name, &metav1.DeleteOptions{})
+	//	if err != nil {
+	//		return err
+	//	}
+	//}
+	//phset, err := l.cluster.Management.Management.PipelineExecutions("").List(metav1.ListOptions{})
+	//if err != nil {
+	//	return err
+	//}
+	//for _, r := range phset.Items {
+	//	err := l.cluster.Management.Management.PipelineExecutions(r.Namespace).Delete(r.Name, &metav1.DeleteOptions{})
+	//	if err != nil {
+	//		return err
+	//	}
+	//}
 
 	return nil
 }

@@ -2,10 +2,10 @@ package pipeline
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/pkg/errors"
 	"github.com/rancher/norman/api/access"
 	"github.com/rancher/norman/types"
-	//"github.com/rancher/rancher/pkg/pipeline/remote/booter"
 	"github.com/rancher/rancher/pkg/pipeline/remote/booter"
 	"github.com/rancher/types/apis/management.cattle.io/v3"
 	"github.com/rancher/types/client/management/v3"
@@ -14,8 +14,11 @@ import (
 	"io/ioutil"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"net/http"
+	"net/url"
 	"strings"
 )
+
+var CI_ENDPOINT = ""
 
 type ClusterPipelineHandler struct {
 	Management config.ManagementContext
@@ -30,6 +33,12 @@ func ClusterPipelineFormatter(apiContext *types.APIContext, resource *types.RawR
 }
 
 func (h *ClusterPipelineHandler) ActionHandler(actionName string, action *types.Action, apiContext *types.APIContext) error {
+
+	//TODO FIXME
+	//update endpoint by request url
+	if err := updateEndpoint(apiContext); err != nil {
+		logrus.Errorf("update endpoint got error:%v", err)
+	}
 
 	logrus.Infof("get id:%s", apiContext.ID)
 	parts := strings.Split(apiContext.ID, ":")
@@ -93,12 +102,13 @@ func (h *ClusterPipelineHandler) authapp(apiContext *types.APIContext) error {
 		return err
 	}
 
-	if authAppInput.Type == "github" && clusterPipeline.Spec.GithubConfig == nil {
+	if authAppInput.Type == "github" {
 		clusterPipeline.Spec.GithubConfig = &v3.GithubConfig{
 			TLS:          authAppInput.TLS,
 			Host:         authAppInput.Host,
 			ClientId:     authAppInput.ClientId,
 			ClientSecret: authAppInput.ClientSecret,
+			RedirectUrl:  authAppInput.RedirectUrl,
 		}
 	}
 	//oauth and add user
@@ -176,6 +186,10 @@ func (h *ClusterPipelineHandler) revokeapp(apiContext *types.APIContext) error {
 		return err
 	}
 
+	if err := h.cleanup(ns, apiContext); err != nil {
+		return err
+	}
+
 	clusterPipeline.Spec.GithubConfig = nil
 	_, err = h.Management.Management.ClusterPipelines(ns).Update(clusterPipeline)
 	if err != nil {
@@ -212,6 +226,69 @@ func (h *ClusterPipelineHandler) auth_add_account(clusterPipeline *v3.ClusterPip
 		return nil, err
 	}
 	return account, nil
+}
+
+func (h *ClusterPipelineHandler) cleanup(clusterName string, apiContext *types.APIContext) error {
+
+	//clean resource
+	credentialList, err := h.Management.Management.SourceCodeCredentials("").List(metav1.ListOptions{})
+	if err != nil {
+		return err
+	}
+	for _, credential := range credentialList.Items {
+		if credential.Spec.ClusterName != clusterName {
+			continue
+		}
+		if err := h.Management.Management.SourceCodeCredentials("").DeleteNamespaced(credential.Namespace, credential.Name, &metav1.DeleteOptions{}); err != nil {
+			return err
+		}
+	}
+
+	//TODO filter this cluster
+	pipelineList, err := h.Management.Management.Pipelines("").List(metav1.ListOptions{})
+	if err != nil {
+		return err
+	}
+	for _, pipeline := range pipelineList.Items {
+		if err := h.Management.Management.Pipelines("").DeleteNamespaced(pipeline.Namespace, pipeline.Name, &metav1.DeleteOptions{}); err != nil {
+			return err
+		}
+	}
+
+	//TODO filter this cluster
+	executionList, err := h.Management.Management.PipelineExecutions("").List(metav1.ListOptions{})
+	if err != nil {
+		return err
+	}
+	for _, execution := range executionList.Items {
+		if err := h.Management.Management.PipelineExecutions("").DeleteNamespaced(execution.Namespace, execution.Name, &metav1.DeleteOptions{}); err != nil {
+			return err
+		}
+	}
+
+	//TODO filter this cluster
+	logList, err := h.Management.Management.PipelineExecutionLogs("").List(metav1.ListOptions{})
+	if err != nil {
+		return err
+	}
+	for _, log := range logList.Items {
+		if err := h.Management.Management.PipelineExecutionLogs("").DeleteNamespaced(log.Namespace, log.Name, &metav1.DeleteOptions{}); err != nil {
+			return err
+		}
+	}
+
+	//TODO filter this cluster
+	repoList, err := h.Management.Management.SourceCodeRepositories("").List(metav1.ListOptions{})
+	if err != nil {
+		return err
+	}
+	for _, repo := range repoList.Items {
+		if err := h.Management.Management.SourceCodeRepositories("").DeleteNamespaced(repo.Namespace, repo.Name, &metav1.DeleteOptions{}); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 /*
@@ -320,3 +397,14 @@ func (h *ClusterPipelineHandler) test_auth_add_account(clusterPipeline *v3.Clust
 	return nil
 }
 */
+
+func updateEndpoint(apiContext *types.APIContext) error {
+
+	reqUrl := apiContext.URLBuilder.Current()
+	u, err := url.Parse(reqUrl)
+	if err != nil {
+		return err
+	}
+	CI_ENDPOINT = fmt.Sprintf("%s://%s/hooks", u.Scheme, u.Host)
+	return nil
+}

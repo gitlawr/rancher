@@ -93,13 +93,36 @@ func (c *client) Login(redirectURL string, code string) (*v3.SourceCodeCredentia
 	return c.GetAccount(token.AccessToken)
 }
 
-func (c *client) CreateHook() {
+func (c *client) CreateHook(pipeline *v3.Pipeline, accessToken string, hookUrl string) (string, error) {
+	if len(pipeline.Spec.Stages) <= 0 || len(pipeline.Spec.Stages[0].Steps) <= 0 || pipeline.Spec.Stages[0].Steps[0].SourceCodeStepConfig == nil {
+		return "", errors.New("invalid pipeline")
+	}
+	sourceCodeConfig := pipeline.Spec.Stages[0].Steps[0].SourceCodeStepConfig
+	user, repo, err := getUserRepoFromURL(sourceCodeConfig.Url)
+	if err != nil {
+		return "", err
+	}
 
+	id, err := c.createGithubWebhook(user, repo, accessToken, hookUrl, pipeline.Status.Token)
+	if err != nil {
+		return "", err
+	}
+	return id, nil
 }
 
-func (c *client) DeleteHook() {
+func (c *client) DeleteHook(pipeline *v3.Pipeline, accessToken string) error {
+	if len(pipeline.Spec.Stages) <= 0 || len(pipeline.Spec.Stages[0].Steps) <= 0 || pipeline.Spec.Stages[0].Steps[0].SourceCodeStepConfig == nil {
+		return errors.New("invalid pipeline")
+	}
+	sourceCodeConfig := pipeline.Spec.Stages[0].Steps[0].SourceCodeStepConfig
+	user, repo, err := getUserRepoFromURL(sourceCodeConfig.Url)
+	if err != nil {
+		return err
+	}
 
+	return c.deleteGithubWebhook(user, repo, accessToken, pipeline.Status.WebHookId)
 }
+
 func (c *client) ParseHook(r *http.Request) {
 
 }
@@ -152,6 +175,7 @@ func convertAccount(gitaccount *github.User) *v3.SourceCodeCredential {
 		return nil
 	}
 	account := &v3.SourceCodeCredential{}
+	account.Spec.Type = "github"
 	if gitaccount.AvatarURL != nil {
 		account.Spec.AvatarURL = *gitaccount.AvatarURL
 	}

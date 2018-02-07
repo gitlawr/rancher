@@ -19,9 +19,9 @@ type Remote interface {
 
 	Repos(account *v3.SourceCodeCredential) ([]v3.SourceCodeRepository, error)
 
-	CreateHook()
+	CreateHook(pipeline *v3.Pipeline, accessToken string, hookUrl string) (string, error)
 
-	DeleteHook()
+	DeleteHook(pipeline *v3.Pipeline, accessToken string) error
 
 	ParseHook(r *http.Request)
 }
