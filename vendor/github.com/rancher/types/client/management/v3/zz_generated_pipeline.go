@@ -5,45 +5,47 @@ import (
 )
 
 const (
-	PipelineType                      = "pipeline"
-	PipelineFieldActive               = "active"
-	PipelineFieldAnnotations          = "annotations"
-	PipelineFieldCreated              = "created"
-	PipelineFieldCreatorID            = "creatorId"
-	PipelineFieldLabels               = "labels"
-	PipelineFieldName                 = "name"
-	PipelineFieldNamespaceId          = "namespaceId"
-	PipelineFieldOwnerReferences      = "ownerReferences"
-	PipelineFieldProjectId            = "projectId"
-	PipelineFieldRemoved              = "removed"
-	PipelineFieldStages               = "stages"
-	PipelineFieldState                = "state"
-	PipelineFieldStatus               = "status"
-	PipelineFieldTransitioning        = "transitioning"
-	PipelineFieldTransitioningMessage = "transitioningMessage"
-	PipelineFieldTriggers             = "triggers"
-	PipelineFieldUuid                 = "uuid"
+	PipelineType                       = "pipeline"
+	PipelineFieldAnnotations           = "annotations"
+	PipelineFieldCreated               = "created"
+	PipelineFieldCreatorID             = "creatorId"
+	PipelineFieldLabels                = "labels"
+	PipelineFieldName                  = "name"
+	PipelineFieldNamespaceId           = "namespaceId"
+	PipelineFieldOwnerReferences       = "ownerReferences"
+	PipelineFieldProjectId             = "projectId"
+	PipelineFieldRemoved               = "removed"
+	PipelineFieldStages                = "stages"
+	PipelineFieldState                 = "state"
+	PipelineFieldStatus                = "status"
+	PipelineFieldTransitioning         = "transitioning"
+	PipelineFieldTransitioningMessage  = "transitioningMessage"
+	PipelineFieldTriggerCronExpression = "triggerCronExpression"
+	PipelineFieldTriggerCronTimezone   = "triggerCronTimezone"
+	PipelineFieldTriggerWebhook        = "triggerWebhook"
+	PipelineFieldUuid                  = "uuid"
 )
 
 type Pipeline struct {
 	types.Resource
-	Active               *bool             `json:"active,omitempty"`
-	Annotations          map[string]string `json:"annotations,omitempty"`
-	Created              string            `json:"created,omitempty"`
-	CreatorID            string            `json:"creatorId,omitempty"`
-	Labels               map[string]string `json:"labels,omitempty"`
-	Name                 string            `json:"name,omitempty"`
-	NamespaceId          string            `json:"namespaceId,omitempty"`
-	OwnerReferences      []OwnerReference  `json:"ownerReferences,omitempty"`
-	ProjectId            string            `json:"projectId,omitempty"`
-	Removed              string            `json:"removed,omitempty"`
-	Stages               []Stage           `json:"stages,omitempty"`
-	State                string            `json:"state,omitempty"`
-	Status               *PipelineStatus   `json:"status,omitempty"`
-	Transitioning        string            `json:"transitioning,omitempty"`
-	TransitioningMessage string            `json:"transitioningMessage,omitempty"`
-	Triggers             *Triggers         `json:"triggers,omitempty"`
-	Uuid                 string            `json:"uuid,omitempty"`
+	Annotations           map[string]string `json:"annotations,omitempty"`
+	Created               string            `json:"created,omitempty"`
+	CreatorID             string            `json:"creatorId,omitempty"`
+	Labels                map[string]string `json:"labels,omitempty"`
+	Name                  string            `json:"name,omitempty"`
+	NamespaceId           string            `json:"namespaceId,omitempty"`
+	OwnerReferences       []OwnerReference  `json:"ownerReferences,omitempty"`
+	ProjectId             string            `json:"projectId,omitempty"`
+	Removed               string            `json:"removed,omitempty"`
+	Stages                []Stage           `json:"stages,omitempty"`
+	State                 string            `json:"state,omitempty"`
+	Status                *PipelineStatus   `json:"status,omitempty"`
+	Transitioning         string            `json:"transitioning,omitempty"`
+	TransitioningMessage  string            `json:"transitioningMessage,omitempty"`
+	TriggerCronExpression string            `json:"triggerCronExpression,omitempty"`
+	TriggerCronTimezone   string            `json:"triggerCronTimezone,omitempty"`
+	TriggerWebhook        *bool             `json:"triggerWebhook,omitempty"`
+	Uuid                  string            `json:"uuid,omitempty"`
 }
 type PipelineCollection struct {
 	types.Collection

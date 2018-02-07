@@ -59,6 +59,8 @@ type ClusterPipelineOperations interface {
 	Update(existing *ClusterPipeline, updates interface{}) (*ClusterPipeline, error)
 	ByID(id string) (*ClusterPipeline, error)
 	Delete(container *ClusterPipeline) error
+
+	ActionAuthuser(*ClusterPipeline, *AuthUserInput) (*SourceCodeCredential, error)
 }
 
 func newClusterPipelineClient(apiClient *Client) *ClusterPipelineClient {
@@ -104,4 +106,13 @@ func (c *ClusterPipelineClient) ByID(id string) (*ClusterPipeline, error) {
 
 func (c *ClusterPipelineClient) Delete(container *ClusterPipeline) error {
 	return c.apiClient.Ops.DoResourceDelete(ClusterPipelineType, &container.Resource)
+}
+
+func (c *ClusterPipelineClient) ActionAuthuser(resource *ClusterPipeline, input *AuthUserInput) (*SourceCodeCredential, error) {
+
+	resp := &SourceCodeCredential{}
+
+	err := c.apiClient.Ops.DoAction(ClusterPipelineType, "authuser", &resource.Resource, input, resp)
+
+	return resp, err
 }

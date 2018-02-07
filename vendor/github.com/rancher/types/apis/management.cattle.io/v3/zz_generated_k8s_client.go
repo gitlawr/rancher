@@ -40,12 +40,12 @@ type Interface interface {
 	PreferencesGetter
 	ClusterLoggingsGetter
 	ProjectLoggingsGetter
+	SourceCodeCredentialsGetter
 	ClusterPipelinesGetter
 	PipelinesGetter
-	PipelineHistoriesGetter
-	RemoteAccountsGetter
-	GitRepoCachesGetter
-	PipelineLogsGetter
+	PipelineExecutionsGetter
+	SourceCodeRepositoriesGetter
+	PipelineExecutionLogsGetter
 	ListenConfigsGetter
 	SettingsGetter
 }
@@ -81,12 +81,12 @@ type Client struct {
 	preferenceControllers                 map[string]PreferenceController
 	clusterLoggingControllers             map[string]ClusterLoggingController
 	projectLoggingControllers             map[string]ProjectLoggingController
+	sourceCodeCredentialControllers       map[string]SourceCodeCredentialController
 	clusterPipelineControllers            map[string]ClusterPipelineController
 	pipelineControllers                   map[string]PipelineController
-	pipelineHistoryControllers            map[string]PipelineHistoryController
-	remoteAccountControllers              map[string]RemoteAccountController
-	gitRepoCacheControllers               map[string]GitRepoCacheController
-	pipelineLogControllers                map[string]PipelineLogController
+	pipelineExecutionControllers          map[string]PipelineExecutionController
+	sourceCodeRepositoryControllers       map[string]SourceCodeRepositoryController
+	pipelineExecutionLogControllers       map[string]PipelineExecutionLogController
 	listenConfigControllers               map[string]ListenConfigController
 	settingControllers                    map[string]SettingController
 }
@@ -131,12 +131,12 @@ func NewForConfig(config rest.Config) (Interface, error) {
 		preferenceControllers:                 map[string]PreferenceController{},
 		clusterLoggingControllers:             map[string]ClusterLoggingController{},
 		projectLoggingControllers:             map[string]ProjectLoggingController{},
+		sourceCodeCredentialControllers:       map[string]SourceCodeCredentialController{},
 		clusterPipelineControllers:            map[string]ClusterPipelineController{},
 		pipelineControllers:                   map[string]PipelineController{},
-		pipelineHistoryControllers:            map[string]PipelineHistoryController{},
-		remoteAccountControllers:              map[string]RemoteAccountController{},
-		gitRepoCacheControllers:               map[string]GitRepoCacheController{},
-		pipelineLogControllers:                map[string]PipelineLogController{},
+		pipelineExecutionControllers:          map[string]PipelineExecutionController{},
+		sourceCodeRepositoryControllers:       map[string]SourceCodeRepositoryController{},
+		pipelineExecutionLogControllers:       map[string]PipelineExecutionLogController{},
 		listenConfigControllers:               map[string]ListenConfigController{},
 		settingControllers:                    map[string]SettingController{},
 	}, nil
@@ -492,6 +492,19 @@ func (c *Client) ProjectLoggings(namespace string) ProjectLoggingInterface {
 	}
 }
 
+type SourceCodeCredentialsGetter interface {
+	SourceCodeCredentials(namespace string) SourceCodeCredentialInterface
+}
+
+func (c *Client) SourceCodeCredentials(namespace string) SourceCodeCredentialInterface {
+	objectClient := clientbase.NewObjectClient(namespace, c.restClient, &SourceCodeCredentialResource, SourceCodeCredentialGroupVersionKind, sourceCodeCredentialFactory{})
+	return &sourceCodeCredentialClient{
+		ns:           namespace,
+		client:       c,
+		objectClient: objectClient,
+	}
+}
+
 type ClusterPipelinesGetter interface {
 	ClusterPipelines(namespace string) ClusterPipelineInterface
 }
@@ -518,52 +531,39 @@ func (c *Client) Pipelines(namespace string) PipelineInterface {
 	}
 }
 
-type PipelineHistoriesGetter interface {
-	PipelineHistories(namespace string) PipelineHistoryInterface
+type PipelineExecutionsGetter interface {
+	PipelineExecutions(namespace string) PipelineExecutionInterface
 }
 
-func (c *Client) PipelineHistories(namespace string) PipelineHistoryInterface {
-	objectClient := clientbase.NewObjectClient(namespace, c.restClient, &PipelineHistoryResource, PipelineHistoryGroupVersionKind, pipelineHistoryFactory{})
-	return &pipelineHistoryClient{
+func (c *Client) PipelineExecutions(namespace string) PipelineExecutionInterface {
+	objectClient := clientbase.NewObjectClient(namespace, c.restClient, &PipelineExecutionResource, PipelineExecutionGroupVersionKind, pipelineExecutionFactory{})
+	return &pipelineExecutionClient{
 		ns:           namespace,
 		client:       c,
 		objectClient: objectClient,
 	}
 }
 
-type RemoteAccountsGetter interface {
-	RemoteAccounts(namespace string) RemoteAccountInterface
+type SourceCodeRepositoriesGetter interface {
+	SourceCodeRepositories(namespace string) SourceCodeRepositoryInterface
 }
 
-func (c *Client) RemoteAccounts(namespace string) RemoteAccountInterface {
-	objectClient := clientbase.NewObjectClient(namespace, c.restClient, &RemoteAccountResource, RemoteAccountGroupVersionKind, remoteAccountFactory{})
-	return &remoteAccountClient{
+func (c *Client) SourceCodeRepositories(namespace string) SourceCodeRepositoryInterface {
+	objectClient := clientbase.NewObjectClient(namespace, c.restClient, &SourceCodeRepositoryResource, SourceCodeRepositoryGroupVersionKind, sourceCodeRepositoryFactory{})
+	return &sourceCodeRepositoryClient{
 		ns:           namespace,
 		client:       c,
 		objectClient: objectClient,
 	}
 }
 
-type GitRepoCachesGetter interface {
-	GitRepoCaches(namespace string) GitRepoCacheInterface
+type PipelineExecutionLogsGetter interface {
+	PipelineExecutionLogs(namespace string) PipelineExecutionLogInterface
 }
 
-func (c *Client) GitRepoCaches(namespace string) GitRepoCacheInterface {
-	objectClient := clientbase.NewObjectClient(namespace, c.restClient, &GitRepoCacheResource, GitRepoCacheGroupVersionKind, gitRepoCacheFactory{})
-	return &gitRepoCacheClient{
-		ns:           namespace,
-		client:       c,
-		objectClient: objectClient,
-	}
-}
-
-type PipelineLogsGetter interface {
-	PipelineLogs(namespace string) PipelineLogInterface
-}
-
-func (c *Client) PipelineLogs(namespace string) PipelineLogInterface {
-	objectClient := clientbase.NewObjectClient(namespace, c.restClient, &PipelineLogResource, PipelineLogGroupVersionKind, pipelineLogFactory{})
-	return &pipelineLogClient{
+func (c *Client) PipelineExecutionLogs(namespace string) PipelineExecutionLogInterface {
+	objectClient := clientbase.NewObjectClient(namespace, c.restClient, &PipelineExecutionLogResource, PipelineExecutionLogGroupVersionKind, pipelineExecutionLogFactory{})
+	return &pipelineExecutionLogClient{
 		ns:           namespace,
 		client:       c,
 		objectClient: objectClient,

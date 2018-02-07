@@ -3,12 +3,12 @@ package client
 const (
 	PublishImageStepConfigType                = "publishImageStepConfig"
 	PublishImageStepConfigFieldBuildContext   = "buildContext"
-	PublishImageStepConfigFieldDockerfilePath = "dockerFilePath"
-	PublishImageStepConfigFieldImageTag       = "imageTag"
+	PublishImageStepConfigFieldDockerfilePath = "dockerfilePath"
+	PublishImageStepConfigFieldTag            = "tag"
 )
 
 type PublishImageStepConfig struct {
 	BuildContext   string `json:"buildContext,omitempty"`
-	DockerfilePath string `json:"dockerFilePath,omitempty"`
-	ImageTag       string `json:"imageTag,omitempty"`
+	DockerfilePath string `json:"dockerfilePath,omitempty"`
+	Tag            string `json:"tag,omitempty"`
 }

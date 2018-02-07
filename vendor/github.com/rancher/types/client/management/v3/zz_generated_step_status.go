@@ -1,14 +1,14 @@
 package client
 
 const (
-	StepStatusType           = "stepStatus"
-	StepStatusFieldEndTime   = "endTime"
-	StepStatusFieldStartTime = "startTime"
-	StepStatusFieldState     = "state"
+	StepStatusType         = "stepStatus"
+	StepStatusFieldEnded   = "ended"
+	StepStatusFieldStarted = "started"
+	StepStatusFieldState   = "state"
 )
 
 type StepStatus struct {
-	EndTime   *int64 `json:"endTime,omitempty"`
-	StartTime *int64 `json:"startTime,omitempty"`
-	State     string `json:"state,omitempty"`
+	Ended   string `json:"ended,omitempty"`
+	Started string `json:"started,omitempty"`
+	State   string `json:"state,omitempty"`
 }

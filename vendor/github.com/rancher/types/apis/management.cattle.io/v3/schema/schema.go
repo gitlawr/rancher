@@ -229,19 +229,35 @@ func pipelineTypes(schema *types.Schemas) *types.Schemas {
 		AddMapperForType(&Version, &v3.Pipeline{},
 			&m.Embed{Field: "status"},
 			m.DisplayName{}).
-		AddMapperForType(&Version, &v3.PipelineHistory{},
+		AddMapperForType(&Version, &v3.PipelineExecution{},
 			&m.Embed{Field: "status"},
 			m.DisplayName{}).
-		AddMapperForType(&Version, &v3.RemoteAccount{},
-			m.DisplayName{}).
-		AddMapperForType(&Version, &v3.GitRepoCache{}).
-		AddMapperForType(&Version, &v3.PipelineLog{}).
+		AddMapperForType(&Version, &v3.SourceCodeCredential{},
+			m.DisplayName{},
+			&m.Move{From: "type", To: "kind"}).
+		AddMapperForType(&Version, &v3.SourceCodeRepository{},
+			&m.Move{From: "type", To: "kind"}).
+		AddMapperForType(&Version, &v3.PipelineExecutionLog{}).
+		MustImport(&Version, v3.AuthAppInput{}).
+		MustImport(&Version, v3.AuthUserInput{}).
+		MustImportAndCustomize(&Version, v3.SourceCodeCredential{}, func(schema *types.Schema) {
+			schema.ResourceActions = map[string]types.Action{
+				"refresh": {},
+			}
+		}).
 		MustImportAndCustomize(&Version, v3.ClusterPipeline{}, func(schema *types.Schema) {
 			schema.ResourceActions = map[string]types.Action{
 				"deploy":  {},
 				"destroy": {},
-				"reset":   {},
-				"auth":    {},
+				"authapp": {
+					Input:  "authAppInput",
+					Output: "cluterPipeline",
+				},
+				"revokeApp": {},
+				"authuser": {
+					Input:  "authUserInput",
+					Output: "sourceCodeCredential",
+				},
 			}
 		}).
 		MustImportAndCustomize(&Version, v3.Pipeline{}, func(schema *types.Schema) {
@@ -249,22 +265,15 @@ func pipelineTypes(schema *types.Schemas) *types.Schemas {
 				"activate":   {},
 				"deactivate": {},
 				"run":        {},
-				"export":     {},
 			}
 		}).
-		MustImportAndCustomize(&Version, v3.PipelineHistory{}, func(schema *types.Schema) {
+		MustImportAndCustomize(&Version, v3.PipelineExecution{}, func(schema *types.Schema) {
 			schema.ResourceActions = map[string]types.Action{
-				"stop":   {},
-				"rerun":  {},
-				"notify": {},
+				"stop":  {},
+				"rerun": {},
 			}
 		}).
-		MustImportAndCustomize(&Version, v3.RemoteAccount{}, func(schema *types.Schema) {
-			schema.ResourceActions = map[string]types.Action{
-				"refreshrepos": {},
-			}
-		}).
-		MustImport(&Version, v3.GitRepoCache{}).
-		MustImport(&Version, v3.PipelineLog{})
+		MustImport(&Version, v3.SourceCodeRepository{}).
+		MustImport(&Version, v3.PipelineExecutionLog{})
 
 }

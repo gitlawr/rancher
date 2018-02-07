@@ -2,17 +2,19 @@ package client
 
 const (
 	RunScriptStepConfigType             = "runScriptStepConfig"
-	RunScriptStepConfigFieldArgs        = "args"
+	RunScriptStepConfigFieldCommand     = "command"
 	RunScriptStepConfigFieldEntrypoint  = "entrypoint"
 	RunScriptStepConfigFieldEnv         = "env"
 	RunScriptStepConfigFieldImage       = "image"
+	RunScriptStepConfigFieldIsShell     = "isShell"
 	RunScriptStepConfigFieldShellScript = "shellScript"
 )
 
 type RunScriptStepConfig struct {
-	Args        string   `json:"args,omitempty"`
+	Command     string   `json:"command,omitempty"`
 	Entrypoint  string   `json:"entrypoint,omitempty"`
 	Env         []string `json:"env,omitempty"`
 	Image       string   `json:"image,omitempty"`
+	IsShell     *bool    `json:"isShell,omitempty"`
 	ShellScript string   `json:"shellScript,omitempty"`
 }

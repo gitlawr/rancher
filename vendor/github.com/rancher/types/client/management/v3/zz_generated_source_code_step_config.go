@@ -1,14 +1,14 @@
 package client
 
 const (
-	SourceCodeStepConfigType                   = "sourceCodeStepConfig"
-	SourceCodeStepConfigFieldBranch            = "branch"
-	SourceCodeStepConfigFieldRemoteAccountName = "remoteAccountName"
-	SourceCodeStepConfigFieldRepository        = "repository"
+	SourceCodeStepConfigType                        = "sourceCodeStepConfig"
+	SourceCodeStepConfigFieldBranch                 = "branch"
+	SourceCodeStepConfigFieldSourceCodeCredentialId = "sourceCodeCredentialId"
+	SourceCodeStepConfigFieldUrl                    = "url"
 )
 
 type SourceCodeStepConfig struct {
-	Branch            string `json:"branch,omitempty"`
-	RemoteAccountName string `json:"remoteAccountName,omitempty"`
-	Repository        string `json:"repository,omitempty"`
+	Branch                 string `json:"branch,omitempty"`
+	SourceCodeCredentialId string `json:"sourceCodeCredentialId,omitempty"`
+	Url                    string `json:"url,omitempty"`
 }

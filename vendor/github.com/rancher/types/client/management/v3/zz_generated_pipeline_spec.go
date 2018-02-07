@@ -1,16 +1,18 @@
 package client
 
 const (
-	PipelineSpecType           = "pipelineSpec"
-	PipelineSpecFieldActive    = "active"
-	PipelineSpecFieldProjectId = "projectId"
-	PipelineSpecFieldStages    = "stages"
-	PipelineSpecFieldTriggers  = "triggers"
+	PipelineSpecType                       = "pipelineSpec"
+	PipelineSpecFieldProjectId             = "projectId"
+	PipelineSpecFieldStages                = "stages"
+	PipelineSpecFieldTriggerCronExpression = "triggerCronExpression"
+	PipelineSpecFieldTriggerCronTimezone   = "triggerCronTimezone"
+	PipelineSpecFieldTriggerWebhook        = "triggerWebhook"
 )
 
 type PipelineSpec struct {
-	Active    *bool     `json:"active,omitempty"`
-	ProjectId string    `json:"projectId,omitempty"`
-	Stages    []Stage   `json:"stages,omitempty"`
-	Triggers  *Triggers `json:"triggers,omitempty"`
+	ProjectId             string  `json:"projectId,omitempty"`
+	Stages                []Stage `json:"stages,omitempty"`
+	TriggerCronExpression string  `json:"triggerCronExpression,omitempty"`
+	TriggerCronTimezone   string  `json:"triggerCronTimezone,omitempty"`
+	TriggerWebhook        *bool   `json:"triggerWebhook,omitempty"`
 }

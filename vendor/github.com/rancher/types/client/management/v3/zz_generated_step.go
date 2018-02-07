@@ -2,17 +2,15 @@ package client
 
 const (
 	StepType                        = "step"
-	StepFieldPublishImageStepConfig = "publishImageStepConfig"
-	StepFieldRunScriptStepConfig    = "runScriptStepConfig"
-	StepFieldSourceCodeStepConfig   = "sourceCodeStepConfig"
+	StepFieldPublishImageStepConfig = "publishImageConfig"
+	StepFieldRunScriptStepConfig    = "runScriptConfig"
+	StepFieldSourceCodeStepConfig   = "sourceCodeConfig"
 	StepFieldTimeout                = "timeout"
-	StepFieldType                   = "type"
 )
 
 type Step struct {
-	PublishImageStepConfig *PublishImageStepConfig `json:"publishImageStepConfig,omitempty"`
-	RunScriptStepConfig    *RunScriptStepConfig    `json:"runScriptStepConfig,omitempty"`
-	SourceCodeStepConfig   *SourceCodeStepConfig   `json:"sourceCodeStepConfig,omitempty"`
+	PublishImageStepConfig *PublishImageStepConfig `json:"publishImageConfig,omitempty"`
+	RunScriptStepConfig    *RunScriptStepConfig    `json:"runScriptConfig,omitempty"`
+	SourceCodeStepConfig   *SourceCodeStepConfig   `json:"sourceCodeConfig,omitempty"`
 	Timeout                *int64                  `json:"timeout,omitempty"`
-	Type                   string                  `json:"type,omitempty"`
 }

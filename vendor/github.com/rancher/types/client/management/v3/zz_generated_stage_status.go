@@ -1,16 +1,16 @@
 package client
 
 const (
-	StageStatusType            = "stageStatus"
-	StageStatusFieldEndTime    = "endTime"
-	StageStatusFieldStartTime  = "startTime"
-	StageStatusFieldState      = "state"
-	StageStatusFieldStepStatus = "stepStatus"
+	StageStatusType         = "stageStatus"
+	StageStatusFieldEnded   = "ended"
+	StageStatusFieldStarted = "started"
+	StageStatusFieldState   = "state"
+	StageStatusFieldSteps   = "steps"
 )
 
 type StageStatus struct {
-	EndTime    *int64       `json:"endTime,omitempty"`
-	StartTime  *int64       `json:"startTime,omitempty"`
-	State      string       `json:"state,omitempty"`
-	StepStatus []StepStatus `json:"stepStatus,omitempty"`
+	Ended   string       `json:"ended,omitempty"`
+	Started string       `json:"started,omitempty"`
+	State   string       `json:"state,omitempty"`
+	Steps   []StepStatus `json:"steps,omitempty"`
 }
