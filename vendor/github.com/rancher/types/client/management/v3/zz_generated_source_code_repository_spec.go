@@ -6,7 +6,7 @@ const (
 	SourceCodeRepositorySpecFieldLanguage                 = "language"
 	SourceCodeRepositorySpecFieldPermissions              = "permissions"
 	SourceCodeRepositorySpecFieldSourceCodeCredentialName = "sourceCodeCredentialName"
-	SourceCodeRepositorySpecFieldType                     = "type"
+	SourceCodeRepositorySpecFieldSourceCodeType           = "sourceCodeType"
 	SourceCodeRepositorySpecFieldUrl                      = "url"
 	SourceCodeRepositorySpecFieldUserId                   = "userId"
 )
@@ -16,7 +16,7 @@ type SourceCodeRepositorySpec struct {
 	Language                 string    `json:"language,omitempty"`
 	Permissions              *RepoPerm `json:"permissions,omitempty"`
 	SourceCodeCredentialName string    `json:"sourceCodeCredentialName,omitempty"`
-	Type                     string    `json:"type,omitempty"`
+	SourceCodeType           string    `json:"sourceCodeType,omitempty"`
 	Url                      string    `json:"url,omitempty"`
 	UserId                   string    `json:"userId,omitempty"`
 }

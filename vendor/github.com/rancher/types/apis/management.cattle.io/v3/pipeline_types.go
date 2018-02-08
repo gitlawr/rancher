@@ -145,20 +145,20 @@ type Stage struct {
 }
 
 type Step struct {
-	SourceCodeStepConfig   *SourceCodeStepConfig   `json:"sourceCodeConfig,omitempty" yaml:"sourceCodeConfig,omitempty"`
-	RunScriptStepConfig    *RunScriptStepConfig    `json:"runScriptConfig,omitempty" yaml:"runScriptConfig,omitempty"`
-	PublishImageStepConfig *PublishImageStepConfig `json:"publishImageConfig,omitempty" yaml:"publishImageConfig,omitempty"`
+	SourceCodeConfig   *SourceCodeConfig   `json:"sourceCodeConfig,omitempty" yaml:"sourceCodeConfig,omitempty"`
+	RunScriptConfig    *RunScriptConfig    `json:"runScriptConfig,omitempty" yaml:"runScriptConfig,omitempty"`
+	PublishImageConfig *PublishImageConfig `json:"publishImageConfig,omitempty" yaml:"publishImageConfig,omitempty"`
 	//Step timeout in minutes
 	Timeout int `json:"timeout,omitempty" yaml:"timeout,omitempty"`
 }
 
-type SourceCodeStepConfig struct {
+type SourceCodeConfig struct {
 	Url                      string `json:"url,omitempty" yaml:"url,omitempty" `
 	Branch                   string `json:"branch,omitempty" yaml:"branch,omitempty" `
 	SourceCodeCredentialName string `json:"sourceCodeCredentialName,omitempty" yaml:"sourceCodeCredentialName,omitempty" norman:"type=reference[sourceCodeCredential]"`
 }
 
-type RunScriptStepConfig struct {
+type RunScriptConfig struct {
 	Image       string   `json:"image,omitempty" yaml:"image,omitempty" norman:"required"`
 	IsShell     bool     `json:"isShell,omitempty" yaml:"isShell,omitempty"`
 	ShellScript string   `json:"shellScript,omitempty" yaml:"shellScript,omitempty"`
@@ -167,7 +167,7 @@ type RunScriptStepConfig struct {
 	Env         []string `json:"env,omitempty" yaml:"env,omitempty"`
 }
 
-type PublishImageStepConfig struct {
+type PublishImageConfig struct {
 	DockerfilePath string `json:"dockerfilePath,omittempty" yaml:"dockerfilePath,omitempty" norman:"required,default=./Dockerfile"`
 	BuildContext   string `json:"buildContext,omitempty" yaml:"buildContext,omitempty" norman:"required,default=."`
 	Tag            string `json:"tag,omitempty" yaml:"tag,omitempty" norman:"required,default=${CICD_GIT_REPOSITORY_NAME}:${CICD_GIT_BRANCH}"`
@@ -204,14 +204,14 @@ type StepStatus struct {
 }
 
 type SourceCodeCredentialSpec struct {
-	ClusterName string `json:"clusterName" norman:"required,type=reference[cluster]"`
-	Type        string `json:"type,omitempty" norman:"required,options=github"`
-	UserName    string `json:"UserName" norman:"required,type=reference[user]"`
-	AvatarURL   string `json:"avatarUrl,omitempty"`
-	HTMLURL     string `json:"htmlUrl,omitempty"`
-	LoginName   string `json:"loginName,omitempty"`
-	DisplayName string `json:"displayName,omitempty"`
-	AccessToken string `json:"accessToken,omitempty"`
+	ClusterName    string `json:"clusterName" norman:"required,type=reference[cluster]"`
+	SourceCodeType string `json:"sourceCodeType,omitempty" norman:"required,options=github"`
+	UserName       string `json:"userName" norman:"required,type=reference[user]"`
+	AvatarURL      string `json:"avatarUrl,omitempty"`
+	HTMLURL        string `json:"htmlUrl,omitempty"`
+	LoginName      string `json:"loginName,omitempty"`
+	DisplayName    string `json:"displayName,omitempty"`
+	AccessToken    string `json:"accessToken,omitempty"`
 }
 
 type SourceCodeCredentialStatus struct {
@@ -219,7 +219,7 @@ type SourceCodeCredentialStatus struct {
 
 type SourceCodeRepositorySpec struct {
 	ClusterName              string   `json:"clusterName" norman:"required,type=reference[cluster]"`
-	Type                     string   `json:"type,omitempty" norman:"required,options=github"`
+	SourceCodeType           string   `json:"sourceCodeType,omitempty" norman:"required,options=github"`
 	UserName                 string   `json:"userName" norman:"required,type=reference[user]"`
 	SourceCodeCredentialName string   `json:"sourceCodeCredentialName,omitempty" norman:"required,type=reference[sourceCodeCredential]`
 	Url                      string   `json:"url,omitempty"`

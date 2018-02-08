@@ -233,10 +233,10 @@ func pipelineTypes(schema *types.Schemas) *types.Schemas {
 			&m.Embed{Field: "status"},
 			m.DisplayName{}).
 		AddMapperForType(&Version, &v3.SourceCodeCredential{},
-			m.DisplayName{},
-			&m.Move{From: "type", To: "kind"}).
-		AddMapperForType(&Version, &v3.SourceCodeRepository{},
-			&m.Move{From: "type", To: "kind"}).
+			m.DisplayName{}).
+		//&m.Move{From: "type", To: "kind"}).
+		AddMapperForType(&Version, &v3.SourceCodeRepository{}).
+		//&m.Move{From: "type", To: "kind"}).
 		AddMapperForType(&Version, &v3.PipelineExecutionLog{}).
 		MustImport(&Version, v3.AuthAppInput{}).
 		MustImport(&Version, v3.AuthUserInput{}).
