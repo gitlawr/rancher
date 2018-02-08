@@ -43,16 +43,16 @@ func (l *PipelineLifecycle) Remove(obj *v3.Pipeline) (*v3.Pipeline, error) {
 }
 
 func (l *PipelineLifecycle) createHook(obj *v3.Pipeline) (string, error) {
-	if len(obj.Spec.Stages) <= 0 || len(obj.Spec.Stages[0].Steps) <= 0 || obj.Spec.Stages[0].Steps[0].SourceCodeStepConfig == nil {
+	if len(obj.Spec.Stages) <= 0 || len(obj.Spec.Stages[0].Steps) <= 0 || obj.Spec.Stages[0].Steps[0].SourceCodeConfig == nil {
 		return "", errors.New("invalid pipeline, missing sourcecode step")
 	}
-	credentialName := obj.Spec.Stages[0].Steps[0].SourceCodeStepConfig.SourceCodeCredentialName
+	credentialName := obj.Spec.Stages[0].Steps[0].SourceCodeConfig.SourceCodeCredentialName
 	credential, err := l.cluster.Management.Management.SourceCodeCredentials("").Get(credentialName, metav1.GetOptions{})
 	if err != nil {
 		return "", err
 	}
 	accessToken := credential.Spec.AccessToken
-	kind := credential.Spec.Type
+	kind := credential.Spec.SourceCodeType
 	mockConfig := v3.ClusterPipeline{
 		Spec: v3.ClusterPipelineSpec{
 			GithubConfig: &v3.GithubConfig{},
@@ -74,16 +74,16 @@ func (l *PipelineLifecycle) createHook(obj *v3.Pipeline) (string, error) {
 }
 
 func (l *PipelineLifecycle) deleteHook(obj *v3.Pipeline) error {
-	if len(obj.Spec.Stages) <= 0 || len(obj.Spec.Stages[0].Steps) <= 0 || obj.Spec.Stages[0].Steps[0].SourceCodeStepConfig == nil {
+	if len(obj.Spec.Stages) <= 0 || len(obj.Spec.Stages[0].Steps) <= 0 || obj.Spec.Stages[0].Steps[0].SourceCodeConfig == nil {
 		return errors.New("invalid pipeline, missing sourcecode step")
 	}
-	credentialName := obj.Spec.Stages[0].Steps[0].SourceCodeStepConfig.SourceCodeCredentialName
+	credentialName := obj.Spec.Stages[0].Steps[0].SourceCodeConfig.SourceCodeCredentialName
 	credential, err := l.cluster.Management.Management.SourceCodeCredentials("").Get(credentialName, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
 	accessToken := credential.Spec.AccessToken
-	kind := credential.Spec.Type
+	kind := credential.Spec.SourceCodeType
 	mockConfig := v3.ClusterPipeline{
 		Spec: v3.ClusterPipelineSpec{
 			GithubConfig: &v3.GithubConfig{},

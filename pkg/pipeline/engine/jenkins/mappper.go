@@ -25,11 +25,11 @@ func convertStep(step *v3.Step, stageOrdinal int, stepOrdinal int) string {
 	stepContent := ""
 	stepName := fmt.Sprintf("step_%d_%d", stageOrdinal, stepOrdinal)
 
-	if step.SourceCodeStepConfig != nil {
-		stepContent = fmt.Sprintf("git '%s'", step.SourceCodeStepConfig.Url)
-	} else if step.RunScriptStepConfig == nil {
-		stepContent = fmt.Sprintf("sh \"\"\"\n%s\n\"\"\"", step.RunScriptStepConfig.ShellScript)
-	} else if step.PublishImageStepConfig == nil {
+	if step.SourceCodeConfig != nil {
+		stepContent = fmt.Sprintf("git '%s'", step.SourceCodeConfig.Url)
+	} else if step.RunScriptConfig == nil {
+		stepContent = fmt.Sprintf("sh \"\"\"\n%s\n\"\"\"", step.RunScriptConfig.ShellScript)
+	} else if step.PublishImageConfig == nil {
 		stepContent = fmt.Sprintf(`sh """"\necho dopublishimage\n"""`)
 	} else {
 		return ""
@@ -58,11 +58,11 @@ func convertPipeline(pipeline *v3.Pipeline) string {
 		for k, step := range stage.Steps {
 			stepName := fmt.Sprintf("step_%d_%d", j+1, k+1)
 			image := ""
-			if step.SourceCodeStepConfig != nil {
+			if step.SourceCodeConfig != nil {
 				image = "alpine/git"
-			} else if step.RunScriptStepConfig != nil {
-				image = step.RunScriptStepConfig.Image
-			} else if step.PublishImageStepConfig != nil {
+			} else if step.RunScriptConfig != nil {
+				image = step.RunScriptConfig.Image
+			} else if step.PublishImageConfig != nil {
 				image = "docker"
 			} else {
 				return ""

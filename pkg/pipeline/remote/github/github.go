@@ -39,7 +39,7 @@ func New(pipeline v3.ClusterPipeline) (remote.Remote, error) {
 		ClientId:     pipeline.Spec.GithubConfig.ClientId,
 		ClientSecret: pipeline.Spec.GithubConfig.ClientSecret,
 	}
-	if pipeline.Spec.GithubConfig.Host != "" {
+	if pipeline.Spec.GithubConfig.Host != "" && pipeline.Spec.GithubConfig.Host != "github.com" {
 		remote.Host = pipeline.Spec.GithubConfig.Host
 		if pipeline.Spec.GithubConfig.TLS {
 			remote.Scheme = "https://"
@@ -94,10 +94,10 @@ func (c *client) Login(redirectURL string, code string) (*v3.SourceCodeCredentia
 }
 
 func (c *client) CreateHook(pipeline *v3.Pipeline, accessToken string, hookUrl string) (string, error) {
-	if len(pipeline.Spec.Stages) <= 0 || len(pipeline.Spec.Stages[0].Steps) <= 0 || pipeline.Spec.Stages[0].Steps[0].SourceCodeStepConfig == nil {
+	if len(pipeline.Spec.Stages) <= 0 || len(pipeline.Spec.Stages[0].Steps) <= 0 || pipeline.Spec.Stages[0].Steps[0].SourceCodeConfig == nil {
 		return "", errors.New("invalid pipeline")
 	}
-	sourceCodeConfig := pipeline.Spec.Stages[0].Steps[0].SourceCodeStepConfig
+	sourceCodeConfig := pipeline.Spec.Stages[0].Steps[0].SourceCodeConfig
 	user, repo, err := getUserRepoFromURL(sourceCodeConfig.Url)
 	if err != nil {
 		return "", err
@@ -111,10 +111,10 @@ func (c *client) CreateHook(pipeline *v3.Pipeline, accessToken string, hookUrl s
 }
 
 func (c *client) DeleteHook(pipeline *v3.Pipeline, accessToken string) error {
-	if len(pipeline.Spec.Stages) <= 0 || len(pipeline.Spec.Stages[0].Steps) <= 0 || pipeline.Spec.Stages[0].Steps[0].SourceCodeStepConfig == nil {
+	if len(pipeline.Spec.Stages) <= 0 || len(pipeline.Spec.Stages[0].Steps) <= 0 || pipeline.Spec.Stages[0].Steps[0].SourceCodeConfig == nil {
 		return errors.New("invalid pipeline")
 	}
-	sourceCodeConfig := pipeline.Spec.Stages[0].Steps[0].SourceCodeStepConfig
+	sourceCodeConfig := pipeline.Spec.Stages[0].Steps[0].SourceCodeConfig
 	user, repo, err := getUserRepoFromURL(sourceCodeConfig.Url)
 	if err != nil {
 		return err
@@ -175,7 +175,7 @@ func convertAccount(gitaccount *github.User) *v3.SourceCodeCredential {
 		return nil
 	}
 	account := &v3.SourceCodeCredential{}
-	account.Spec.Type = "github"
+	account.Spec.SourceCodeType = "github"
 	if gitaccount.AvatarURL != nil {
 		account.Spec.AvatarURL = *gitaccount.AvatarURL
 	}

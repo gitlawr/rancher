@@ -8,13 +8,15 @@ import (
 	"fmt"
 	"github.com/google/go-github/github"
 	"github.com/pkg/errors"
-	"github.com/rancher/norman/types"
+	"github.com/rancher/rancher/pkg/pipeline/utils"
 	"github.com/rancher/types/apis/management.cattle.io/v3"
 	"github.com/rancher/types/config"
 	"github.com/sirupsen/logrus"
 	"io/ioutil"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"net/http"
 	"strings"
+	"time"
 )
 
 const GITHUB_WEBHOOK_HEADER = "X-GitHub-Event"
@@ -23,55 +25,72 @@ type GithubDriver struct {
 	Management *config.ManagementContext
 }
 
-func (g GithubDriver) Execute(apiContext types.APIContext) (int, error) {
+func (g GithubDriver) Execute(req *http.Request) (int, error) {
 	var signature string
-	if signature = apiContext.Request.Header.Get("X-Hub-Signature"); len(signature) == 0 {
+	if signature = req.Header.Get("X-Hub-Signature"); len(signature) == 0 {
 		logrus.Errorf("receive github webhook,no signature")
-		return 422, errors.New("github webhook missing signature")
+		return http.StatusUnprocessableEntity, errors.New("github webhook missing signature")
 	}
-	event := apiContext.Request.Header.Get(GITHUB_WEBHOOK_HEADER)
+	event := req.Header.Get(GITHUB_WEBHOOK_HEADER)
 	if event == "ping" {
-		return 200, nil
-	} else if event != "push" && event != "pullrequest" && event != "tag" {
-		//TODO check event types
-		return 422, fmt.Errorf("not trigger for event:%s", event)
+		return http.StatusOK, nil
+	} else if event != "push" {
+		//event != "pull_request"
+		return http.StatusUnprocessableEntity, fmt.Errorf("not trigger for event:%s", event)
 	}
 
-	pipelineId := apiContext.Request.FormValue("pipelineId")
+	pipelineId := req.FormValue("pipelineId")
 	parts := strings.Split(pipelineId, ":")
 	if len(parts) < 0 {
-		return 433, errors.New("pipeline id not valid")
+		return http.StatusUnprocessableEntity, errors.New("pipeline id not valid")
 	}
 	ns := parts[0]
 	id := parts[1]
-	pipeline, err := g.Management.Management.Pipelines("").GetNamespaced(ns, id, metav1.GetOptions{})
+	pipelineClient := g.Management.Management.Pipelines(ns)
+	pipeline, err := pipelineClient.GetNamespaced(ns, id, metav1.GetOptions{})
 	if err != nil {
-		return 500, err
+		return http.StatusInternalServerError, err
 	}
 
 	//////
-	body, err := ioutil.ReadAll(apiContext.Request.Body)
+	body, err := ioutil.ReadAll(req.Body)
 	if err != nil {
 		logrus.Errorf("receive github webhook, got error:%v", err)
-		return 422, err
+		return http.StatusUnprocessableEntity, err
 	}
 	if match := VerifyGithubWebhookSignature([]byte(pipeline.Status.Token), signature, body); !match {
 		logrus.Errorf("receive github webhook, invalid signature")
-		return 422, errors.New("github webhook invalid signature")
+		return http.StatusUnprocessableEntity, errors.New("github webhook invalid signature")
 	}
 	//check branch
 	payload := &github.WebHookPayload{}
 	if err := json.Unmarshal(body, payload); err != nil {
 		logrus.Error("fail to parse github webhook payload")
-		return 422, err
+		return http.StatusUnprocessableEntity, err
 	}
 	//TODO
-	if *payload.Ref != "refs/heads/"+pipeline.Spec.Stages[0].Steps[0].SourceCodeStepConfig.Branch {
-		logrus.Warningf("branch not match:%v,%v", *payload.Ref, pipeline.Spec.Stages[0].Steps[0].SourceCodeStepConfig.Branch)
-		return 500, errors.New("branch not match")
+	if *payload.Ref != "refs/heads/"+pipeline.Spec.Stages[0].Steps[0].SourceCodeConfig.Branch {
+		logrus.Warningf("branch not match:%v,%v", *payload.Ref, pipeline.Spec.Stages[0].Steps[0].SourceCodeConfig.Branch)
+		return http.StatusInternalServerError, errors.New("branch not match")
 	}
 
-	return 0, nil
+	//Generate a new pipeline execution
+	historyClient := g.Management.Management.PipelineExecutions(ns)
+	history := utils.InitHistory(pipeline, v3.TriggerTypeWebhook)
+	history, err = historyClient.Create(history)
+	if err != nil {
+		return http.StatusInternalServerError, err
+	}
+	pipeline.Status.NextRun++
+	pipeline.Status.LastExecutionId = history.Name
+	pipeline.Status.LastStarted = time.Now().String()
+
+	_, err = pipelineClient.Update(pipeline)
+	if err != nil {
+		return http.StatusInternalServerError, err
+	}
+
+	return http.StatusOK, nil
 }
 
 func VerifyGithubWebhookSignature(secret []byte, signature string, body []byte) bool {
@@ -94,7 +113,7 @@ func VerifyGithubWebhookSignature(secret []byte, signature string, body []byte) 
 func VerifyGitRefs(pipeline v3.Pipeline, refs string) {
 	payload := &github.WebHookPayload{}
 	payload.GetRef()
-	if refs == "refs/heads/"+pipeline.Spec.Stages[0].Steps[0].SourceCodeStepConfig.Branch {
+	if refs == "refs/heads/"+pipeline.Spec.Stages[0].Steps[0].SourceCodeConfig.Branch {
 
 	}
 }

@@ -1,0 +1,71 @@
+package drivers
+
+import (
+	"github.com/pkg/errors"
+	"github.com/rancher/types/apis/management.cattle.io/v3"
+	"github.com/rancher/types/config"
+	"github.com/sirupsen/logrus"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"net/http"
+	"strconv"
+	"strings"
+	"time"
+)
+
+const EXECUTION_NOTIFY_HEADER = "X-PipelineExecution-Notify"
+
+type SyncExecutionDriver struct {
+	Management *config.ManagementContext
+}
+
+func (s SyncExecutionDriver) Execute(req *http.Request) (int, error) {
+	logrus.Debugf("get sync execution notify, header: %v \n", req.Header)
+	executionId := req.FormValue("executionId")
+	parts := strings.Split(executionId, ":")
+	if len(parts) < 0 {
+		return http.StatusUnprocessableEntity, errors.New("execution id not valid")
+	}
+	ns := parts[0]
+	id := parts[1]
+	executionClient := s.Management.Management.PipelineExecutions(ns)
+	execution, err := executionClient.GetNamespaced(ns, id, metav1.GetOptions{})
+	if err != nil {
+		logrus.Errorf("sync execution got error: %v", err)
+		return http.StatusInternalServerError, err
+	}
+	stage, err := strconv.Atoi(req.FormValue("stage"))
+	if err != nil {
+		logrus.Errorf("sync execution got error: %v", err)
+		return http.StatusInternalServerError, err
+	}
+	step, err := strconv.Atoi(req.FormValue("step"))
+	if err != nil {
+		logrus.Errorf("sync execution got error: %v", err)
+		return http.StatusInternalServerError, err
+	}
+	event := req.FormValue("event")
+	if event == "start" {
+		//TODO check
+		execution.Status.Stages[stage].Steps[step].State = v3.StateBuilding
+		execution.Status.Stages[stage].Steps[step].Started = time.Now().String()
+	} else if event == "success" {
+		execution.Status.Stages[stage].Steps[step].State = v3.StateSuccess
+		execution.Status.Stages[stage].Steps[step].Ended = time.Now().String()
+	} else if event == "fail" {
+		execution.Status.Stages[stage].Steps[step].State = v3.StateFail
+		execution.Status.Stages[stage].Steps[step].Ended = time.Now().String()
+		execution.Status.Stages[stage].State = v3.StateFail
+		execution.Status.Stages[stage].Ended = time.Now().String()
+		execution.Status.State = v3.StateFail
+		execution.Status.Ended = time.Now().String()
+
+	} else {
+		return http.StatusInternalServerError, errors.New("unrecognized event")
+	}
+	_, err = executionClient.Update(execution)
+	if err != nil {
+		logrus.Errorf("sync execution got error: %v", err)
+		return http.StatusInternalServerError, err
+	}
+	return http.StatusOK, nil
+}
