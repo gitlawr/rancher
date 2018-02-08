@@ -220,7 +220,7 @@ func (h *ClusterPipelineHandler) auth_add_account(clusterPipeline *v3.ClusterPip
 		return nil, err
 	}
 	account.Spec.UserName = userID
-
+	account.Spec.ClusterName = clusterPipeline.Spec.ClusterName
 	account, err = h.Management.Management.SourceCodeCredentials("").Create(account)
 	if err != nil {
 		return nil, err
