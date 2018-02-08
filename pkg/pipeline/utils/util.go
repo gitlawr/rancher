@@ -38,3 +38,16 @@ func getNextHistoryName(p *v3.Pipeline) string {
 	}
 	return fmt.Sprintf("%s-%d", p.Name, p.Status.NextRun)
 }
+
+func IsStageSuccess(stage v3.StageStatus) bool {
+	if stage.State == v3.StateFail || stage.State == v3.StateDenied {
+		return false
+	}
+	successSteps := 0
+	for _, step := range stage.Steps {
+		if step.State == v3.StateSuccess || step.State == v3.StateSkip {
+			successSteps++
+		}
+	}
+	return successSteps == len(stage.Steps)
+}

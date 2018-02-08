@@ -2,6 +2,7 @@ package drivers
 
 import (
 	"github.com/pkg/errors"
+	"github.com/rancher/rancher/pkg/pipeline/utils"
 	"github.com/rancher/types/apis/management.cattle.io/v3"
 	"github.com/rancher/types/config"
 	"github.com/sirupsen/logrus"
@@ -44,20 +45,37 @@ func (s SyncExecutionDriver) Execute(req *http.Request) (int, error) {
 		return http.StatusInternalServerError, err
 	}
 	event := req.FormValue("event")
+	curTime := time.Now().String()
 	if event == "start" {
 		//TODO check
 		execution.Status.Stages[stage].Steps[step].State = v3.StateBuilding
-		execution.Status.Stages[stage].Steps[step].Started = time.Now().String()
+		execution.Status.Stages[stage].Steps[step].Started = curTime
+		if execution.Status.Stages[stage].Started == "" {
+			execution.Status.Stages[stage].State = v3.StateBuilding
+			execution.Status.Stages[stage].Started = curTime
+		}
+		if execution.Status.Started == "" {
+			execution.Status.State = v3.StateBuilding
+			execution.Status.Started = curTime
+		}
 	} else if event == "success" {
 		execution.Status.Stages[stage].Steps[step].State = v3.StateSuccess
-		execution.Status.Stages[stage].Steps[step].Ended = time.Now().String()
+		execution.Status.Stages[stage].Steps[step].Ended = curTime
+		if utils.IsStageSuccess(execution.Status.Stages[stage]) {
+			execution.Status.Stages[stage].State = v3.StateSuccess
+			execution.Status.Stages[stage].Ended = curTime
+			if stage == len(execution.Status.Stages) {
+				execution.Status.State = v3.StateSuccess
+				execution.Status.Ended = curTime
+			}
+		}
 	} else if event == "fail" {
 		execution.Status.Stages[stage].Steps[step].State = v3.StateFail
-		execution.Status.Stages[stage].Steps[step].Ended = time.Now().String()
+		execution.Status.Stages[stage].Steps[step].Ended = curTime
 		execution.Status.Stages[stage].State = v3.StateFail
-		execution.Status.Stages[stage].Ended = time.Now().String()
+		execution.Status.Stages[stage].Ended = curTime
 		execution.Status.State = v3.StateFail
-		execution.Status.Ended = time.Now().String()
+		execution.Status.Ended = curTime
 
 	} else {
 		return http.StatusInternalServerError, errors.New("unrecognized event")

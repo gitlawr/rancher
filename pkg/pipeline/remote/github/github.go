@@ -8,13 +8,14 @@ import (
 	"github.com/pkg/errors"
 	"github.com/rancher/rancher/pkg/pipeline/remote"
 	"github.com/rancher/types/apis/management.cattle.io/v3"
+	"github.com/satori/uuid"
 	"github.com/sirupsen/logrus"
 	"github.com/tomnomnom/linkheader"
 	"golang.org/x/oauth2"
 	"io"
 	"io/ioutil"
 	"net/http"
-	"strings"
+	//"strings"
 )
 
 const (
@@ -187,7 +188,7 @@ func convertAccount(gitaccount *github.User) *v3.SourceCodeCredential {
 	}
 	if gitaccount.Name != nil {
 		account.Spec.DisplayName = *gitaccount.Name
-		account.Name = "github-" + strings.ToLower(*gitaccount.Login)
+		account.Name = uuid.NewV4().String() //"github-" + strings.ToLower(*gitaccount.Login)
 	}
 	return account
 
@@ -227,9 +228,6 @@ func convertRepos(repos []github.Repository) []v3.SourceCodeRepository {
 		}
 		if repo.Language != nil {
 			r.Spec.Language = *repo.Language
-		}
-		if repo.Name != nil {
-			r.Name = *repo.Name
 		}
 		if repo.Permissions != nil {
 			if (*repo.Permissions)["pull"] == true {
