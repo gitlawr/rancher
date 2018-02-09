@@ -21,7 +21,7 @@ type JenkinsEngine struct {
 
 func (j JenkinsEngine) RunPipeline(pipeline *v3.Pipeline, triggerType string) error {
 
-	jobName := JENKINS_JOB_PREFIX + pipeline.Name
+	jobName := getJobName(pipeline)
 
 	if _, err := j.Client.GetJobInfo(jobName); err == ErrJenkinsJobNotFound {
 		if err = j.CreatePipelineJob(pipeline); err != nil {
@@ -45,7 +45,7 @@ func (j JenkinsEngine) CreatePipelineJob(pipeline *v3.Pipeline) error {
 	logrus.Debug("create jenkins job for pipeline")
 	jobconf := ConvertPipelineToJenkinsPipeline(pipeline)
 
-	jobName := JENKINS_JOB_PREFIX + pipeline.Name
+	jobName := getJobName(pipeline)
 	bconf, _ := xml.MarshalIndent(jobconf, "  ", "    ")
 	if err := j.Client.CreateJob(jobName, bconf); err != nil {
 		return err
@@ -57,7 +57,7 @@ func (j JenkinsEngine) UpdatePipelineJob(pipeline *v3.Pipeline) error {
 	logrus.Debug("update jenkins job for pipeline")
 	jobconf := ConvertPipelineToJenkinsPipeline(pipeline)
 
-	jobName := JENKINS_JOB_PREFIX + pipeline.Name
+	jobName := getJobName(pipeline)
 	bconf, _ := xml.MarshalIndent(jobconf, "  ", "    ")
 	if err := j.Client.UpdateJob(jobName, bconf); err != nil {
 		return err
@@ -69,9 +69,9 @@ func (j JenkinsEngine) RerunHistory(history *v3.PipelineExecution) error {
 	return j.RunPipeline(&history.Spec.Pipeline, TriggerTypeManual)
 }
 
-func (j JenkinsEngine) StopHistory(history *v3.PipelineExecution) error {
-	jobName := JENKINS_JOB_PREFIX + history.Spec.Pipeline.Name
-	buildNumber := history.Spec.Run
+func (j JenkinsEngine) StopHistory(execution *v3.PipelineExecution) error {
+	jobName := getJobName(&execution.Spec.Pipeline)
+	buildNumber := execution.Spec.Run
 	info, err := j.Client.GetJobInfo(jobName)
 	if err == ErrJenkinsJobNotFound {
 		return nil
@@ -107,7 +107,7 @@ func (j JenkinsEngine) StopHistory(history *v3.PipelineExecution) error {
 }
 
 func (j JenkinsEngine) SyncExecution(execution *v3.PipelineExecution) (bool, error) {
-	jobName := fmt.Sprintf("%s%s-%d", JENKINS_JOB_PREFIX, execution.Spec.Pipeline.Name, execution.Spec.Run)
+	jobName := getJobName(&execution.Spec.Pipeline)
 	info, err := j.Client.GetWFBuildInfo(jobName)
 	if err != nil {
 		return false, err
@@ -148,7 +148,7 @@ func (j JenkinsEngine) SyncExecution(execution *v3.PipelineExecution) (bool, err
 func successStep(execution *v3.PipelineExecution, stage int, step int, jenkinsStage JenkinsStage) {
 
 	startTime := time.Unix(jenkinsStage.StartTimeMillis/1000, 0).Format(time.RFC3339)
-	endTime := time.Unix(jenkinsStage.EndTimeMillis/1000, 0).Format(time.RFC3339)
+	endTime := time.Unix((jenkinsStage.StartTimeMillis+jenkinsStage.DurationMillis)/1000, 0).Format(time.RFC3339)
 	execution.Status.Stages[stage].Steps[step].State = v3.StateSuccess
 	if execution.Status.Stages[stage].Steps[step].Started == "" {
 		execution.Status.Stages[stage].Steps[step].Started = startTime
@@ -163,7 +163,7 @@ func successStep(execution *v3.PipelineExecution, stage int, step int, jenkinsSt
 	if utils.IsStageSuccess(execution.Status.Stages[stage]) {
 		execution.Status.Stages[stage].State = v3.StateSuccess
 		execution.Status.Stages[stage].Ended = endTime
-		if stage == len(execution.Status.Stages) {
+		if stage == len(execution.Status.Stages)-1 {
 			execution.Status.State = v3.StateSuccess
 			execution.Status.Ended = endTime
 		}
@@ -173,7 +173,7 @@ func successStep(execution *v3.PipelineExecution, stage int, step int, jenkinsSt
 func failStep(execution *v3.PipelineExecution, stage int, step int, jenkinsStage JenkinsStage) {
 
 	startTime := time.Unix(jenkinsStage.StartTimeMillis/1000, 0).Format(time.RFC3339)
-	endTime := time.Unix(jenkinsStage.EndTimeMillis/1000, 0).Format(time.RFC3339)
+	endTime := time.Unix((jenkinsStage.StartTimeMillis+jenkinsStage.DurationMillis)/1000, 0).Format(time.RFC3339)
 	execution.Status.Stages[stage].Steps[step].State = v3.StateFail
 	execution.Status.Stages[stage].State = v3.StateFail
 	execution.Status.State = v3.StateFail
@@ -269,4 +269,8 @@ func (j JenkinsEngine) GetStepLog(history *v3.PipelineExecution, stageOrdinal in
 		//hide set +x
 		return trimFirstLine(outputs[2]), nil
 	*/
+}
+
+func getJobName(pipeline *v3.Pipeline) string {
+	return fmt.Sprintf("%s%s-%d", JENKINS_JOB_PREFIX, pipeline.Name, pipeline.Status.NextRun)
 }

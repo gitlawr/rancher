@@ -12,7 +12,7 @@ const (
 	JenkinsSetCredURI     = "/credentials/store/system/domain/_/createCredentials"
 	JenkinsDeleteCredURI  = "/credentials/store/system/domain/_/credential/%s/doDelete"
 	JenkinsBuildInfoURI   = "/job/%s/%d/api/json"
-	JenkinsWFBuildInfoURI = "job/%s/lastBuild/wfapi"
+	JenkinsWFBuildInfoURI = "/job/%s/lastBuild/wfapi"
 	JenkinsBuildLogURI    = "/job/%s/%d/timestamps/?elapsed=HH'h'mm'm'ss's'S'ms'&appendLog"
 	ScriptURI             = "/scriptText"
 )

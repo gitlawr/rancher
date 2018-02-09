@@ -1,6 +1,8 @@
 package controller
 
 import (
+	"context"
+	"github.com/rancher/norman/signal"
 	"github.com/rancher/types/apis/management.cattle.io/v3"
 	"github.com/rancher/types/config"
 	"github.com/sirupsen/logrus"
@@ -38,6 +40,7 @@ func Register(cluster *config.ClusterContext) {
 	if err := initClusterPipeline(cluster); err != nil {
 		logrus.Errorf("init cluster pipeline got error, %v", err)
 	}
+	Registerxxx(signal.SigTermCancelContext(context.Background()), cluster)
 }
 
 func initClusterPipeline(cluster *config.ClusterContext) error {
