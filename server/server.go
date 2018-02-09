@@ -73,7 +73,7 @@ func New(ctx context.Context, httpPort, httpsPort int, management *config.Manage
 	webhookHandler := &handler.WebhookHandler{
 		Management: management,
 	}
-	unauthed.PathPrefix("/hook").Handler(webhookHandler)
+	unauthed.PathPrefix("/hooks").Handler(webhookHandler)
 
 	registerHealth(unauthed)
 
