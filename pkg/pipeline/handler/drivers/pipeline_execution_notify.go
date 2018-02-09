@@ -34,7 +34,8 @@ func (s SyncExecutionDriver) Execute(req *http.Request) (int, error) {
 		logrus.Errorf("sync execution got error: %v", err)
 		return http.StatusInternalServerError, err
 	}
-	stage, err := strconv.Atoi(req.FormValue("stage"))
+	stagestr := req.FormValue("stage")
+	stage, err := strconv.Atoi(stagestr)
 	if err != nil {
 		logrus.Errorf("sync execution got error: %v", err)
 		return http.StatusInternalServerError, err
@@ -46,7 +47,7 @@ func (s SyncExecutionDriver) Execute(req *http.Request) (int, error) {
 	}
 	event := req.FormValue("event")
 	curTime := time.Now().String()
-	if event == "start" {
+	if event == v3.StateBuilding {
 		//TODO check
 		execution.Status.Stages[stage].Steps[step].State = v3.StateBuilding
 		execution.Status.Stages[stage].Steps[step].Started = curTime
@@ -58,7 +59,7 @@ func (s SyncExecutionDriver) Execute(req *http.Request) (int, error) {
 			execution.Status.State = v3.StateBuilding
 			execution.Status.Started = curTime
 		}
-	} else if event == "success" {
+	} else if event == v3.StateSuccess {
 		execution.Status.Stages[stage].Steps[step].State = v3.StateSuccess
 		execution.Status.Stages[stage].Steps[step].Ended = curTime
 		if utils.IsStageSuccess(execution.Status.Stages[stage]) {
@@ -69,7 +70,7 @@ func (s SyncExecutionDriver) Execute(req *http.Request) (int, error) {
 				execution.Status.Ended = curTime
 			}
 		}
-	} else if event == "fail" {
+	} else if event == v3.StateFail {
 		execution.Status.Stages[stage].Steps[step].State = v3.StateFail
 		execution.Status.Stages[stage].Steps[step].Ended = curTime
 		execution.Status.Stages[stage].State = v3.StateFail

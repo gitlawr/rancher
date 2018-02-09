@@ -1,19 +1,20 @@
 package jenkins
 
 const (
-	CreateJobURI         = "/createItem"
-	UpdateJobURI         = "/job/%s/config.xml"
-	StopJobURI           = "/job/%s/%d/stop"
-	CancelQueueItemURI   = "/queue/cancelItem?id=%d"
-	DeleteBuildURI       = "/job/%s/%d/doDelete"
-	GetCrumbURI          = "/crumbIssuer/api/xml?xpath=concat(//crumbRequestField,\":\",//crumb)"
-	JenkinsJobBuildURI   = "/job/%s/build"
-	JenkinsJobInfoURI    = "/job/%s/api/json"
-	JenkinsSetCredURI    = "/credentials/store/system/domain/_/createCredentials"
-	JenkinsDeleteCredURI = "/credentials/store/system/domain/_/credential/%s/doDelete"
-	JenkinsBuildInfoURI  = "/job/%s/%d/api/json"
-	JenkinsBuildLogURI   = "/job/%s/%d/timestamps/?elapsed=HH'h'mm'm'ss's'S'ms'&appendLog"
-	ScriptURI            = "/scriptText"
+	CreateJobURI          = "/createItem"
+	UpdateJobURI          = "/job/%s/config.xml"
+	StopJobURI            = "/job/%s/%d/stop"
+	CancelQueueItemURI    = "/queue/cancelItem?id=%d"
+	DeleteBuildURI        = "/job/%s/%d/doDelete"
+	GetCrumbURI           = "/crumbIssuer/api/xml?xpath=concat(//crumbRequestField,\":\",//crumb)"
+	JenkinsJobBuildURI    = "/job/%s/build"
+	JenkinsJobInfoURI     = "/job/%s/api/json"
+	JenkinsSetCredURI     = "/credentials/store/system/domain/_/createCredentials"
+	JenkinsDeleteCredURI  = "/credentials/store/system/domain/_/credential/%s/doDelete"
+	JenkinsBuildInfoURI   = "/job/%s/%d/api/json"
+	JenkinsWFBuildInfoURI = "job/%s/lastBuild/wfapi"
+	JenkinsBuildLogURI    = "/job/%s/%d/timestamps/?elapsed=HH'h'mm'm'ss's'S'ms'&appendLog"
+	ScriptURI             = "/scriptText"
 )
 
 const stepFinishScript = `def result = manager.build.result

@@ -28,6 +28,11 @@ func Formatter(apiContext *types.APIContext, resource *types.RawResource) {
 
 func (h *Handler) ActionHandler(actionName string, action *types.Action, apiContext *types.APIContext) error {
 	logrus.Infof("do activity action:%s", actionName)
+	//TODO FIXME
+	//update endpoint by request url
+	if err := utils.UpdateEndpoint(apiContext); err != nil {
+		logrus.Errorf("update endpoint got error:%v", err)
+	}
 
 	switch actionName {
 	case "activate":

@@ -2,8 +2,8 @@ package controller
 
 import (
 	"errors"
-	"github.com/rancher/rancher/pkg/api/management/api/pipeline"
 	"github.com/rancher/rancher/pkg/pipeline/remote/booter"
+	"github.com/rancher/rancher/pkg/pipeline/utils"
 	"github.com/rancher/types/apis/management.cattle.io/v3"
 	"github.com/rancher/types/config"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -64,7 +64,7 @@ func (l *PipelineLifecycle) createHook(obj *v3.Pipeline) (string, error) {
 	}
 
 	//TODO fixme
-	hookUrl := pipeline.CI_ENDPOINT
+	hookUrl := utils.CI_ENDPOINT
 
 	id, err := remote.CreateHook(obj, accessToken, hookUrl)
 	if err != nil {

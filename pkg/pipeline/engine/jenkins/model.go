@@ -288,3 +288,26 @@ type JenkinsCredential struct {
 	Description string `json:"description"`
 	Class       string `json:"$class"`
 }
+
+type JenkinsWFBuildInfo struct {
+	ID                  string         `json:"id"`
+	Name                string         `json:"Name"`
+	Status              string         `json:"Status"`
+	StartTimeMillis     int64          `json:"StartTimeMillis"`
+	EndTimeMillis       int64          `json:"EndTimeMillis"`
+	DurationMillis      int64          `json:"DurationMillis"`
+	QueueDurationMillis int64          `json:"QueueDurationMillis"`
+	PauseDurationMillis int64          `json:"PauseDurationMillis"`
+	Stages              []JenkinsStage `json:"Stages"`
+}
+
+type JenkinsStage struct {
+	ID              string `json:"id"`
+	Name            string `json:"name"`
+	ExecNode        string `json:"execNode"`
+	Status          string `json:"status"`
+	StartTimeMillis int64  `json:"startTimeMillis"`
+	EndTimeMillis   int64  `json:"endTimeMillis"`
+	DurationMillis  int64  `json:"durationMillis"`
+	Error           string `json:"error"`
+}

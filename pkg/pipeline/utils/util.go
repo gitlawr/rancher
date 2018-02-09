@@ -2,9 +2,13 @@ package utils
 
 import (
 	"fmt"
+	"github.com/rancher/norman/types"
 	"github.com/rancher/types/apis/management.cattle.io/v3"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"net/url"
 )
+
+var CI_ENDPOINT = ""
 
 func InitHistory(p *v3.Pipeline, triggerType string) *v3.PipelineExecution {
 	history := &v3.PipelineExecution{
@@ -21,11 +25,13 @@ func InitHistory(p *v3.Pipeline, triggerType string) *v3.PipelineExecution {
 	history.Status.State = v3.StateWaiting
 	history.Status.Stages = make([]v3.StageStatus, len(p.Spec.Stages))
 
-	for i, stage := range history.Status.Stages {
+	for i := 0; i < len(history.Status.Stages); i++ {
+		stage := &history.Status.Stages[i]
 		stage.State = v3.StateWaiting
 		stepsize := len(p.Spec.Stages[i].Steps)
 		stage.Steps = make([]v3.StepStatus, stepsize)
-		for _, step := range stage.Steps {
+		for j := 0; j < stepsize; j++ {
+			step := &stage.Steps[j]
 			step.State = v3.StateWaiting
 		}
 	}
@@ -40,7 +46,9 @@ func getNextHistoryName(p *v3.Pipeline) string {
 }
 
 func IsStageSuccess(stage v3.StageStatus) bool {
-	if stage.State == v3.StateFail || stage.State == v3.StateDenied {
+	if stage.State == v3.StateSuccess {
+		return true
+	} else if stage.State == v3.StateFail || stage.State == v3.StateDenied {
 		return false
 	}
 	successSteps := 0
@@ -50,4 +58,15 @@ func IsStageSuccess(stage v3.StageStatus) bool {
 		}
 	}
 	return successSteps == len(stage.Steps)
+}
+
+func UpdateEndpoint(apiContext *types.APIContext) error {
+
+	reqUrl := apiContext.URLBuilder.Current()
+	u, err := url.Parse(reqUrl)
+	if err != nil {
+		return err
+	}
+	CI_ENDPOINT = fmt.Sprintf("%s://%s/hooks", u.Scheme, u.Host)
+	return nil
 }

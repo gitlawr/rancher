@@ -388,3 +388,39 @@ func (c *Client) CancelQueueItem(id int) error {
 	}
 	return nil
 }
+
+func (c *Client) GetWFBuildInfo(jobname string) (*JenkinsWFBuildInfo, error) {
+	buildInfoURI := fmt.Sprintf(JenkinsWFBuildInfoURI, jobname)
+
+	var targetURL *url.URL
+	var err error
+	targetURL, err = url.Parse(c.API + buildInfoURI)
+	if err != nil {
+		logrus.Error(err)
+		return nil, err
+	}
+	req, _ := http.NewRequest(http.MethodGet, targetURL.String(), nil)
+
+	req.Header.Add(c.CrumbHeader, c.CrumbBody)
+	req.SetBasicAuth(c.User, c.Token)
+	client := http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		logrus.Error(err)
+		return nil, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != 200 {
+		logrus.Error(ErrGetBuildInfoFail)
+		return nil, ErrGetBuildInfoFail
+	}
+	buildInfo := &JenkinsWFBuildInfo{}
+	respBytes, err := ioutil.ReadAll(resp.Body)
+	err = json.Unmarshal(respBytes, buildInfo)
+	if err != nil {
+		return nil, err
+	}
+
+	return buildInfo, nil
+
+}

@@ -2,11 +2,11 @@ package pipeline
 
 import (
 	"encoding/json"
-	"fmt"
 	"github.com/pkg/errors"
 	"github.com/rancher/norman/api/access"
 	"github.com/rancher/norman/types"
 	"github.com/rancher/rancher/pkg/pipeline/remote/booter"
+	"github.com/rancher/rancher/pkg/pipeline/utils"
 	"github.com/rancher/types/apis/management.cattle.io/v3"
 	"github.com/rancher/types/client/management/v3"
 	"github.com/rancher/types/config"
@@ -14,11 +14,8 @@ import (
 	"io/ioutil"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"net/http"
-	"net/url"
 	"strings"
 )
-
-var CI_ENDPOINT = ""
 
 type ClusterPipelineHandler struct {
 	Management config.ManagementContext
@@ -36,7 +33,7 @@ func (h *ClusterPipelineHandler) ActionHandler(actionName string, action *types.
 
 	//TODO FIXME
 	//update endpoint by request url
-	if err := updateEndpoint(apiContext); err != nil {
+	if err := utils.UpdateEndpoint(apiContext); err != nil {
 		logrus.Errorf("update endpoint got error:%v", err)
 	}
 
@@ -397,14 +394,3 @@ func (h *ClusterPipelineHandler) test_auth_add_account(clusterPipeline *v3.Clust
 	return nil
 }
 */
-
-func updateEndpoint(apiContext *types.APIContext) error {
-
-	reqUrl := apiContext.URLBuilder.Current()
-	u, err := url.Parse(reqUrl)
-	if err != nil {
-		return err
-	}
-	CI_ENDPOINT = fmt.Sprintf("%s://%s/hooks", u.Scheme, u.Host)
-	return nil
-}

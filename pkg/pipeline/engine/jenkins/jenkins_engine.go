@@ -4,9 +4,14 @@ import (
 	"encoding/xml"
 	"fmt"
 
+	"github.com/pkg/errors"
+	"github.com/rancher/rancher/pkg/pipeline/utils"
 	"github.com/rancher/types/apis/management.cattle.io/v3"
 	"github.com/rancher/types/config"
 	"github.com/sirupsen/logrus"
+	"strconv"
+	"strings"
+	"time"
 )
 
 type JenkinsEngine struct {
@@ -99,6 +104,109 @@ func (j JenkinsEngine) StopHistory(history *v3.PipelineExecution) error {
 		}
 	}
 	return nil
+}
+
+func (j JenkinsEngine) SyncExecution(execution *v3.PipelineExecution) (bool, error) {
+	jobName := fmt.Sprintf("%s%s-%d", JENKINS_JOB_PREFIX, execution.Spec.Pipeline.Name, execution.Spec.Run)
+	info, err := j.Client.GetWFBuildInfo(jobName)
+	if err != nil {
+		return false, err
+	}
+	updated := false
+	for _, jenkinsStage := range info.Stages {
+		//handle those in step-1-1 format
+		parts := strings.Split(jenkinsStage.Name, "-")
+		if len(parts) == 3 {
+			stage, err := strconv.Atoi(parts[1])
+			if err != nil {
+				return false, err
+			}
+			step, err := strconv.Atoi(parts[2])
+			if err != nil {
+				return false, err
+			}
+			if len(execution.Status.Stages) <= stage || len(execution.Status.Stages[stage].Steps) <= step {
+				return false, errors.New("error sync execution - index out of range")
+			}
+			status := jenkinsStage.Status
+			if status == "SUCCESS" && execution.Status.Stages[stage].Steps[step].State != v3.StateSuccess {
+				updated = true
+				successStep(execution, stage, step, jenkinsStage)
+			} else if status == "FAILED" && execution.Status.Stages[stage].Steps[step].State != v3.StateFail {
+				updated = true
+				failStep(execution, stage, step, jenkinsStage)
+			} else if status == "IN_PROGRESS" && execution.Status.Stages[stage].Steps[step].State != v3.StateBuilding {
+				updated = true
+				buildingStep(execution, stage, step, jenkinsStage)
+			}
+		}
+	}
+
+	return updated, nil
+}
+
+func successStep(execution *v3.PipelineExecution, stage int, step int, jenkinsStage JenkinsStage) {
+
+	startTime := time.Unix(jenkinsStage.StartTimeMillis/1000, 0).Format(time.RFC3339)
+	endTime := time.Unix(jenkinsStage.EndTimeMillis/1000, 0).Format(time.RFC3339)
+	execution.Status.Stages[stage].Steps[step].State = v3.StateSuccess
+	if execution.Status.Stages[stage].Steps[step].Started == "" {
+		execution.Status.Stages[stage].Steps[step].Started = startTime
+	}
+	execution.Status.Stages[stage].Steps[step].Ended = endTime
+	if execution.Status.Stages[stage].Started == "" {
+		execution.Status.Stages[stage].Started = startTime
+	}
+	if execution.Status.Started == "" {
+		execution.Status.Started = startTime
+	}
+	if utils.IsStageSuccess(execution.Status.Stages[stage]) {
+		execution.Status.Stages[stage].State = v3.StateSuccess
+		execution.Status.Stages[stage].Ended = endTime
+		if stage == len(execution.Status.Stages) {
+			execution.Status.State = v3.StateSuccess
+			execution.Status.Ended = endTime
+		}
+	}
+}
+
+func failStep(execution *v3.PipelineExecution, stage int, step int, jenkinsStage JenkinsStage) {
+
+	startTime := time.Unix(jenkinsStage.StartTimeMillis/1000, 0).Format(time.RFC3339)
+	endTime := time.Unix(jenkinsStage.EndTimeMillis/1000, 0).Format(time.RFC3339)
+	execution.Status.Stages[stage].Steps[step].State = v3.StateFail
+	execution.Status.Stages[stage].State = v3.StateFail
+	execution.Status.State = v3.StateFail
+	if execution.Status.Stages[stage].Steps[step].Started == "" {
+		execution.Status.Stages[stage].Steps[step].Started = startTime
+	}
+	execution.Status.Stages[stage].Steps[step].Ended = endTime
+	if execution.Status.Stages[stage].Started == "" {
+		execution.Status.Stages[stage].Started = startTime
+	}
+	if execution.Status.Stages[stage].Ended == "" {
+		execution.Status.Stages[stage].Ended = endTime
+	}
+	if execution.Status.Started == "" {
+		execution.Status.Started = startTime
+	}
+	if execution.Status.Ended == "" {
+		execution.Status.Ended = endTime
+	}
+}
+
+func buildingStep(execution *v3.PipelineExecution, stage int, step int, jenkinsStage JenkinsStage) {
+	startTime := time.Unix(jenkinsStage.StartTimeMillis/1000, 0).Format(time.RFC3339)
+	execution.Status.Stages[stage].Steps[step].State = v3.StateBuilding
+	if execution.Status.Stages[stage].Steps[step].Started == "" {
+		execution.Status.Stages[stage].Steps[step].Started = startTime
+	}
+	if execution.Status.Stages[stage].Started == "" {
+		execution.Status.Stages[stage].Started = startTime
+	}
+	if execution.Status.Started == "" {
+		execution.Status.Started = startTime
+	}
 }
 
 //OnActivityCompelte helps clean up

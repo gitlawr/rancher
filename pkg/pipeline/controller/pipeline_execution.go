@@ -20,7 +20,7 @@ func (l *PipelineHistoryLifecycle) Create(obj *v3.PipelineExecution) (*v3.Pipeli
 	if err != nil {
 		return l.errorHistory(obj)
 	}
-	pipelineEngine, err := engine.New(l.cluster, url, "admin", "admin")
+	pipelineEngine, err := engine.New(l.cluster, url)
 	if err != nil {
 		return l.errorHistory(obj)
 	}
@@ -46,6 +46,7 @@ func (l *PipelineHistoryLifecycle) Remove(obj *v3.PipelineExecution) (*v3.Pipeli
 	return obj, nil
 }
 
+//FIXME proper way to connect to Jenkins in cluster
 func (l *PipelineHistoryLifecycle) getJenkinsURL() (string, error) {
 
 	nodes, err := l.cluster.Core.Nodes("").List(metav1.ListOptions{})
@@ -55,10 +56,11 @@ func (l *PipelineHistoryLifecycle) getJenkinsURL() (string, error) {
 	if len(nodes.Items) < 1 {
 		return "", errors.New("no available nodes")
 	}
-	//TODO for test
-	host := nodes.Items[0].Name
+	if len(nodes.Items[0].Status.Addresses) < 1 {
+		return "", errors.New("no available address")
+	}
+	host := nodes.Items[0].Status.Addresses[0].Address
 
-	//host := "192.168.99.210"
 	svcport := 0
 	service, err := l.cluster.Core.Services("cattle-pipeline").Get("jenkins", metav1.GetOptions{})
 	if err != nil {

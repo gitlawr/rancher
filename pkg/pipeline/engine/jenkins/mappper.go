@@ -3,6 +3,7 @@ package jenkins
 import (
 	"bytes"
 	"fmt"
+	"github.com/rancher/rancher/pkg/pipeline/utils"
 	"github.com/rancher/types/apis/management.cattle.io/v3"
 )
 
@@ -21,26 +22,35 @@ func ConvertPipelineToJenkinsPipeline(pipeline *v3.Pipeline) PipelineJob {
 	return pipelineJob
 }
 
-func convertStep(step *v3.Step, stageOrdinal int, stepOrdinal int) string {
+func convertStep(pipeline *v3.Pipeline, stageOrdinal int, stepOrdinal int) string {
+	//var buffer bytes.Buffer
 	stepContent := ""
-	stepName := fmt.Sprintf("step_%d_%d", stageOrdinal, stepOrdinal)
+	stepName := fmt.Sprintf("step-%d-%d", stageOrdinal, stepOrdinal)
+	step := pipeline.Spec.Stages[stageOrdinal].Steps[stepOrdinal]
 
+	//buffer.WriteString(preStepScript(pipeline, stageOrdinal, stepOrdinal))
+	//buffer.WriteString("\n")
 	if step.SourceCodeConfig != nil {
 		stepContent = fmt.Sprintf("git '%s'", step.SourceCodeConfig.Url)
-	} else if step.RunScriptConfig == nil {
-		stepContent = fmt.Sprintf("sh \"\"\"\n%s\n\"\"\"", step.RunScriptConfig.ShellScript)
-	} else if step.PublishImageConfig == nil {
-		stepContent = fmt.Sprintf(`sh """"\necho dopublishimage\n"""`)
+	} else if step.RunScriptConfig != nil {
+		stepContent = fmt.Sprintf(`sh """%s"""`, step.RunScriptConfig.ShellScript)
+	} else if step.PublishImageConfig != nil {
+		stepContent = fmt.Sprintf(`sh """"echo dopublishimage"""`)
 	} else {
 		return ""
 	}
+	//buffer.WriteString(stepContent)
+	//buffer.WriteString("\n")
+	//buffer.WriteString(postStepScript(pipeline, stageOrdinal, stepOrdinal))
+
 	return fmt.Sprintf(stepBlock, stepName, stepName, stepName, stepContent)
 }
 
-func convertStage(stage *v3.Stage, stageOrdinal int) string {
+func convertStage(pipeline *v3.Pipeline, stageOrdinal int) string {
 	var buffer bytes.Buffer
-	for i, step := range stage.Steps {
-		buffer.WriteString(convertStep(&step, stageOrdinal, i+1))
+	stage := pipeline.Spec.Stages[stageOrdinal]
+	for i, _ := range stage.Steps {
+		buffer.WriteString(convertStep(pipeline, stageOrdinal, i))
 		if i != len(stage.Steps)-1 {
 			buffer.WriteString(",")
 		}
@@ -53,10 +63,10 @@ func convertPipeline(pipeline *v3.Pipeline) string {
 	var containerbuffer bytes.Buffer
 	var pipelinebuffer bytes.Buffer
 	for j, stage := range pipeline.Spec.Stages {
-		pipelinebuffer.WriteString(convertStage(&stage, j+1))
+		pipelinebuffer.WriteString(convertStage(pipeline, j))
 		pipelinebuffer.WriteString("\n")
 		for k, step := range stage.Steps {
-			stepName := fmt.Sprintf("step_%d_%d", j+1, k+1)
+			stepName := fmt.Sprintf("step-%d-%d", j, k)
 			image := ""
 			if step.SourceCodeConfig != nil {
 				image = "alpine/git"
@@ -103,3 +113,35 @@ timestamps {
 }`
 
 const containerBlock = `containerTemplate(name: '%s', image: '%s', ttyEnabled: true, command: 'cat'),`
+
+func preStepScript(pipeline *v3.Pipeline, stage int, step int) string {
+	if pipeline == nil {
+		return ""
+	}
+	executionId := fmt.Sprintf("%s-%d", pipeline.Name, pipeline.Status.NextRun)
+	skel := `sh 'curl -k -d "executionId=%s&stage=%d&step=%d&event=%s&token=%s" -H X-PipelineExecution-Notify:1 %s'`
+	script := fmt.Sprintf(skel, executionId, stage, step, v3.StateBuilding, pipeline.Status.Token, utils.CI_ENDPOINT)
+	return script
+}
+
+func postStepScript(pipeline *v3.Pipeline, stage int, step int) string {
+	if pipeline == nil {
+		return ""
+	}
+	executionId := fmt.Sprintf("%s-%d", pipeline.Name, pipeline.Status.NextRun)
+	skel := `sh 'curl -k -d "executionId=%s&stage=%d&step=%d&event=%s&token=%s" -H X-PipelineExecution-Notify:1 %s'`
+	successScript := fmt.Sprintf(skel, executionId, stage, step, v3.StateSuccess, pipeline.Status.Token, utils.CI_ENDPOINT)
+	failScript := fmt.Sprintf(skel, executionId, stage, step, v3.StateFail, pipeline.Status.Token, utils.CI_ENDPOINT)
+	//abortScript := fmt.Sprintf(skel, drivers.EXECUTION_NOTIFY_HEADER, executionId, stage, step, v3.StateAbort, pipeline.Status.Token, pipeline2.CI_ENDPOINT)
+
+	postSkel := `post {
+		success {
+			%s
+        }
+        failure {
+  			%s
+        }
+	}`
+	postScript := fmt.Sprintf(postSkel, successScript, failScript)
+	return postScript
+}
