@@ -3,6 +3,7 @@ package controller
 import (
 	"context"
 	"github.com/rancher/norman/signal"
+	"github.com/rancher/rancher/pkg/pipeline/controller/log_syncer"
 	"github.com/rancher/types/apis/management.cattle.io/v3"
 	"github.com/rancher/types/config"
 	"github.com/sirupsen/logrus"
@@ -15,7 +16,7 @@ func Register(cluster *config.ClusterContext) {
 	clusterPipelineSyncer := &ClusterPipelineSyncer{
 		cluster: cluster,
 	}
-	clusterPipelines.AddHandler("project-logging-controller", clusterPipelineSyncer.Sync)
+	clusterPipelines.AddHandler("cluster-pipeline-syncer", clusterPipelineSyncer.Sync)
 	//clusterPipelineClient.AddLifecycle("cluster-pipeline-controller", clusterPipelineLifecycle)
 	//clusterPipelineClient.AddClusterScopedHandler("cluster-pipeline-maintainer", cluster.ClusterName, clusterPipelineLifecycle.Sync)
 
@@ -40,7 +41,9 @@ func Register(cluster *config.ClusterContext) {
 	if err := initClusterPipeline(cluster); err != nil {
 		logrus.Errorf("init cluster pipeline got error, %v", err)
 	}
-	Registerxxx(signal.SigTermCancelContext(context.Background()), cluster)
+	ctx := signal.SigTermCancelContext(context.Background())
+	Registerxxx(ctx, cluster)
+	log_syncer.Register(ctx, cluster)
 }
 
 func initClusterPipeline(cluster *config.ClusterContext) error {

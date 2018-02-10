@@ -5,20 +5,27 @@ import (
 	"github.com/rancher/norman/types"
 	"github.com/rancher/types/apis/management.cattle.io/v3"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"net/url"
 )
 
 var CI_ENDPOINT = ""
 
+var PIPELINE_FINISH_LABEL = labels.Set(map[string]string{"pipeline.management.cattle.io/finish": "true"})
+var PIPELINE_INPROGRESS_LABEL = labels.Set(map[string]string{"pipeline.management.cattle.io/finish": "false"})
+
 func InitHistory(p *v3.Pipeline, triggerType string) *v3.PipelineExecution {
 	history := &v3.PipelineExecution{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: getNextHistoryName(p),
+			Name:   getNextHistoryName(p),
+			Labels: PIPELINE_INPROGRESS_LABEL,
 		},
 		Spec: v3.PipelineExecutionSpec{
-			Run:         p.Status.NextRun,
-			TriggeredBy: triggerType,
-			Pipeline:    *p,
+			ProjectName:  p.Spec.ProjectName,
+			PipelineName: p.Name,
+			Run:          p.Status.NextRun,
+			TriggeredBy:  triggerType,
+			Pipeline:     *p,
 			//DisplayName: getNextHistoryName(pipeline),
 		},
 	}

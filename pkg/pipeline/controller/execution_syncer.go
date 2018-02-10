@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/rancher/rancher/pkg/cluster/utils"
 	"github.com/rancher/rancher/pkg/pipeline/engine"
+	utils2 "github.com/rancher/rancher/pkg/pipeline/utils"
 	"github.com/rancher/types/apis/core/v1"
 	"github.com/rancher/types/apis/management.cattle.io/v3"
 	"github.com/rancher/types/config"
@@ -59,7 +60,7 @@ func (s *ExecutionStateSyncer) syncState(ctx context.Context, syncInterval time.
 }
 
 func (s *ExecutionStateSyncer) syncExecutions() {
-	executions, err := s.pipelineExecutionLister.List("", labels.NewSelector())
+	executions, err := s.pipelineExecutionLister.List("", utils2.PIPELINE_INPROGRESS_LABEL.AsSelector())
 	if err != nil {
 		logrus.Errorf("Error listing PipelineExecutions - %v", err)
 	}

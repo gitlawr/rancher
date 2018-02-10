@@ -239,12 +239,13 @@ func Pipeline(schemas *types.Schemas, management *config.ManagementContext) {
 	schema.Formatter = pipeline.Formatter
 	schema.ActionHandler = pipelineHandler.ActionHandler
 
-	pipelineHistoryHandler := &pipeline.HistoryHandler{
+	pipelineExecutionHandler := &pipeline.ExecutionHandler{
 		Management: *management,
 	}
 	schema = schemas.Schema(&managementschema.Version, client.PipelineExecutionType)
-	schema.Formatter = pipeline.HistoryFormatter
-	schema.ActionHandler = pipelineHistoryHandler.ActionHandler
+	schema.Formatter = pipelineExecutionHandler.ExecutionFormatter
+	schema.LinkHandler = pipelineExecutionHandler.LinkHandler
+	schema.ActionHandler = pipelineExecutionHandler.ActionHandler
 
 	RemoteAccountHandler := &pipeline.RemoteAccountHandler{
 		Management: *management,

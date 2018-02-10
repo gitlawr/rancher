@@ -142,6 +142,19 @@ func (j JenkinsEngine) SyncExecution(execution *v3.PipelineExecution) (bool, err
 		}
 	}
 
+	if info.Status == "SUCCESS" && execution.Status.State != v3.StateSuccess {
+		updated = true
+		execution.Labels = utils.PIPELINE_FINISH_LABEL
+		execution.Status.State = v3.StateSuccess
+	} else if info.Status == "FAILED" && execution.Status.State != v3.StateFail {
+		updated = true
+		execution.Labels = utils.PIPELINE_FINISH_LABEL
+		execution.Status.State = v3.StateFail
+	} else if info.Status == "IN_PROGRESS" && execution.Status.State != v3.StateBuilding {
+		updated = true
+		execution.Status.State = v3.StateBuilding
+	}
+
 	return updated, nil
 }
 
@@ -239,7 +252,7 @@ func (j JenkinsEngine) OnHistoryCompelte(history *v3.PipelineExecution) {
 
 func (j JenkinsEngine) GetStepLog(history *v3.PipelineExecution, stageOrdinal int, stepOrdinal int, paras map[string]interface{}) (string, error) {
 	//TODO
-	return "", nil
+	return "testlog\nhehehehehee", nil
 	/*
 		if stageOrdinal < 0 || stageOrdinal >= len(activity.ActivityStages) || stepOrdinal < 0 || stepOrdinal >= len(activity.ActivityStages[stageOrdinal].ActivitySteps) {
 			return "", errors.New("ordinal out of range")

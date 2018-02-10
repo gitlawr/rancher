@@ -1,26 +1,40 @@
 package pipeline
 
 import (
+	"fmt"
 	"github.com/pkg/errors"
+	"github.com/rancher/norman/api/access"
 	"github.com/rancher/norman/types"
 	"github.com/rancher/types/apis/management.cattle.io/v3"
+	"github.com/rancher/types/client/management/v3"
 	"github.com/rancher/types/config"
 	"github.com/sirupsen/logrus"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"net/http"
 	"strconv"
 	"strings"
 )
 
-type HistoryHandler struct {
+type ExecutionHandler struct {
 	Management config.ManagementContext
 }
 
-func HistoryFormatter(apiContext *types.APIContext, resource *types.RawResource) {
+func (h ExecutionHandler) ExecutionFormatter(apiContext *types.APIContext, resource *types.RawResource) {
 	resource.AddAction(apiContext, "rerun")
 	resource.AddAction(apiContext, "stop")
+	resource.Links["log"] = apiContext.URLBuilder.Link("log", resource)
+
 }
 
-func (h *HistoryHandler) ActionHandler(actionName string, action *types.Action, apiContext *types.APIContext) error {
+func (h ExecutionHandler) LinkHandler(apiContext *types.APIContext) error {
+	logrus.Debugf("enter link - %v", apiContext.Link)
+	if apiContext.Link == "log" {
+		return h.log(apiContext)
+	}
+	return nil
+}
+
+func (h *ExecutionHandler) ActionHandler(actionName string, action *types.Action, apiContext *types.APIContext) error {
 	logrus.Infof("do activity action:%s", actionName)
 
 	switch actionName {
@@ -35,15 +49,15 @@ func (h *HistoryHandler) ActionHandler(actionName string, action *types.Action, 
 	return nil
 }
 
-func (h *HistoryHandler) rerun(apiContext *types.APIContext) error {
+func (h *ExecutionHandler) rerun(apiContext *types.APIContext) error {
 	return nil
 }
 
-func (h *HistoryHandler) stop(apiContext *types.APIContext) error {
+func (h *ExecutionHandler) stop(apiContext *types.APIContext) error {
 	return nil
 }
 
-func (h *HistoryHandler) notify(apiContext *types.APIContext) error {
+func (h *ExecutionHandler) notify(apiContext *types.APIContext) error {
 	stepName := apiContext.Request.FormValue("stepName")
 	state := apiContext.Request.FormValue("state")
 	//TODO token check
@@ -85,5 +99,22 @@ func (h *HistoryHandler) notify(apiContext *types.APIContext) error {
 		return err
 	}
 
+	return nil
+}
+
+func (h *ExecutionHandler) log(apiContext *types.APIContext) error {
+	stage := apiContext.Request.URL.Query().Get("stage")
+	step := apiContext.Request.URL.Query().Get("step")
+	if stage == "" || step == "" {
+		return errors.New("Step index for log is not provided")
+	}
+
+	logId := fmt.Sprintf("%s-%s-%s", apiContext.ID, stage, step)
+	data := map[string]interface{}{}
+	if err := access.ByID(apiContext, apiContext.Version, client.PipelineExecutionLogType, logId, &data); err != nil {
+		return err
+	}
+
+	apiContext.WriteResponse(http.StatusOK, data)
 	return nil
 }

@@ -3,6 +3,7 @@ package pipeline
 import (
 	"strings"
 
+	"fmt"
 	"github.com/rancher/norman/api/access"
 	"github.com/rancher/norman/types"
 	"github.com/rancher/rancher/pkg/pipeline/utils"
@@ -130,6 +131,28 @@ func (h *Handler) run(apiContext *types.APIContext) error {
 	if err != nil {
 		return err
 	}
+	//create log entries
+	Logs := h.Management.Management.PipelineExecutionLogs(ns)
+	for j, stage := range pipeline.Spec.Stages {
+		for k, _ := range stage.Steps {
+			log := &v3.PipelineExecutionLog{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:   fmt.Sprintf("%s-%d-%d", history.Name, j, k),
+					Labels: utils.PIPELINE_INPROGRESS_LABEL,
+				},
+				Spec: v3.PipelineExecutionLogSpec{
+					ProjectName:           pipeline.Spec.ProjectName,
+					PipelineExecutionName: history.Name,
+					Stage: j,
+					Step:  k,
+				},
+			}
+			if _, err := Logs.Create(log); err != nil {
+				return err
+			}
+		}
+	}
+
 	pipeline.Status.NextRun++
 	pipeline.Status.LastExecutionId = history.Name
 	pipeline.Status.LastStarted = time.Now().String()
