@@ -42,14 +42,14 @@ func Register(ctx context.Context, cluster *config.ClusterContext) {
 		nodeLister:                 nodeLister,
 		serviceLister:              serviceLister,
 	}
-	go s.syncState(ctx, syncInterval)
+	go s.syncLog(ctx, syncInterval)
 }
 
-func (s *ExecutionLogSyncer) syncState(ctx context.Context, syncInterval time.Duration) {
+func (s *ExecutionLogSyncer) syncLog(ctx context.Context, syncInterval time.Duration) {
 	for range utils.TickerContext(ctx, syncInterval) {
-		logrus.Debugf("Start heartbeat")
+		logrus.Debugf("Start sync pipeline execution log")
 		s.syncLogs()
-		logrus.Debugf("Heartbeat complete")
+		logrus.Debugf("Sync pipeline execution log complete")
 	}
 
 }
@@ -72,7 +72,11 @@ func (s *ExecutionLogSyncer) syncLogs() {
 		if err != nil {
 			logrus.Errorf("Error get pipeline execution - %v", err)
 		}
-		logText, err := pipelineEngine.GetStepLog(execution, e.Spec.Stage, e.Spec.Step, nil)
+		//get log if the step started
+		if execution.Status.Stages[e.Spec.Stage].Steps[e.Spec.Step].State == v3.StateWaiting {
+			continue
+		}
+		logText, err := pipelineEngine.GetStepLog(execution, e.Spec.Stage, e.Spec.Step)
 		if err != nil {
 			logrus.Errorf("Error get pipeline execution log - %v", err)
 			e.Spec.Message += fmt.Sprintf("\nError get pipeline execution log - %v", err)

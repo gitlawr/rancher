@@ -10,7 +10,7 @@ type PipelineEngine interface {
 	RunPipeline(pipeline *v3.Pipeline, triggerType string) error
 	RerunHistory(execution *v3.PipelineExecution) error
 	StopHistory(execution *v3.PipelineExecution) error
-	GetStepLog(execution *v3.PipelineExecution, stageOrdinal int, stepOrdinal int, paras map[string]interface{}) (string, error)
+	GetStepLog(execution *v3.PipelineExecution, stage int, step int) (string, error)
 	OnHistoryCompelte(execution *v3.PipelineExecution)
 	SyncExecution(execution *v3.PipelineExecution) (bool, error)
 }

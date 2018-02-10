@@ -291,14 +291,14 @@ type JenkinsCredential struct {
 
 type JenkinsWFBuildInfo struct {
 	ID                  string         `json:"id"`
-	Name                string         `json:"Name"`
-	Status              string         `json:"Status"`
-	StartTimeMillis     int64          `json:"StartTimeMillis"`
-	EndTimeMillis       int64          `json:"EndTimeMillis"`
-	DurationMillis      int64          `json:"DurationMillis"`
-	QueueDurationMillis int64          `json:"QueueDurationMillis"`
-	PauseDurationMillis int64          `json:"PauseDurationMillis"`
-	Stages              []JenkinsStage `json:"Stages"`
+	Name                string         `json:"name"`
+	Status              string         `json:"status"`
+	StartTimeMillis     int64          `json:"startTimeMillis"`
+	EndTimeMillis       int64          `json:"endTimeMillis"`
+	DurationMillis      int64          `json:"durationMillis"`
+	QueueDurationMillis int64          `json:"queueDurationMillis"`
+	PauseDurationMillis int64          `json:"pauseDurationMillis"`
+	Stages              []JenkinsStage `json:"stages"`
 }
 
 type JenkinsStage struct {
@@ -310,4 +310,37 @@ type JenkinsStage struct {
 	EndTimeMillis   int64  `json:"endTimeMillis"`
 	DurationMillis  int64  `json:"durationMillis"`
 	Error           string `json:"error"`
+}
+
+type JenkinsWFNodeInfo struct {
+	ID                  string         `json:"id"`
+	Name                string         `json:"name"`
+	Status              string         `json:"status"`
+	StartTimeMillis     int64          `json:"startTimeMillis"`
+	EndTimeMillis       int64          `json:"endTimeMillis"`
+	DurationMillis      int64          `json:"durationMillis"`
+	ParseDurationMillis int64          `json:"parseDurationMillis"`
+	PauseDurationMillis int64          `json:"pauseDurationMillis"`
+	StageFlowNodes      []JenkinsStage `json:"stageFlowNodes"`
+}
+
+type JenkinsWFNodeLog struct {
+	NodeId     string `json:"nodeId"`
+	NodeStatus string `json:"nodeStatus"`
+	Length     int    `json:"length"`
+	HasMore    bool   `json:"hasMore"`
+	Text       string `json:"text"`
+	ConsoleUrl string `json:"consoleUrl"`
+}
+
+type JenkinsFlowNode struct {
+	ID                   string `json:"id"`
+	Name                 string `json:"name"`
+	ExecNode             string `json:"execNode"`
+	Status               string `json:"status"`
+	ParameterDescription string "parameterDescription"
+	StartTimeMillis      int64  `json:"startTimeMillis"`
+	DurationMillis       int64  `json:"durationMillis"`
+	PauseDurationMillis  int64  `json:"pauseDurationMillis"`
+	Error                string `json:"error"`
 }

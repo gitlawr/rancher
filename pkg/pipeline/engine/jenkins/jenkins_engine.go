@@ -250,38 +250,39 @@ func (j JenkinsEngine) OnHistoryCompelte(history *v3.PipelineExecution) {
 	*/
 }
 
-func (j JenkinsEngine) GetStepLog(history *v3.PipelineExecution, stageOrdinal int, stepOrdinal int, paras map[string]interface{}) (string, error) {
-	//TODO
-	return "testlog\nhehehehehee", nil
-	/*
-		if stageOrdinal < 0 || stageOrdinal >= len(activity.ActivityStages) || stepOrdinal < 0 || stepOrdinal >= len(activity.ActivityStages[stageOrdinal].ActivitySteps) {
-			return "", errors.New("ordinal out of range")
-		}
-		jobName := getJobName(activity, stageOrdinal, stepOrdinal)
-		var logText *string
-		if val, ok := paras["prevLog"]; ok {
-			logText = val.(*string)
-		}
-		startLine := len(strings.Split(*logText, "\n"))
+func (j JenkinsEngine) GetStepLog(execution *v3.PipelineExecution, stage int, step int) (string, error) {
 
-		rawOutput, err := GetBuildRawOutput(jobName, startLine)
-		if err != nil {
-			return "", err
+	jobName := getJobName(&execution.Spec.Pipeline)
+	info, err := j.Client.GetWFBuildInfo(jobName)
+	if err != nil {
+		return "", err
+	}
+	WFnodeId := ""
+	for _, jStage := range info.Stages {
+		if jStage.Name == fmt.Sprintf("step-%d-%d", stage, step) {
+			WFnodeId = jStage.ID
+			break
 		}
-		token := "\\n\\w{14}\\s{2}\\[.*?\\].*?\\.sh"
-		*logText = *logText + rawOutput
-		outputs := regexp.MustCompile(token).Split(*logText, -1)
-		if len(outputs) > 1 && stageOrdinal == 0 && stepOrdinal == 0 {
-			// SCM
-			return trimFirstLine(outputs[1]), nil
-		}
-		if len(outputs) < 3 {
-			//no printed log
-			return "", nil
-		}
-		//hide set +x
-		return trimFirstLine(outputs[2]), nil
-	*/
+	}
+	if WFnodeId == "" {
+		return "", errors.New("Error WF Node for the step not found")
+	}
+	WFnodeInfo, err := j.Client.GetWFNodeInfo(jobName, WFnodeId)
+	if err != nil {
+		return "", err
+	}
+	if len(WFnodeInfo.StageFlowNodes) < 1 {
+		return "", errors.New("Error step Node not found")
+	}
+	logNodeId := WFnodeInfo.StageFlowNodes[0].ID
+	logrus.Debugf("trying GetWFNodeLog, %v, %v", jobName, logNodeId)
+	nodeLog, err := j.Client.GetWFNodeLog(jobName, logNodeId)
+	if err != nil {
+		return "", err
+	}
+	//TODO hasNext
+	return nodeLog.Text, nil
+	//return "testlog\nhehehehehee", nil
 }
 
 func getJobName(pipeline *v3.Pipeline) string {
