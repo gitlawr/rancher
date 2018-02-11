@@ -155,6 +155,7 @@ type Step struct {
 type SourceCodeConfig struct {
 	Url                      string `json:"url,omitempty" yaml:"url,omitempty" `
 	Branch                   string `json:"branch,omitempty" yaml:"branch,omitempty" `
+	BranchCondition          string `json:"branchCondition,omitempty" yaml:"branchCondition,omitempty" norman:"options=only|except|all"`
 	SourceCodeCredentialName string `json:"sourceCodeCredentialName,omitempty" yaml:"sourceCodeCredentialName,omitempty" norman:"type=reference[sourceCodeCredential]"`
 }
 
