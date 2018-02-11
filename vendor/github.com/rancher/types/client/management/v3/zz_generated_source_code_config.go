@@ -5,12 +5,12 @@ const (
 	SourceCodeConfigFieldBranch                 = "branch"
 	SourceCodeConfigFieldBranchCondition        = "branchCondition"
 	SourceCodeConfigFieldSourceCodeCredentialId = "sourceCodeCredentialId"
-	SourceCodeConfigFieldUrl                    = "url"
+	SourceCodeConfigFieldURL                    = "url"
 )
 
 type SourceCodeConfig struct {
 	Branch                 string `json:"branch,omitempty"`
 	BranchCondition        string `json:"branchCondition,omitempty"`
 	SourceCodeCredentialId string `json:"sourceCodeCredentialId,omitempty"`
-	Url                    string `json:"url,omitempty"`
+	URL                    string `json:"url,omitempty"`
 }

@@ -33,21 +33,24 @@ type Interface interface {
 	GroupsGetter
 	GroupMembersGetter
 	PrincipalsGetter
-	TokensGetter
 	UsersGetter
+	AuthConfigsGetter
+	TokensGetter
 	DynamicSchemasGetter
-	StacksGetter
 	PreferencesGetter
 	ClusterLoggingsGetter
 	ProjectLoggingsGetter
+	ListenConfigsGetter
+	SettingsGetter
+	NotifiersGetter
+	ClusterAlertsGetter
+	ProjectAlertsGetter
 	SourceCodeCredentialsGetter
 	ClusterPipelinesGetter
 	PipelinesGetter
 	PipelineExecutionsGetter
 	SourceCodeRepositoriesGetter
 	PipelineExecutionLogsGetter
-	ListenConfigsGetter
-	SettingsGetter
 }
 
 type Client struct {
@@ -74,21 +77,24 @@ type Client struct {
 	groupControllers                      map[string]GroupController
 	groupMemberControllers                map[string]GroupMemberController
 	principalControllers                  map[string]PrincipalController
-	tokenControllers                      map[string]TokenController
 	userControllers                       map[string]UserController
+	authConfigControllers                 map[string]AuthConfigController
+	tokenControllers                      map[string]TokenController
 	dynamicSchemaControllers              map[string]DynamicSchemaController
-	stackControllers                      map[string]StackController
 	preferenceControllers                 map[string]PreferenceController
 	clusterLoggingControllers             map[string]ClusterLoggingController
 	projectLoggingControllers             map[string]ProjectLoggingController
+	listenConfigControllers               map[string]ListenConfigController
+	settingControllers                    map[string]SettingController
+	notifierControllers                   map[string]NotifierController
+	clusterAlertControllers               map[string]ClusterAlertController
+	projectAlertControllers               map[string]ProjectAlertController
 	sourceCodeCredentialControllers       map[string]SourceCodeCredentialController
 	clusterPipelineControllers            map[string]ClusterPipelineController
 	pipelineControllers                   map[string]PipelineController
 	pipelineExecutionControllers          map[string]PipelineExecutionController
 	sourceCodeRepositoryControllers       map[string]SourceCodeRepositoryController
 	pipelineExecutionLogControllers       map[string]PipelineExecutionLogController
-	listenConfigControllers               map[string]ListenConfigController
-	settingControllers                    map[string]SettingController
 }
 
 func NewForConfig(config rest.Config) (Interface, error) {
@@ -124,21 +130,24 @@ func NewForConfig(config rest.Config) (Interface, error) {
 		groupControllers:                      map[string]GroupController{},
 		groupMemberControllers:                map[string]GroupMemberController{},
 		principalControllers:                  map[string]PrincipalController{},
-		tokenControllers:                      map[string]TokenController{},
 		userControllers:                       map[string]UserController{},
+		authConfigControllers:                 map[string]AuthConfigController{},
+		tokenControllers:                      map[string]TokenController{},
 		dynamicSchemaControllers:              map[string]DynamicSchemaController{},
-		stackControllers:                      map[string]StackController{},
 		preferenceControllers:                 map[string]PreferenceController{},
 		clusterLoggingControllers:             map[string]ClusterLoggingController{},
 		projectLoggingControllers:             map[string]ProjectLoggingController{},
+		listenConfigControllers:               map[string]ListenConfigController{},
+		settingControllers:                    map[string]SettingController{},
+		notifierControllers:                   map[string]NotifierController{},
+		clusterAlertControllers:               map[string]ClusterAlertController{},
+		projectAlertControllers:               map[string]ProjectAlertController{},
 		sourceCodeCredentialControllers:       map[string]SourceCodeCredentialController{},
 		clusterPipelineControllers:            map[string]ClusterPipelineController{},
 		pipelineControllers:                   map[string]PipelineController{},
 		pipelineExecutionControllers:          map[string]PipelineExecutionController{},
 		sourceCodeRepositoryControllers:       map[string]SourceCodeRepositoryController{},
 		pipelineExecutionLogControllers:       map[string]PipelineExecutionLogController{},
-		listenConfigControllers:               map[string]ListenConfigController{},
-		settingControllers:                    map[string]SettingController{},
 	}, nil
 }
 
@@ -401,19 +410,6 @@ func (c *Client) Principals(namespace string) PrincipalInterface {
 	}
 }
 
-type TokensGetter interface {
-	Tokens(namespace string) TokenInterface
-}
-
-func (c *Client) Tokens(namespace string) TokenInterface {
-	objectClient := clientbase.NewObjectClient(namespace, c.restClient, &TokenResource, TokenGroupVersionKind, tokenFactory{})
-	return &tokenClient{
-		ns:           namespace,
-		client:       c,
-		objectClient: objectClient,
-	}
-}
-
 type UsersGetter interface {
 	Users(namespace string) UserInterface
 }
@@ -427,6 +423,32 @@ func (c *Client) Users(namespace string) UserInterface {
 	}
 }
 
+type AuthConfigsGetter interface {
+	AuthConfigs(namespace string) AuthConfigInterface
+}
+
+func (c *Client) AuthConfigs(namespace string) AuthConfigInterface {
+	objectClient := clientbase.NewObjectClient(namespace, c.restClient, &AuthConfigResource, AuthConfigGroupVersionKind, authConfigFactory{})
+	return &authConfigClient{
+		ns:           namespace,
+		client:       c,
+		objectClient: objectClient,
+	}
+}
+
+type TokensGetter interface {
+	Tokens(namespace string) TokenInterface
+}
+
+func (c *Client) Tokens(namespace string) TokenInterface {
+	objectClient := clientbase.NewObjectClient(namespace, c.restClient, &TokenResource, TokenGroupVersionKind, tokenFactory{})
+	return &tokenClient{
+		ns:           namespace,
+		client:       c,
+		objectClient: objectClient,
+	}
+}
+
 type DynamicSchemasGetter interface {
 	DynamicSchemas(namespace string) DynamicSchemaInterface
 }
@@ -434,19 +456,6 @@ type DynamicSchemasGetter interface {
 func (c *Client) DynamicSchemas(namespace string) DynamicSchemaInterface {
 	objectClient := clientbase.NewObjectClient(namespace, c.restClient, &DynamicSchemaResource, DynamicSchemaGroupVersionKind, dynamicSchemaFactory{})
 	return &dynamicSchemaClient{
-		ns:           namespace,
-		client:       c,
-		objectClient: objectClient,
-	}
-}
-
-type StacksGetter interface {
-	Stacks(namespace string) StackInterface
-}
-
-func (c *Client) Stacks(namespace string) StackInterface {
-	objectClient := clientbase.NewObjectClient(namespace, c.restClient, &StackResource, StackGroupVersionKind, stackFactory{})
-	return &stackClient{
 		ns:           namespace,
 		client:       c,
 		objectClient: objectClient,
@@ -486,6 +495,71 @@ type ProjectLoggingsGetter interface {
 func (c *Client) ProjectLoggings(namespace string) ProjectLoggingInterface {
 	objectClient := clientbase.NewObjectClient(namespace, c.restClient, &ProjectLoggingResource, ProjectLoggingGroupVersionKind, projectLoggingFactory{})
 	return &projectLoggingClient{
+		ns:           namespace,
+		client:       c,
+		objectClient: objectClient,
+	}
+}
+
+type ListenConfigsGetter interface {
+	ListenConfigs(namespace string) ListenConfigInterface
+}
+
+func (c *Client) ListenConfigs(namespace string) ListenConfigInterface {
+	objectClient := clientbase.NewObjectClient(namespace, c.restClient, &ListenConfigResource, ListenConfigGroupVersionKind, listenConfigFactory{})
+	return &listenConfigClient{
+		ns:           namespace,
+		client:       c,
+		objectClient: objectClient,
+	}
+}
+
+type SettingsGetter interface {
+	Settings(namespace string) SettingInterface
+}
+
+func (c *Client) Settings(namespace string) SettingInterface {
+	objectClient := clientbase.NewObjectClient(namespace, c.restClient, &SettingResource, SettingGroupVersionKind, settingFactory{})
+	return &settingClient{
+		ns:           namespace,
+		client:       c,
+		objectClient: objectClient,
+	}
+}
+
+type NotifiersGetter interface {
+	Notifiers(namespace string) NotifierInterface
+}
+
+func (c *Client) Notifiers(namespace string) NotifierInterface {
+	objectClient := clientbase.NewObjectClient(namespace, c.restClient, &NotifierResource, NotifierGroupVersionKind, notifierFactory{})
+	return &notifierClient{
+		ns:           namespace,
+		client:       c,
+		objectClient: objectClient,
+	}
+}
+
+type ClusterAlertsGetter interface {
+	ClusterAlerts(namespace string) ClusterAlertInterface
+}
+
+func (c *Client) ClusterAlerts(namespace string) ClusterAlertInterface {
+	objectClient := clientbase.NewObjectClient(namespace, c.restClient, &ClusterAlertResource, ClusterAlertGroupVersionKind, clusterAlertFactory{})
+	return &clusterAlertClient{
+		ns:           namespace,
+		client:       c,
+		objectClient: objectClient,
+	}
+}
+
+type ProjectAlertsGetter interface {
+	ProjectAlerts(namespace string) ProjectAlertInterface
+}
+
+func (c *Client) ProjectAlerts(namespace string) ProjectAlertInterface {
+	objectClient := clientbase.NewObjectClient(namespace, c.restClient, &ProjectAlertResource, ProjectAlertGroupVersionKind, projectAlertFactory{})
+	return &projectAlertClient{
 		ns:           namespace,
 		client:       c,
 		objectClient: objectClient,
@@ -564,32 +638,6 @@ type PipelineExecutionLogsGetter interface {
 func (c *Client) PipelineExecutionLogs(namespace string) PipelineExecutionLogInterface {
 	objectClient := clientbase.NewObjectClient(namespace, c.restClient, &PipelineExecutionLogResource, PipelineExecutionLogGroupVersionKind, pipelineExecutionLogFactory{})
 	return &pipelineExecutionLogClient{
-		ns:           namespace,
-		client:       c,
-		objectClient: objectClient,
-	}
-}
-
-type ListenConfigsGetter interface {
-	ListenConfigs(namespace string) ListenConfigInterface
-}
-
-func (c *Client) ListenConfigs(namespace string) ListenConfigInterface {
-	objectClient := clientbase.NewObjectClient(namespace, c.restClient, &ListenConfigResource, ListenConfigGroupVersionKind, listenConfigFactory{})
-	return &listenConfigClient{
-		ns:           namespace,
-		client:       c,
-		objectClient: objectClient,
-	}
-}
-
-type SettingsGetter interface {
-	Settings(namespace string) SettingInterface
-}
-
-func (c *Client) Settings(namespace string) SettingInterface {
-	objectClient := clientbase.NewObjectClient(namespace, c.restClient, &SettingResource, SettingGroupVersionKind, settingFactory{})
-	return &settingClient{
 		ns:           namespace,
 		client:       c,
 		objectClient: objectClient,

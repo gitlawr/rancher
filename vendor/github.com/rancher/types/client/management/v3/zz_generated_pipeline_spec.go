@@ -2,6 +2,7 @@ package client
 
 const (
 	PipelineSpecType                       = "pipelineSpec"
+	PipelineSpecFieldDisplayName           = "displayName"
 	PipelineSpecFieldProjectId             = "projectId"
 	PipelineSpecFieldStages                = "stages"
 	PipelineSpecFieldTriggerCronExpression = "triggerCronExpression"
@@ -10,6 +11,7 @@ const (
 )
 
 type PipelineSpec struct {
+	DisplayName           string  `json:"displayName,omitempty"`
 	ProjectId             string  `json:"projectId,omitempty"`
 	Stages                []Stage `json:"stages,omitempty"`
 	TriggerCronExpression string  `json:"triggerCronExpression,omitempty"`

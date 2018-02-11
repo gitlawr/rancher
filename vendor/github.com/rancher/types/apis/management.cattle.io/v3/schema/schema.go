@@ -1,6 +1,8 @@
 package schema
 
 import (
+	"net/http"
+
 	"github.com/rancher/norman/types"
 	m "github.com/rancher/norman/types/mapper"
 	"github.com/rancher/types/apis/cluster.cattle.io/v3/schema"
@@ -14,9 +16,6 @@ var (
 		Version: "v3",
 		Group:   "management.cattle.io",
 		Path:    "/v3",
-		SubContexts: map[string]bool{
-			"clusters": true,
-		},
 	}
 
 	Schemas = factory.Schemas(&Version).
@@ -26,13 +25,22 @@ var (
 		Init(clusterTypes).
 		Init(catalogTypes).
 		Init(authnTypes).
+		Init(tokens).
 		Init(schemaTypes).
-		Init(stackTypes).
 		Init(userTypes).
 		Init(logTypes).
-		Init(pipelineTypes).
-		Init(globalTypes)
+		Init(globalTypes).
+		Init(rkeTypes).
+		Init(alertTypes).
+		Init(pipelineTypes)
+
+	TokenSchemas = factory.Schemas(&Version).
+			Init(tokens)
 )
+
+func rkeTypes(schemas *types.Schemas) *types.Schemas {
+	return schemas.AddMapperForType(&Version, v3.BaseService{}, m.Drop{Field: "image"})
+}
 
 func schemaTypes(schemas *types.Schemas) *types.Schemas {
 	return schemas.
@@ -41,6 +49,9 @@ func schemaTypes(schemas *types.Schemas) *types.Schemas {
 
 func catalogTypes(schemas *types.Schemas) *types.Schemas {
 	return schemas.
+		AddMapperForType(&Version, v3.Catalog{},
+			&m.Move{From: "catalogKind", To: "kind"},
+		).
 		MustImport(&Version, v3.Catalog{}).
 		MustImport(&Version, v3.Template{}).
 		MustImport(&Version, v3.TemplateVersion{})
@@ -65,9 +76,13 @@ func clusterTypes(schemas *types.Schemas) *types.Schemas {
 			From: "type",
 			To:   "eventType",
 		}).
-		MustImportAndCustomize(&Version, v3.Cluster{}, func(schema *types.Schema) {
-			schema.SubContext = "clusters"
-		}).
+		AddMapperForType(&Version, v3.ClusterRegistrationToken{},
+			&m.Embed{Field: "status"},
+		).
+		AddMapperForType(&Version, v3.RancherKubernetesEngineConfig{},
+			m.Drop{Field: "systemImages"},
+		).
+		MustImport(&Version, v3.Cluster{}).
 		MustImport(&Version, v3.ClusterEvent{}).
 		MustImport(&Version, v3.ClusterRegistrationToken{}).
 		MustImportAndCustomize(&Version, v3.Cluster{}, func(schema *types.Schema) {
@@ -90,9 +105,7 @@ func authzTypes(schemas *types.Schemas) *types.Schemas {
 		AddMapperForType(&Version, v3.ProjectRoleTemplateBinding{},
 			&mapper.NamespaceIDMapper{},
 		).
-		MustImportAndCustomize(&Version, v3.Project{}, func(schema *types.Schema) {
-			schema.SubContext = "projects"
-		}).
+		MustImport(&Version, v3.Project{}).
 		MustImport(&Version, v3.GlobalRole{}).
 		MustImport(&Version, v3.GlobalRoleBinding{}).
 		MustImport(&Version, v3.RoleTemplate{}).
@@ -106,7 +119,6 @@ func machineTypes(schemas *types.Schemas) *types.Schemas {
 	return schemas.
 		AddMapperForType(&Version, v3.MachineSpec{}, &m.Embed{Field: "nodeSpec"}).
 		AddMapperForType(&Version, v3.MachineStatus{},
-			&m.Drop{Field: "token"},
 			&m.Drop{Field: "rkeNode"},
 			&m.Drop{Field: "machineTemplateSpec"},
 			&m.Drop{Field: "machineDriverConfig"},
@@ -132,6 +144,15 @@ func machineTypes(schemas *types.Schemas) *types.Schemas {
 
 }
 
+func tokens(schemas *types.Schemas) *types.Schemas {
+	return schemas.
+		MustImportAndCustomize(&Version, v3.Token{}, func(schema *types.Schema) {
+			schema.CollectionActions = map[string]types.Action{
+				"logout": {},
+			}
+		})
+}
+
 func authnTypes(schemas *types.Schemas) *types.Schemas {
 	return schemas.
 		AddMapperForType(&Version, v3.User{}, m.DisplayName{}).
@@ -139,20 +160,19 @@ func authnTypes(schemas *types.Schemas) *types.Schemas {
 		MustImport(&Version, v3.Group{}).
 		MustImport(&Version, v3.GroupMember{}).
 		MustImport(&Version, v3.Principal{}).
-		MustImport(&Version, v3.LoginInput{}).
-		MustImport(&Version, v3.LocalCredential{}).
-		MustImport(&Version, v3.GithubCredential{}).
-		MustImport(&Version, v3.ChangePasswordInput{}).
-		MustImport(&Version, v3.SetPasswordInput{}).
-		MustImportAndCustomize(&Version, v3.Token{}, func(schema *types.Schema) {
+		MustImportAndCustomize(&Version, v3.Principal{}, func(schema *types.Schema) {
+			schema.CollectionMethods = []string{http.MethodGet}
+			schema.ResourceMethods = []string{}
 			schema.CollectionActions = map[string]types.Action{
-				"login": {
-					Input:  "loginInput",
-					Output: "token",
+				"search": {
+					Input:  "searchPrincipalsInput",
+					Output: "collection",
 				},
-				"logout": {},
 			}
 		}).
+		MustImport(&Version, v3.SearchPrincipalsInput{}).
+		MustImport(&Version, v3.ChangePasswordInput{}).
+		MustImport(&Version, v3.SetPasswordInput{}).
 		MustImportAndCustomize(&Version, v3.User{}, func(schema *types.Schema) {
 			schema.ResourceActions = map[string]types.Action{
 				"setpassword": {
@@ -165,20 +185,30 @@ func authnTypes(schemas *types.Schemas) *types.Schemas {
 					Input: "changePasswordInput",
 				},
 			}
-		})
-}
-
-func stackTypes(schema *types.Schemas) *types.Schemas {
-	return schema.
-		MustImportAndCustomize(&Version, v3.Stack{}, func(schema *types.Schema) {
+		}).
+		MustImportAndCustomize(&Version, v3.AuthConfig{}, func(schema *types.Schema) {
+			schema.CollectionMethods = []string{http.MethodGet}
+		}).
+		MustImportAndCustomize(&Version, v3.GithubConfig{}, func(schema *types.Schema) {
+			schema.BaseType = "authConfig"
 			schema.ResourceActions = map[string]types.Action{
-				"upgrade": {
-					Input: "templateVersionId",
+				"configureTest": {
+					Input:  "githubConfig",
+					Output: "githubConfigTestOutput",
 				},
-				"rollback": {
-					Input: "revision",
+				"testAndApply": {
+					Input: "githubConfigApplyInput",
 				},
 			}
+			schema.CollectionMethods = []string{}
+			schema.ResourceMethods = []string{http.MethodGet}
+		}).
+		MustImport(&Version, v3.GithubConfigTestOutput{}).
+		MustImport(&Version, v3.GithubConfigApplyInput{}).
+		MustImportAndCustomize(&Version, v3.LocalConfig{}, func(schema *types.Schema) {
+			schema.BaseType = "authConfig"
+			schema.CollectionMethods = []string{}
+			schema.ResourceMethods = []string{http.MethodGet}
 		})
 }
 
@@ -222,6 +252,50 @@ func globalTypes(schema *types.Schemas) *types.Schemas {
 		})
 }
 
+func alertTypes(schema *types.Schemas) *types.Schemas {
+	return schema.
+		AddMapperForType(&Version, &v3.Notifier{},
+			m.DisplayName{}).
+		AddMapperForType(&Version, &v3.ClusterAlert{},
+			&m.Embed{Field: "status"},
+			m.DisplayName{}).
+		AddMapperForType(&Version, &v3.ProjectAlert{},
+			&m.Embed{Field: "status"},
+			m.DisplayName{}).
+		MustImport(&Version, v3.Notification{}).
+		MustImportAndCustomize(&Version, v3.Notifier{}, func(schema *types.Schema) {
+			schema.CollectionActions = map[string]types.Action{
+				"send": {
+					Input: "notification",
+				},
+			}
+			schema.ResourceActions = map[string]types.Action{
+				"send": {
+					Input: "notification",
+				},
+			}
+		}).
+		MustImportAndCustomize(&Version, v3.ClusterAlert{}, func(schema *types.Schema) {
+
+			schema.ResourceActions = map[string]types.Action{
+				"activate":   {},
+				"deactivate": {},
+				"mute":       {},
+				"unmute":     {},
+			}
+		}).
+		MustImportAndCustomize(&Version, v3.ProjectAlert{}, func(schema *types.Schema) {
+
+			schema.ResourceActions = map[string]types.Action{
+				"activate":   {},
+				"deactivate": {},
+				"mute":       {},
+				"unmute":     {},
+			}
+		})
+
+}
+
 func pipelineTypes(schema *types.Schemas) *types.Schemas {
 	return schema.
 		AddMapperForType(&Version, &v3.ClusterPipeline{},
@@ -234,9 +308,7 @@ func pipelineTypes(schema *types.Schemas) *types.Schemas {
 			m.DisplayName{}).
 		AddMapperForType(&Version, &v3.SourceCodeCredential{},
 			m.DisplayName{}).
-		//&m.Move{From: "type", To: "kind"}).
 		AddMapperForType(&Version, &v3.SourceCodeRepository{}, m.DisplayName{}).
-		//&m.Move{From: "type", To: "kind"}).
 		AddMapperForType(&Version, &v3.PipelineExecutionLog{}).
 		MustImport(&Version, v3.AuthAppInput{}).
 		MustImport(&Version, v3.AuthUserInput{}).

@@ -17,6 +17,7 @@ const (
 	MachineFieldDescription          = "description"
 	MachineFieldHostname             = "hostname"
 	MachineFieldIPAddress            = "ipAddress"
+	MachineFieldImported             = "imported"
 	MachineFieldInfo                 = "info"
 	MachineFieldLabels               = "labels"
 	MachineFieldLimits               = "limits"
@@ -59,6 +60,7 @@ type Machine struct {
 	Description          string                    `json:"description,omitempty"`
 	Hostname             string                    `json:"hostname,omitempty"`
 	IPAddress            string                    `json:"ipAddress,omitempty"`
+	Imported             *bool                     `json:"imported,omitempty"`
 	Info                 *NodeInfo                 `json:"info,omitempty"`
 	Labels               map[string]string         `json:"labels,omitempty"`
 	Limits               map[string]string         `json:"limits,omitempty"`

@@ -57,7 +57,7 @@ type ClusterSpec struct {
 }
 
 type ImportedConfig struct {
-	KubeConfig string `json:"kubeConfig"`
+	KubeConfig string `json:"kubeConfig" norman:"type=password"`
 }
 
 type K8sServerConfig struct {
@@ -79,6 +79,7 @@ type ClusterStatus struct {
 	Capacity            v1.ResourceList          `json:"capacity,omitempty"`
 	Allocatable         v1.ResourceList          `json:"allocatable,omitempty"`
 	AppliedSpec         ClusterSpec              `json:"appliedSpec,omitempty"`
+	FailedSpec          *ClusterSpec             `json:"failedSpec,omitempty"`
 	Requested           v1.ResourceList          `json:"requested,omitempty"`
 	Limits              v1.ResourceList          `json:"limits,omitempty"`
 	ClusterName         string                   `json:"clusterName,omitempty"`
@@ -127,7 +128,7 @@ type GoogleKubernetesEngineConfig struct {
 	// to each node.
 	Labels map[string]string `json:"labels,omitempty"`
 	// The content of the credential file(key.json)
-	Credential string `json:"credential,omitempty" norman:"required"`
+	Credential string `json:"credential,omitempty" norman:"required,type=password"`
 	// Enable alpha feature
 	EnableAlphaFeature bool `json:"enableAlphaFeature,omitempty"`
 	// Configuration for the HTTP (L7) load balancing controller addon
@@ -151,7 +152,40 @@ type GoogleKubernetesEngineConfig struct {
 }
 
 type AzureKubernetesServiceConfig struct {
-	//TBD
+	// Subscription credentials which uniquely identify Microsoft Azure subscription. The subscription ID forms part of the URI for every service call.
+	SubscriptionID string `json:"subscriptionId,omitempty" norman:"required"`
+	// The name of the resource group.
+	ResourceGroup string `json:"resourceGroup,omitempty" norman:"required"`
+	// Resource location
+	Location string `json:"location,omitempty"`
+	// Resource tags
+	Tag map[string]string `json:"tags,omitempty"`
+	// Number of agents (VMs) to host docker containers. Allowed values must be in the range of 1 to 100 (inclusive). The default value is 1.
+	Count int64 `json:"count,omitempty"`
+	// DNS prefix to be used to create the FQDN for the agent pool.
+	AgentDNSPrefix string `json:"agentDnsPrefix,,omitempty"`
+	// FDQN for the agent pool
+	AgentPoolName string `json:"agentPoolName,,omitempty"`
+	// OS Disk Size in GB to be used to specify the disk size for every machine in this master/agent pool. If you specify 0, it will apply the default osDisk size according to the vmSize specified.
+	OsDiskSizeGB int64 `json:"osDiskSizeGb,omitempty"`
+	// Size of agent VMs
+	AgentVMSize string `json:"agentVmSize,omitempty"`
+	// Version of Kubernetes specified when creating the managed cluster
+	KubernetesVersion string `json:"kubernetesVersion,omitempty"`
+	// Path to the public key to use for SSH into cluster
+	SSHPublicKeyContents string `json:"sshPublicKeyContents,omitempty" norman:"required"`
+	// Kubernetes Master DNS prefix (must be unique within Azure)
+	MasterDNSPrefix string `json:"masterDnsPrefix,omitempty"`
+	// Kubernetes admin username
+	AdminUsername string `json:"adminUsername,omitempty"`
+	// Different Base URL if required, usually needed for testing purposes
+	BaseURL string `json:"baseUrl,omitempty"`
+	// Azure Client ID to use
+	ClientID string `json:"clientId,omitempty" norman:"required"`
+	// Tenant ID to create the cluster under
+	TenantID string `json:"tenantId,omitempty" norman:"required"`
+	// Secret associated with the Client ID
+	ClientSecret string `json:"clientSecret,omitempty" norman:"required,type=password"`
 }
 
 type ClusterEvent struct {
@@ -176,7 +210,7 @@ type ClusterRegistrationToken struct {
 }
 
 type ClusterRegistrationTokenSpec struct {
-	ClusterName string `json:"clusterName" norman:"type=reference[cluster]"`
+	ClusterName string `json:"clusterName" norman:"required,type=reference[cluster]"`
 }
 
 type ClusterRegistrationTokenStatus struct {

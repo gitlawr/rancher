@@ -1,18 +1,36 @@
 package client
 
 const (
-	GithubConfigType              = "githubConfig"
-	GithubConfigFieldClientId     = "clientId"
-	GithubConfigFieldClientSecret = "clientSecret"
-	GithubConfigFieldHost         = "host"
-	GithubConfigFieldRedirectUrl  = "redirectUrl"
-	GithubConfigFieldTLS          = "tls"
+	GithubConfigType                 = "githubConfig"
+	GithubConfigFieldAnnotations     = "annotations"
+	GithubConfigFieldClientID        = "clientId"
+	GithubConfigFieldClientSecret    = "clientSecret"
+	GithubConfigFieldCreated         = "created"
+	GithubConfigFieldCreatorID       = "creatorId"
+	GithubConfigFieldEnabled         = "enabled"
+	GithubConfigFieldHostname        = "hostname"
+	GithubConfigFieldLabels          = "labels"
+	GithubConfigFieldName            = "name"
+	GithubConfigFieldOwnerReferences = "ownerReferences"
+	GithubConfigFieldRemoved         = "removed"
+	GithubConfigFieldTLS             = "tls"
+	GithubConfigFieldType            = "type"
+	GithubConfigFieldUuid            = "uuid"
 )
 
 type GithubConfig struct {
-	ClientId     string `json:"clientId,omitempty"`
-	ClientSecret string `json:"clientSecret,omitempty"`
-	Host         string `json:"host,omitempty"`
-	RedirectUrl  string `json:"redirectUrl,omitempty"`
-	TLS          *bool  `json:"tls,omitempty"`
+	Annotations     map[string]string `json:"annotations,omitempty"`
+	ClientID        string            `json:"clientId,omitempty"`
+	ClientSecret    string            `json:"clientSecret,omitempty"`
+	Created         string            `json:"created,omitempty"`
+	CreatorID       string            `json:"creatorId,omitempty"`
+	Enabled         *bool             `json:"enabled,omitempty"`
+	Hostname        string            `json:"hostname,omitempty"`
+	Labels          map[string]string `json:"labels,omitempty"`
+	Name            string            `json:"name,omitempty"`
+	OwnerReferences []OwnerReference  `json:"ownerReferences,omitempty"`
+	Removed         string            `json:"removed,omitempty"`
+	TLS             bool              `json:"tls,omitempty"`
+	Type            string            `json:"type,omitempty"`
+	Uuid            string            `json:"uuid,omitempty"`
 }

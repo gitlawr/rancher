@@ -71,7 +71,6 @@ type MachineStatus struct {
 	MachineDriverConfig string               `json:"machineDriverConfig,omitempty"`
 	NodeAnnotations     map[string]string    `json:"nodeAnnotations,omitempty"`
 	NodeLabels          map[string]string    `json:"nodeLabels,omitempty"`
-	Token               string               `json:"token"`
 	NodeTaints          []v1.Taint           `json:"nodeTaints,omitempty"`
 }
 
@@ -79,7 +78,7 @@ var (
 	MachineConditionInitialized condition.Cond = "Initialized"
 	MachineConditionProvisioned condition.Cond = "Provisioned"
 	MachineConditionConfigSaved condition.Cond = "Saved"
-	MachineConditionConfigReady condition.Cond = "Ready"
+	MachineConditionReady       condition.Cond = "Ready"
 )
 
 type MachineCondition struct {
@@ -119,9 +118,10 @@ type CustomConfig struct {
 type MachineSpec struct {
 	NodeSpec             v1.NodeSpec   `json:"nodeSpec"`
 	CustomConfig         *CustomConfig `json:"customConfig"`
+	Imported             bool          `json:"imported"`
 	Description          string        `json:"description,omitempty"`
 	DisplayName          string        `json:"displayName"`
-	RequestedHostname    string        `json:"requestedHostname,omitempty" norman:"type=dnsLabel,nullable,noupdate"`
+	RequestedHostname    string        `json:"requestedHostname,omitempty" norman:"type=dnsLabel,nullable,noupdate,required"`
 	ClusterName          string        `json:"clusterName,omitempty" norman:"type=reference[cluster],noupdate,required"`
 	Role                 []string      `json:"role,omitempty" norman:"noupdate,type=array[enum],options=etcd|worker|controlplane"`
 	MachineTemplateName  string        `json:"machineTemplateName,omitempty" norman:"type=reference[machineTemplate],noupdate"`
@@ -182,7 +182,7 @@ type MachineDriverCondition struct {
 type MachineDriverSpec struct {
 	DisplayName string `json:"displayName"`
 	Description string `json:"description"`
-	URL         string `json:"url"`
+	URL         string `json:"url" norman:"required"`
 	ExternalID  string `json:"externalId"`
 	Builtin     bool   `json:"builtin"`
 	Active      bool   `json:"active"`

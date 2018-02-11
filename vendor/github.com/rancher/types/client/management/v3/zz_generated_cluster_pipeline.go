@@ -31,7 +31,7 @@ type ClusterPipeline struct {
 	Created              string                 `json:"created,omitempty"`
 	CreatorID            string                 `json:"creatorId,omitempty"`
 	Deploy               *bool                  `json:"deploy,omitempty"`
-	GithubConfig         *GithubConfig          `json:"githubConfig,omitempty"`
+	GithubConfig         *GithubClusterConfig   `json:"githubConfig,omitempty"`
 	Labels               map[string]string      `json:"labels,omitempty"`
 	Name                 string                 `json:"name,omitempty"`
 	NamespaceId          string                 `json:"namespaceId,omitempty"`

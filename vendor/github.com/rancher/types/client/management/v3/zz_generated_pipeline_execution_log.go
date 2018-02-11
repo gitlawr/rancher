@@ -5,39 +5,41 @@ import (
 )
 
 const (
-	PipelineExecutionLogType                       = "pipelineExecutionLog"
-	PipelineExecutionLogFieldAnnotations           = "annotations"
-	PipelineExecutionLogFieldCreated               = "created"
-	PipelineExecutionLogFieldCreatorID             = "creatorId"
-	PipelineExecutionLogFieldLabels                = "labels"
-	PipelineExecutionLogFieldMessage               = "message"
-	PipelineExecutionLogFieldName                  = "name"
-	PipelineExecutionLogFieldNamespaceId           = "namespaceId"
-	PipelineExecutionLogFieldOwnerReferences       = "ownerReferences"
-	PipelineExecutionLogFieldPipelineExecutionName = "pipelineExecutionName"
-	PipelineExecutionLogFieldProjectId             = "projectId"
-	PipelineExecutionLogFieldRemoved               = "removed"
-	PipelineExecutionLogFieldStage                 = "stage"
-	PipelineExecutionLogFieldStep                  = "step"
-	PipelineExecutionLogFieldUuid                  = "uuid"
+	PipelineExecutionLogType                     = "pipelineExecutionLog"
+	PipelineExecutionLogFieldAnnotations         = "annotations"
+	PipelineExecutionLogFieldCreated             = "created"
+	PipelineExecutionLogFieldCreatorID           = "creatorId"
+	PipelineExecutionLogFieldLabels              = "labels"
+	PipelineExecutionLogFieldLine                = "line"
+	PipelineExecutionLogFieldMessage             = "message"
+	PipelineExecutionLogFieldName                = "name"
+	PipelineExecutionLogFieldNamespaceId         = "namespaceId"
+	PipelineExecutionLogFieldOwnerReferences     = "ownerReferences"
+	PipelineExecutionLogFieldPipelineExecutionId = "pipelineExecutionId"
+	PipelineExecutionLogFieldProjectId           = "projectId"
+	PipelineExecutionLogFieldRemoved             = "removed"
+	PipelineExecutionLogFieldStage               = "stage"
+	PipelineExecutionLogFieldStep                = "step"
+	PipelineExecutionLogFieldUuid                = "uuid"
 )
 
 type PipelineExecutionLog struct {
 	types.Resource
-	Annotations           map[string]string `json:"annotations,omitempty"`
-	Created               string            `json:"created,omitempty"`
-	CreatorID             string            `json:"creatorId,omitempty"`
-	Labels                map[string]string `json:"labels,omitempty"`
-	Message               string            `json:"message,omitempty"`
-	Name                  string            `json:"name,omitempty"`
-	NamespaceId           string            `json:"namespaceId,omitempty"`
-	OwnerReferences       []OwnerReference  `json:"ownerReferences,omitempty"`
-	PipelineExecutionName string            `json:"pipelineExecutionName,omitempty"`
-	ProjectId             string            `json:"projectId,omitempty"`
-	Removed               string            `json:"removed,omitempty"`
-	Stage                 *int64            `json:"stage,omitempty"`
-	Step                  *int64            `json:"step,omitempty"`
-	Uuid                  string            `json:"uuid,omitempty"`
+	Annotations         map[string]string `json:"annotations,omitempty"`
+	Created             string            `json:"created,omitempty"`
+	CreatorID           string            `json:"creatorId,omitempty"`
+	Labels              map[string]string `json:"labels,omitempty"`
+	Line                *int64            `json:"line,omitempty"`
+	Message             string            `json:"message,omitempty"`
+	Name                string            `json:"name,omitempty"`
+	NamespaceId         string            `json:"namespaceId,omitempty"`
+	OwnerReferences     []OwnerReference  `json:"ownerReferences,omitempty"`
+	PipelineExecutionId string            `json:"pipelineExecutionId,omitempty"`
+	ProjectId           string            `json:"projectId,omitempty"`
+	Removed             string            `json:"removed,omitempty"`
+	Stage               *int64            `json:"stage,omitempty"`
+	Step                *int64            `json:"step,omitempty"`
+	Uuid                string            `json:"uuid,omitempty"`
 }
 type PipelineExecutionLogCollection struct {
 	types.Collection

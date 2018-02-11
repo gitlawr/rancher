@@ -90,6 +90,9 @@ func Set(data map[string]interface{}) {
 		data["transitioning"] = "yes"
 
 		finalizers, ok := values.GetStringSlice(data, "metadata", "finalizers")
+		if !ok {
+			finalizers, ok = values.GetStringSlice(data, "spec", "finalizers")
+		}
 		if ok && len(finalizers) > 0 {
 			data["transitioningMessage"] = "Waiting on " + finalizers[0]
 			if i, err := convert.ToTimestamp(val); err == nil {
@@ -102,7 +105,7 @@ func Set(data map[string]interface{}) {
 		return
 	}
 
-	val, ok = values.GetValue(data, "status", "conditions")
+	val, conditionsOk := values.GetValue(data, "status", "conditions")
 	var conditions []condition
 	if err := convert.ToObj(val, &conditions); err != nil {
 		// ignore error
@@ -181,7 +184,8 @@ func Set(data map[string]interface{}) {
 		}
 	}
 
-	if state == "" && len(conditions) == 0 {
+	apiVersion, _ := values.GetValueN(data, "apiVersion").(string)
+	if state == "" && conditionsOk && len(conditions) == 0 && strings.Contains(apiVersion, "cattle.io") {
 		if val, ok := values.GetValue(data, "metadata", "created"); ok {
 			if i, err := convert.ToTimestamp(val); err == nil {
 				if time.Unix(i/1000, 0).Add(5 * time.Second).After(time.Now()) {

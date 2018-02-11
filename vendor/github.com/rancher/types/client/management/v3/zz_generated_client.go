@@ -27,21 +27,24 @@ type Client struct {
 	Group                      GroupOperations
 	GroupMember                GroupMemberOperations
 	Principal                  PrincipalOperations
-	Token                      TokenOperations
 	User                       UserOperations
+	AuthConfig                 AuthConfigOperations
+	Token                      TokenOperations
 	DynamicSchema              DynamicSchemaOperations
-	Stack                      StackOperations
 	Preference                 PreferenceOperations
 	ClusterLogging             ClusterLoggingOperations
 	ProjectLogging             ProjectLoggingOperations
+	ListenConfig               ListenConfigOperations
+	Setting                    SettingOperations
+	Notifier                   NotifierOperations
+	ClusterAlert               ClusterAlertOperations
+	ProjectAlert               ProjectAlertOperations
 	SourceCodeCredential       SourceCodeCredentialOperations
 	ClusterPipeline            ClusterPipelineOperations
 	Pipeline                   PipelineOperations
 	PipelineExecution          PipelineExecutionOperations
 	SourceCodeRepository       SourceCodeRepositoryOperations
 	PipelineExecutionLog       PipelineExecutionLogOperations
-	ListenConfig               ListenConfigOperations
-	Setting                    SettingOperations
 }
 
 func NewClient(opts *clientbase.ClientOpts) (*Client, error) {
@@ -74,21 +77,24 @@ func NewClient(opts *clientbase.ClientOpts) (*Client, error) {
 	client.Group = newGroupClient(client)
 	client.GroupMember = newGroupMemberClient(client)
 	client.Principal = newPrincipalClient(client)
-	client.Token = newTokenClient(client)
 	client.User = newUserClient(client)
+	client.AuthConfig = newAuthConfigClient(client)
+	client.Token = newTokenClient(client)
 	client.DynamicSchema = newDynamicSchemaClient(client)
-	client.Stack = newStackClient(client)
 	client.Preference = newPreferenceClient(client)
 	client.ClusterLogging = newClusterLoggingClient(client)
 	client.ProjectLogging = newProjectLoggingClient(client)
+	client.ListenConfig = newListenConfigClient(client)
+	client.Setting = newSettingClient(client)
+	client.Notifier = newNotifierClient(client)
+	client.ClusterAlert = newClusterAlertClient(client)
+	client.ProjectAlert = newProjectAlertClient(client)
 	client.SourceCodeCredential = newSourceCodeCredentialClient(client)
 	client.ClusterPipeline = newClusterPipelineClient(client)
 	client.Pipeline = newPipelineClient(client)
 	client.PipelineExecution = newPipelineExecutionClient(client)
 	client.SourceCodeRepository = newSourceCodeRepositoryClient(client)
 	client.PipelineExecutionLog = newPipelineExecutionLogClient(client)
-	client.ListenConfig = newListenConfigClient(client)
-	client.Setting = newSettingClient(client)
 
 	return client, nil
 }

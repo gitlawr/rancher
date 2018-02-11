@@ -6,6 +6,7 @@ package main
 import (
 	clusterSchema "github.com/rancher/types/apis/cluster.cattle.io/v3/schema"
 	managementSchema "github.com/rancher/types/apis/management.cattle.io/v3/schema"
+	publicSchema "github.com/rancher/types/apis/management.cattle.io/v3public/schema"
 	projectSchema "github.com/rancher/types/apis/project.cattle.io/v3/schema"
 	"github.com/rancher/types/generator"
 	"k8s.io/api/apps/v1beta2"
@@ -16,6 +17,7 @@ import (
 
 func main() {
 	generator.Generate(managementSchema.Schemas)
+	generator.Generate(publicSchema.PublicSchemas)
 	generator.Generate(clusterSchema.Schemas)
 	generator.Generate(projectSchema.Schemas)
 	generator.GenerateNativeTypes(v1.SchemeGroupVersion, []interface{}{
@@ -23,6 +25,8 @@ func main() {
 		v1.Pod{},
 		v1.Service{},
 		v1.Secret{},
+		v1.ConfigMap{},
+		v1.ServiceAccount{},
 	}, []interface{}{
 		v1.Node{},
 		v1.ComponentStatus{},
@@ -31,6 +35,8 @@ func main() {
 	})
 	generator.GenerateNativeTypes(v1beta2.SchemeGroupVersion, []interface{}{
 		v1beta2.Deployment{},
+		v1beta2.DaemonSet{},
+		v1beta2.StatefulSet{},
 	}, nil)
 	generator.GenerateNativeTypes(rbacv1.SchemeGroupVersion, []interface{}{
 		rbacv1.RoleBinding{},

@@ -6,12 +6,13 @@ const (
 	RancherKubernetesEngineConfigFieldAuthentication      = "authentication"
 	RancherKubernetesEngineConfigFieldAuthorization       = "authorization"
 	RancherKubernetesEngineConfigFieldIgnoreDockerVersion = "ignoreDockerVersion"
+	RancherKubernetesEngineConfigFieldIngress             = "ingress"
 	RancherKubernetesEngineConfigFieldNetwork             = "network"
 	RancherKubernetesEngineConfigFieldNodes               = "nodes"
+	RancherKubernetesEngineConfigFieldPrivateRegistries   = "privateRegistries"
 	RancherKubernetesEngineConfigFieldSSHKeyPath          = "sshKeyPath"
 	RancherKubernetesEngineConfigFieldServices            = "services"
-	RancherKubernetesEngineConfigFieldSystemImages        = "systemImages"
-	RancherKubernetesEngineConfigFieldVersion             = "version"
+	RancherKubernetesEngineConfigFieldVersion             = "kubernetesVersion"
 )
 
 type RancherKubernetesEngineConfig struct {
@@ -19,10 +20,11 @@ type RancherKubernetesEngineConfig struct {
 	Authentication      *AuthnConfig       `json:"authentication,omitempty"`
 	Authorization       *AuthzConfig       `json:"authorization,omitempty"`
 	IgnoreDockerVersion *bool              `json:"ignoreDockerVersion,omitempty"`
+	Ingress             *IngressConfig     `json:"ingress,omitempty"`
 	Network             *NetworkConfig     `json:"network,omitempty"`
 	Nodes               []RKEConfigNode    `json:"nodes,omitempty"`
+	PrivateRegistries   []PrivateRegistry  `json:"privateRegistries,omitempty"`
 	SSHKeyPath          string             `json:"sshKeyPath,omitempty"`
 	Services            *RKEConfigServices `json:"services,omitempty"`
-	SystemImages        map[string]string  `json:"systemImages,omitempty"`
-	Version             string             `json:"version,omitempty"`
+	Version             string             `json:"kubernetesVersion,omitempty"`
 }

@@ -8,7 +8,7 @@ const (
 )
 
 type ClusterPipelineSpec struct {
-	ClusterId    string        `json:"clusterId,omitempty"`
-	Deploy       *bool         `json:"deploy,omitempty"`
-	GithubConfig *GithubConfig `json:"githubConfig,omitempty"`
+	ClusterId    string               `json:"clusterId,omitempty"`
+	Deploy       *bool                `json:"deploy,omitempty"`
+	GithubConfig *GithubClusterConfig `json:"githubConfig,omitempty"`
 }

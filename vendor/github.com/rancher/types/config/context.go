@@ -7,6 +7,7 @@ import (
 	"github.com/rancher/norman/controller"
 	"github.com/rancher/norman/event"
 	"github.com/rancher/norman/signal"
+	"github.com/rancher/norman/store/proxy"
 	"github.com/rancher/norman/types"
 	appsv1beta2 "github.com/rancher/types/apis/apps/v1beta2"
 	clusterSchema "github.com/rancher/types/apis/cluster.cattle.io/v3/schema"
@@ -17,9 +18,9 @@ import (
 	projectv3 "github.com/rancher/types/apis/project.cattle.io/v3"
 	projectSchema "github.com/rancher/types/apis/project.cattle.io/v3/schema"
 	rbacv1 "github.com/rancher/types/apis/rbac.authorization.k8s.io/v1"
-	projectClient "github.com/rancher/types/client/project/v3"
 	"github.com/sirupsen/logrus"
 	"k8s.io/api/core/v1"
+	"k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
@@ -29,28 +30,24 @@ import (
 )
 
 var (
-	ProjectTypes = []string{
-		projectClient.RegistryCredentialType,
-		projectClient.BasicAuthType,
-		projectClient.CertificateType,
-		projectClient.DockerCredentialType,
-		projectClient.ServiceAccountTokenType,
-		projectClient.SecretType,
-		projectClient.SSHAuthType,
-	}
+	UserStorageContext       types.StorageContext = "user"
+	ManagementStorageContext types.StorageContext = "mgmt"
 )
 
 type ManagementContext struct {
 	eventBroadcaster record.EventBroadcaster
 
+	ClientGetter      proxy.ClientGetter
 	LocalConfig       *rest.Config
 	RESTConfig        rest.Config
 	UnversionedClient rest.Interface
 	K8sClient         kubernetes.Interface
+	APIExtClient      clientset.Interface
 	Events            record.EventRecorder
 	EventLogger       event.Logger
 	Schemas           *types.Schemas
 	Scheme            *runtime.Scheme
+	AccessControl     types.AccessControl
 
 	Management managementv3.Interface
 	RBAC       rbacv1.Interface
@@ -65,12 +62,12 @@ func (c *ManagementContext) controllers() []controller.Starter {
 	}
 }
 
-type ClusterContext struct {
-	Schemas           *types.Schemas
+type UserContext struct {
 	Management        *ManagementContext
 	ClusterName       string
 	RESTConfig        rest.Config
 	UnversionedClient rest.Interface
+	APIExtClient      clientset.Interface
 	K8sClient         kubernetes.Interface
 
 	Apps       appsv1beta2.Interface
@@ -80,7 +77,7 @@ type ClusterContext struct {
 	Extensions extv1beta1.Interface
 }
 
-func (w *ClusterContext) controllers() []controller.Starter {
+func (w *UserContext) controllers() []controller.Starter {
 	return []controller.Starter{
 		w.Apps,
 		w.Project,
@@ -90,9 +87,9 @@ func (w *ClusterContext) controllers() []controller.Starter {
 	}
 }
 
-func (w *ClusterContext) WorkloadContext() *WorkloadContext {
-	return &WorkloadContext{
-		Schemas:           w.Schemas,
+func (w *UserContext) UserOnlyContext() *UserOnlyContext {
+	return &UserOnlyContext{
+		Schemas:           w.Management.Schemas,
 		ClusterName:       w.ClusterName,
 		RESTConfig:        w.RESTConfig,
 		UnversionedClient: w.UnversionedClient,
@@ -106,7 +103,7 @@ func (w *ClusterContext) WorkloadContext() *WorkloadContext {
 	}
 }
 
-type WorkloadContext struct {
+type UserOnlyContext struct {
 	Schemas           *types.Schemas
 	ClusterName       string
 	RESTConfig        rest.Config
@@ -120,7 +117,7 @@ type WorkloadContext struct {
 	Extensions extv1beta1.Interface
 }
 
-func (w *WorkloadContext) controllers() []controller.Starter {
+func (w *UserOnlyContext) controllers() []controller.Starter {
 	return []controller.Starter{
 		w.Apps,
 		w.Project,
@@ -168,16 +165,19 @@ func NewManagementContext(config rest.Config) (*ManagementContext, error) {
 		return nil, err
 	}
 
-	context.Schemas = types.NewSchemas().
-		AddSchemas(managementSchema.Schemas)
-
-	for _, projectType := range ProjectTypes {
-		schema := projectSchema.Schemas.Schema(&projectSchema.Version, projectType)
-		context.Schemas.AddSchema(*schema)
+	context.APIExtClient, err = clientset.NewForConfig(&dynamicConfig)
+	if err != nil {
+		return nil, err
 	}
+
+	context.Schemas = types.NewSchemas().
+		AddSchemas(managementSchema.Schemas).
+		AddSchemas(clusterSchema.Schemas).
+		AddSchemas(projectSchema.Schemas)
 
 	context.Scheme = runtime.NewScheme()
 	managementv3.AddToScheme(context.Scheme)
+	projectv3.AddToScheme(context.Scheme)
 
 	context.eventBroadcaster = record.NewBroadcaster()
 	context.Events = context.eventBroadcaster.NewRecorder(context.Scheme, v1.EventSource{
@@ -210,15 +210,11 @@ func (c *ManagementContext) StartAndWait() error {
 	return ctx.Err()
 }
 
-func NewClusterContext(managementConfig, config rest.Config, clusterName string) (*ClusterContext, error) {
+func NewUserContext(managementConfig, config rest.Config, clusterName string) (*UserContext, error) {
 	var err error
-	context := &ClusterContext{
+	context := &UserContext{
 		RESTConfig:  config,
 		ClusterName: clusterName,
-		Schemas: types.NewSchemas().
-			AddSchemas(managementSchema.Schemas).
-			AddSchemas(clusterSchema.Schemas).
-			AddSchemas(projectSchema.Schemas),
 	}
 
 	context.Management, err = NewManagementContext(managementConfig)
@@ -272,84 +268,34 @@ func NewClusterContext(managementConfig, config rest.Config, clusterName string)
 		return nil, err
 	}
 
+	context.APIExtClient, err = clientset.NewForConfig(&dynamicConfig)
+	if err != nil {
+		return nil, err
+	}
+
 	return context, err
 }
 
-func (w *ClusterContext) Start(ctx context.Context) error {
+func (w *UserContext) Start(ctx context.Context) error {
 	logrus.Info("Starting cluster controllers for ", w.ClusterName)
 	controllers := w.Management.controllers()
 	controllers = append(controllers, w.controllers()...)
 	return controller.SyncThenStart(ctx, 5, controllers...)
 }
 
-func (w *ClusterContext) StartAndWait(ctx context.Context) error {
+func (w *UserContext) StartAndWait(ctx context.Context) error {
 	ctx = signal.SigTermCancelContext(ctx)
 	w.Start(ctx)
 	<-ctx.Done()
 	return ctx.Err()
 }
 
-func NewWorkloadContext(config rest.Config, clusterName string) (*WorkloadContext, error) {
-	var err error
-	context := &WorkloadContext{
-		RESTConfig:  config,
-		ClusterName: clusterName,
-		Schemas: types.NewSchemas().
-			AddSchemas(managementSchema.Schemas).
-			AddSchemas(clusterSchema.Schemas).
-			AddSchemas(projectSchema.Schemas),
-	}
-
-	context.K8sClient, err = kubernetes.NewForConfig(&config)
-	if err != nil {
-		return nil, err
-	}
-
-	context.Apps, err = appsv1beta2.NewForConfig(config)
-	if err != nil {
-		return nil, err
-	}
-
-	context.Core, err = corev1.NewForConfig(config)
-	if err != nil {
-		return nil, err
-	}
-
-	context.Project, err = projectv3.NewForConfig(config)
-	if err != nil {
-		return nil, err
-	}
-
-	context.RBAC, err = rbacv1.NewForConfig(config)
-	if err != nil {
-		return nil, err
-	}
-
-	context.Extensions, err = extv1beta1.NewForConfig(config)
-	if err != nil {
-		return nil, err
-	}
-
-	dynamicConfig := config
-	if dynamicConfig.NegotiatedSerializer == nil {
-		configConfig := dynamic.ContentConfig()
-		dynamicConfig.NegotiatedSerializer = configConfig.NegotiatedSerializer
-	}
-
-	context.UnversionedClient, err = rest.UnversionedRESTClientFor(&dynamicConfig)
-	if err != nil {
-		return nil, err
-	}
-
-	return context, err
-}
-
-func (w *WorkloadContext) Start(ctx context.Context) error {
+func (w *UserOnlyContext) Start(ctx context.Context) error {
 	logrus.Info("Starting workload controllers")
 	return controller.SyncThenStart(ctx, 5, w.controllers()...)
 }
 
-func (w *WorkloadContext) StartAndWait(ctx context.Context) error {
+func (w *UserOnlyContext) StartAndWait(ctx context.Context) error {
 	ctx = signal.SigTermCancelContext(ctx)
 	w.Start(ctx)
 	<-ctx.Done()

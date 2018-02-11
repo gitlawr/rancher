@@ -1,10 +1,8 @@
 package client
 
 const (
-	ClusterPipelineStatusType            = "clusterPipelineStatus"
-	ClusterPipelineStatusFieldConditions = "conditions"
+	ClusterPipelineStatusType = "clusterPipelineStatus"
 )
 
 type ClusterPipelineStatus struct {
-	Conditions []PipelineCondition `json:"conditions,omitempty"`
 }
