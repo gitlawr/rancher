@@ -33,17 +33,17 @@ func InitHistory(p *v3.Pipeline, triggerType string) *v3.PipelineExecution {
 			//DisplayName: getNextHistoryName(pipeline),
 		},
 	}
-	history.Status.State = v3.StateWaiting
+	history.Status.State = StateWaiting
 	history.Status.Stages = make([]v3.StageStatus, len(p.Spec.Stages))
 
 	for i := 0; i < len(history.Status.Stages); i++ {
 		stage := &history.Status.Stages[i]
-		stage.State = v3.StateWaiting
+		stage.State = StateWaiting
 		stepsize := len(p.Spec.Stages[i].Steps)
 		stage.Steps = make([]v3.StepStatus, stepsize)
 		for j := 0; j < stepsize; j++ {
 			step := &stage.Steps[j]
-			step.State = v3.StateWaiting
+			step.State = StateWaiting
 		}
 	}
 	return history
@@ -57,14 +57,14 @@ func getNextHistoryName(p *v3.Pipeline) string {
 }
 
 func IsStageSuccess(stage v3.StageStatus) bool {
-	if stage.State == v3.StateSuccess {
+	if stage.State == StateSuccess {
 		return true
-	} else if stage.State == v3.StateFail || stage.State == v3.StateDenied {
+	} else if stage.State == StateFail || stage.State == StateDenied {
 		return false
 	}
 	successSteps := 0
 	for _, step := range stage.Steps {
-		if step.State == v3.StateSuccess || step.State == v3.StateSkip {
+		if step.State == StateSuccess || step.State == StateSkip {
 			successSteps++
 		}
 	}
@@ -116,7 +116,7 @@ func IsExecutionFinish(execution *v3.PipelineExecution) bool {
 	if execution == nil {
 		return false
 	}
-	if execution.Status.State != v3.StateWaiting && execution.Status.State != v3.StateBuilding {
+	if execution.Status.State != StateWaiting && execution.Status.State != StateBuilding {
 		return true
 	}
 	return false
@@ -131,7 +131,7 @@ func RunPipeline(pipelines v3.PipelineInterface, pipelineExecutions v3.PipelineE
 		return err
 	}
 	pipeline.Status.NextRun++
-	pipeline.Status.LastExecutionId = execution.Name
+	pipeline.Status.LastExecutionID = execution.Name
 	pipeline.Status.LastStarted = time.Now().Format(time.RFC3339)
 
 	_, err = pipelines.Update(pipeline)

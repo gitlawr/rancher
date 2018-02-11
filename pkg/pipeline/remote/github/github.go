@@ -37,7 +37,7 @@ func New(pipeline v3.ClusterPipeline) (remote.Remote, error) {
 		return nil, errors.New("github is not configured")
 	}
 	remote := &client{
-		ClientId:     pipeline.Spec.GithubConfig.ClientId,
+		ClientId:     pipeline.Spec.GithubConfig.ClientID,
 		ClientSecret: pipeline.Spec.GithubConfig.ClientSecret,
 	}
 	if pipeline.Spec.GithubConfig.Host != "" && pipeline.Spec.GithubConfig.Host != "github.com" {
@@ -99,7 +99,7 @@ func (c *client) CreateHook(pipeline *v3.Pipeline, accessToken string, hookUrl s
 		return "", errors.New("invalid pipeline")
 	}
 	sourceCodeConfig := pipeline.Spec.Stages[0].Steps[0].SourceCodeConfig
-	user, repo, err := getUserRepoFromURL(sourceCodeConfig.Url)
+	user, repo, err := getUserRepoFromURL(sourceCodeConfig.URL)
 	if err != nil {
 		return "", err
 	}
@@ -116,12 +116,12 @@ func (c *client) DeleteHook(pipeline *v3.Pipeline, accessToken string) error {
 		return errors.New("invalid pipeline")
 	}
 	sourceCodeConfig := pipeline.Spec.Stages[0].Steps[0].SourceCodeConfig
-	user, repo, err := getUserRepoFromURL(sourceCodeConfig.Url)
+	user, repo, err := getUserRepoFromURL(sourceCodeConfig.URL)
 	if err != nil {
 		return err
 	}
 
-	return c.deleteGithubWebhook(user, repo, accessToken, pipeline.Status.WebHookId)
+	return c.deleteGithubWebhook(user, repo, accessToken, pipeline.Status.WebHookID)
 }
 
 func (c *client) ParseHook(r *http.Request) {
@@ -224,7 +224,7 @@ func convertRepos(repos []github.Repository) []v3.SourceCodeRepository {
 	for _, repo := range repos {
 		r := v3.SourceCodeRepository{}
 		if repo.CloneURL != nil {
-			r.Spec.Url = *repo.CloneURL
+			r.Spec.URL = *repo.CloneURL
 		}
 		if repo.Language != nil {
 			r.Spec.Language = *repo.Language
