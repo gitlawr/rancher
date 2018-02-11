@@ -15,14 +15,14 @@ import (
 )
 
 var (
-	ErrJenkinsJobNotFound = errors.New("Job Not Found")
-	ErrCreateJobFail      = errors.New("Create Job fail")
-	ErrUpdateJobFail      = errors.New("Update Job fail")
-	ErrStopJobFail        = errors.New("Stop Job fail")
-	ErrDeleteBuildFail    = errors.New("Delete Build fail")
-	ErrBuildJobFail       = errors.New("Build Job fail")
-	ErrGetBuildInfoFail   = errors.New("Get Build Info fail")
-	ErrGetJobInfoFail     = errors.New("Get Job Info fail")
+	ErrNotFound         = errors.New("Not Found")
+	ErrCreateJobFail    = errors.New("Create Job fail")
+	ErrUpdateJobFail    = errors.New("Update Job fail")
+	ErrStopJobFail      = errors.New("Stop Job fail")
+	ErrDeleteBuildFail  = errors.New("Delete Build fail")
+	ErrBuildJobFail     = errors.New("Build Job fail")
+	ErrGetBuildInfoFail = errors.New("Get Build Info fail")
+	ErrGetJobInfoFail   = errors.New("Get Job Info fail")
 )
 
 type Client struct {
@@ -283,7 +283,7 @@ func (c *Client) GetJobInfo(jobname string) (*JenkinsJobInfo, error) {
 	defer resp.Body.Close()
 	if resp.StatusCode != 200 {
 		if resp.StatusCode == 404 {
-			return nil, ErrJenkinsJobNotFound
+			return nil, ErrNotFound
 		}
 		logrus.Error(ErrGetJobInfoFail)
 		return nil, ErrGetJobInfoFail
@@ -495,4 +495,63 @@ func (c *Client) GetWFNodeLog(jobname string, nodeId string) (*JenkinsWFNodeLog,
 
 	return nodeLog, nil
 
+}
+
+func (c *Client) CreateCredential(content []byte) error {
+
+	setCredURL, err := url.Parse(c.API + JenkinsSetCredURI)
+	if err != nil {
+		logrus.Error(err)
+		return err
+	}
+
+	req, _ := http.NewRequest(http.MethodPost, setCredURL.String(), bytes.NewReader(content))
+	req.Header.Add(c.CrumbHeader, c.CrumbBody)
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.SetBasicAuth(c.User, c.Token)
+	client := http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		logrus.Error(err)
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		logrus.Infof("create jenkins credential got code:%v", resp.StatusCode)
+		data, _ := ioutil.ReadAll(resp.Body)
+		logrus.Error(string(data))
+		return errors.New("create credential fail")
+	}
+	return nil
+}
+
+func (c *Client) GetCredential(credentialId string) error {
+
+	getCredURI := fmt.Sprintf(JenkinsGetCredURI, credentialId)
+	getCredURL, err := url.Parse(c.API + getCredURI)
+	if err != nil {
+		return err
+	}
+
+	req, _ := http.NewRequest(http.MethodGet, getCredURL.String(), nil)
+	req.Header.Add(c.CrumbHeader, c.CrumbBody)
+	req.SetBasicAuth(c.User, c.Token)
+	client := http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		if resp.StatusCode == 404 {
+			return ErrNotFound
+		}
+		logrus.Debugf("create jenkins credential got code:%v", resp.StatusCode)
+		data, _ := ioutil.ReadAll(resp.Body)
+		logrus.Debug(string(data))
+		return fmt.Errorf("Error create credential - %v", resp.StatusCode)
+	}
+	return nil
 }

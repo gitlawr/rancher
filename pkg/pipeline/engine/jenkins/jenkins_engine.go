@@ -4,11 +4,14 @@ import (
 	"encoding/xml"
 	"fmt"
 
+	"bytes"
+	"encoding/json"
 	"github.com/pkg/errors"
 	"github.com/rancher/rancher/pkg/pipeline/utils"
 	"github.com/rancher/types/apis/management.cattle.io/v3"
 	"github.com/rancher/types/config"
 	"github.com/sirupsen/logrus"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"strconv"
 	"strings"
 	"time"
@@ -23,7 +26,7 @@ func (j JenkinsEngine) RunPipeline(pipeline *v3.Pipeline, triggerType string) er
 
 	jobName := getJobName(pipeline)
 
-	if _, err := j.Client.GetJobInfo(jobName); err == ErrJenkinsJobNotFound {
+	if _, err := j.Client.GetJobInfo(jobName); err == ErrNotFound {
 		if err = j.CreatePipelineJob(pipeline); err != nil {
 			return err
 		}
@@ -31,6 +34,10 @@ func (j JenkinsEngine) RunPipeline(pipeline *v3.Pipeline, triggerType string) er
 		return err
 	}
 	if err := j.UpdatePipelineJob(pipeline); err != nil {
+		return err
+	}
+
+	if err := j.setCredential(pipeline); err != nil {
 		return err
 	}
 
@@ -73,7 +80,7 @@ func (j JenkinsEngine) StopHistory(execution *v3.PipelineExecution) error {
 	jobName := getJobName(&execution.Spec.Pipeline)
 	buildNumber := execution.Spec.Run
 	info, err := j.Client.GetJobInfo(jobName)
-	if err == ErrJenkinsJobNotFound {
+	if err == ErrNotFound {
 		return nil
 	} else if err != nil {
 		return err
@@ -287,4 +294,40 @@ func (j JenkinsEngine) GetStepLog(execution *v3.PipelineExecution, stage int, st
 
 func getJobName(pipeline *v3.Pipeline) string {
 	return fmt.Sprintf("%s%s-%d", JENKINS_JOB_PREFIX, pipeline.Name, pipeline.Status.NextRun)
+}
+
+func (j JenkinsEngine) setCredential(pipeline *v3.Pipeline) error {
+	if len(pipeline.Spec.Stages) < 1 || len(pipeline.Spec.Stages[0].Steps) < 1 || pipeline.Spec.Stages[0].Steps[0].SourceCodeConfig == nil {
+		return errors.New("Invalid pipeline definition")
+	}
+	credentialId := pipeline.Spec.Stages[0].Steps[0].SourceCodeConfig.SourceCodeCredentialName
+	souceCodeCredential, err := j.Cluster.Management.Management.SourceCodeCredentials("").Get(credentialId, metav1.GetOptions{})
+	if err != nil {
+		return err
+	}
+
+	if err := j.Client.GetCredential(credentialId); err != ErrNotFound {
+		return err
+	}
+	//set credential when it is not exist
+	jenkinsCred := &JenkinsCredential{}
+	jenkinsCred.Class = "com.cloudbees.plugins.credentials.impl.UsernamePasswordCredentialsImpl"
+	jenkinsCred.Scope = "GLOBAL"
+	jenkinsCred.Id = credentialId
+
+	jenkinsCred.Username = souceCodeCredential.Spec.LoginName
+	jenkinsCred.Password = souceCodeCredential.Spec.AccessToken
+
+	bodyContent := map[string]interface{}{}
+	bodyContent["credentials"] = jenkinsCred
+	b, err := json.Marshal(bodyContent)
+	if err != nil {
+		return err
+	}
+	buff := bytes.NewBufferString("json=")
+	buff.Write(b)
+	if err := j.Client.CreateCredential(buff.Bytes()); err != nil {
+		return err
+	}
+	return nil
 }

@@ -31,7 +31,15 @@ func convertStep(pipeline *v3.Pipeline, stageOrdinal int, stepOrdinal int) strin
 	//buffer.WriteString(preStepScript(pipeline, stageOrdinal, stepOrdinal))
 	//buffer.WriteString("\n")
 	if step.SourceCodeConfig != nil {
-		stepContent = fmt.Sprintf("git '%s'", step.SourceCodeConfig.Url)
+		branch := step.SourceCodeConfig.Branch
+		branchCondition := step.SourceCodeConfig.BranchCondition
+		//default only branch xxx
+		if branchCondition == "except" {
+			branch = fmt.Sprintf(":^(?!(%s))", branch)
+		} else if branchCondition == "all" {
+			branch = "*"
+		}
+		stepContent = fmt.Sprintf("git url: '%s', branch: '%s', credentialsId: '%s'", step.SourceCodeConfig.Url, branch, step.SourceCodeConfig.SourceCodeCredentialName)
 	} else if step.RunScriptConfig != nil {
 		stepContent = fmt.Sprintf(`sh """%s"""`, step.RunScriptConfig.ShellScript)
 	} else if step.PublishImageConfig != nil {

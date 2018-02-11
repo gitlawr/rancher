@@ -18,13 +18,16 @@ func (l *PipelineHistoryLifecycle) Create(obj *v3.PipelineExecution) (*v3.Pipeli
 
 	url, err := l.getJenkinsURL()
 	if err != nil {
+		logrus.Errorf("Error connect to Jenkins - %v", err)
 		return l.errorHistory(obj)
 	}
 	pipelineEngine, err := engine.New(l.cluster, url)
 	if err != nil {
+		logrus.Errorf("Error get Jenkins engine - %v", err)
 		return l.errorHistory(obj)
 	}
 	if err := pipelineEngine.RunPipeline(&obj.Spec.Pipeline, obj.Spec.TriggeredBy); err != nil {
+		logrus.Errorf("Error run pipeline - %v", err)
 		return l.errorHistory(obj)
 	}
 	return obj, nil
