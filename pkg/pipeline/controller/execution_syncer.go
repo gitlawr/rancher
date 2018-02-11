@@ -2,16 +2,14 @@ package controller
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"github.com/rancher/rancher/pkg/cluster/utils"
 	"github.com/rancher/rancher/pkg/pipeline/engine"
-	utils2 "github.com/rancher/rancher/pkg/pipeline/utils"
+	pipelineutils "github.com/rancher/rancher/pkg/pipeline/utils"
 	"github.com/rancher/types/apis/core/v1"
 	"github.com/rancher/types/apis/management.cattle.io/v3"
 	"github.com/rancher/types/config"
 	"github.com/sirupsen/logrus"
-	"k8s.io/apimachinery/pkg/labels"
 	"time"
 )
 
@@ -41,7 +39,6 @@ func Registerxxx(ctx context.Context, cluster *config.ClusterContext) {
 	}
 	//pipelineExecutions.Controller().AddHandler(s.GetName(), s.sync)
 	fmt.Println(s)
-	//go s.syncState(ctx, syncInterval)
 	go s.syncState(ctx, syncInterval)
 }
 
@@ -52,19 +49,19 @@ func (s *ExecutionStateSyncer) Sync(key string, obj *v3.Pipeline) error {
 
 func (s *ExecutionStateSyncer) syncState(ctx context.Context, syncInterval time.Duration) {
 	for range utils.TickerContext(ctx, syncInterval) {
-		logrus.Debugf("Start heartbeat")
+		logrus.Debugf("Start sync pipeline execution")
 		s.syncExecutions()
-		logrus.Debugf("Heartbeat complete")
+		logrus.Debugf("Sync pipeline execution complete")
 	}
 
 }
 
 func (s *ExecutionStateSyncer) syncExecutions() {
-	executions, err := s.pipelineExecutionLister.List("", utils2.PIPELINE_INPROGRESS_LABEL.AsSelector())
+	executions, err := s.pipelineExecutionLister.List("", pipelineutils.PIPELINE_INPROGRESS_LABEL.AsSelector())
 	if err != nil {
 		logrus.Errorf("Error listing PipelineExecutions - %v", err)
 	}
-	url, err := s.getJenkinsURL()
+	url, err := pipelineutils.GetJenkinsURL(s.nodeLister, s.serviceLister)
 	if err != nil {
 		logrus.Errorf("Error get Jenkins url - %v", err)
 	}
@@ -88,37 +85,6 @@ func (s *ExecutionStateSyncer) syncExecutions() {
 			}
 		}
 	}
-}
-
-//FIXME proper way to connect to Jenkins in cluster
-func (l *ExecutionStateSyncer) getJenkinsURL() (string, error) {
-
-	nodes, err := l.nodeLister.List("", labels.NewSelector())
-	if err != nil {
-		return "", err
-	}
-	if len(nodes) < 1 {
-		return "", errors.New("no available nodes")
-	}
-	if len(nodes[0].Status.Addresses) < 1 {
-		return "", errors.New("no available address")
-	}
-	host := nodes[0].Status.Addresses[0].Address
-
-	svcport := 0
-	service, err := l.serviceLister.Get("cattle-pipeline", "jenkins")
-	if err != nil {
-		return "", err
-	}
-
-	ports := service.Spec.Ports
-	for _, port := range ports {
-		if port.NodePort != 0 && port.Name == "http" {
-			svcport = int(port.NodePort)
-			break
-		}
-	}
-	return fmt.Sprintf("http://%s:%d", host, svcport), nil
 }
 
 func (s *ExecutionStateSyncer) GetName() string {

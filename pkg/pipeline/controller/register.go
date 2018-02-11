@@ -3,6 +3,7 @@ package controller
 import (
 	"context"
 	"github.com/rancher/norman/signal"
+	"github.com/rancher/rancher/pkg/pipeline/controller/cron_syncer"
 	"github.com/rancher/rancher/pkg/pipeline/controller/log_syncer"
 	"github.com/rancher/types/apis/management.cattle.io/v3"
 	"github.com/rancher/types/config"
@@ -44,6 +45,7 @@ func Register(cluster *config.ClusterContext) {
 	ctx := signal.SigTermCancelContext(context.Background())
 	Registerxxx(ctx, cluster)
 	log_syncer.Register(ctx, cluster)
+	cron_syncer.Register(ctx, cluster)
 }
 
 func initClusterPipeline(cluster *config.ClusterContext) error {

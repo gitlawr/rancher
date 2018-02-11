@@ -2,16 +2,14 @@ package log_syncer
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"github.com/rancher/rancher/pkg/cluster/utils"
 	"github.com/rancher/rancher/pkg/pipeline/engine"
-	utils2 "github.com/rancher/rancher/pkg/pipeline/utils"
+	pipelineutils "github.com/rancher/rancher/pkg/pipeline/utils"
 	"github.com/rancher/types/apis/core/v1"
 	"github.com/rancher/types/apis/management.cattle.io/v3"
 	"github.com/rancher/types/config"
 	"github.com/sirupsen/logrus"
-	"k8s.io/apimachinery/pkg/labels"
 	"time"
 )
 
@@ -42,10 +40,10 @@ func Register(ctx context.Context, cluster *config.ClusterContext) {
 		nodeLister:                 nodeLister,
 		serviceLister:              serviceLister,
 	}
-	go s.syncLog(ctx, syncInterval)
+	go s.sync(ctx, syncInterval)
 }
 
-func (s *ExecutionLogSyncer) syncLog(ctx context.Context, syncInterval time.Duration) {
+func (s *ExecutionLogSyncer) sync(ctx context.Context, syncInterval time.Duration) {
 	for range utils.TickerContext(ctx, syncInterval) {
 		logrus.Debugf("Start sync pipeline execution log")
 		s.syncLogs()
@@ -55,11 +53,11 @@ func (s *ExecutionLogSyncer) syncLog(ctx context.Context, syncInterval time.Dura
 }
 
 func (s *ExecutionLogSyncer) syncLogs() {
-	Logs, err := s.pipelineExecutionLogLister.List("", utils2.PIPELINE_INPROGRESS_LABEL.AsSelector())
+	Logs, err := s.pipelineExecutionLogLister.List("", pipelineutils.PIPELINE_INPROGRESS_LABEL.AsSelector())
 	if err != nil {
 		logrus.Errorf("Error listing PipelineExecutionLogs - %v", err)
 	}
-	url, err := s.getJenkinsURL()
+	url, err := pipelineutils.GetJenkinsURL(s.nodeLister, s.serviceLister)
 	if err != nil {
 		logrus.Errorf("Error get Jenkins url - %v", err)
 	}
@@ -80,7 +78,7 @@ func (s *ExecutionLogSyncer) syncLogs() {
 		if err != nil {
 			logrus.Errorf("Error get pipeline execution log - %v", err)
 			e.Spec.Message += fmt.Sprintf("\nError get pipeline execution log - %v", err)
-			e.Labels = utils2.PIPELINE_FINISH_LABEL
+			e.Labels = pipelineutils.PIPELINE_FINISH_LABEL
 			if _, err := s.pipelineExecutionLogs.Update(e); err != nil {
 				logrus.Errorf("Error update pipeline execution log - %v", err)
 			}
@@ -90,41 +88,10 @@ func (s *ExecutionLogSyncer) syncLogs() {
 		e.Spec.Message = logText
 		stepState := execution.Status.Stages[e.Spec.Stage].Steps[e.Spec.Step].State
 		if stepState != v3.StateWaiting && stepState != v3.StateBuilding {
-			e.Labels = utils2.PIPELINE_FINISH_LABEL
+			e.Labels = pipelineutils.PIPELINE_FINISH_LABEL
 		}
 		if _, err := s.pipelineExecutionLogs.Update(e); err != nil {
 			logrus.Errorf("Error update pipeline execution log - %v", err)
 		}
 	}
-}
-
-//FIXME proper way to connect to Jenkins in cluster
-func (l *ExecutionLogSyncer) getJenkinsURL() (string, error) {
-
-	nodes, err := l.nodeLister.List("", labels.NewSelector())
-	if err != nil {
-		return "", err
-	}
-	if len(nodes) < 1 {
-		return "", errors.New("no available nodes")
-	}
-	if len(nodes[0].Status.Addresses) < 1 {
-		return "", errors.New("no available address")
-	}
-	host := nodes[0].Status.Addresses[0].Address
-
-	svcport := 0
-	service, err := l.serviceLister.Get("cattle-pipeline", "jenkins")
-	if err != nil {
-		return "", err
-	}
-
-	ports := service.Spec.Ports
-	for _, port := range ports {
-		if port.NodePort != 0 && port.Name == "http" {
-			svcport = int(port.NodePort)
-			break
-		}
-	}
-	return fmt.Sprintf("http://%s:%d", host, svcport), nil
 }
