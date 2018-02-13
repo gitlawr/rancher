@@ -40,7 +40,15 @@ func convertStep(pipeline *v3.Pipeline, stageOrdinal int, stepOrdinal int) strin
 		}
 		stepContent = fmt.Sprintf("git url: '%s', branch: '%s', credentialsId: '%s'", step.SourceCodeConfig.URL, branch, step.SourceCodeConfig.SourceCodeCredentialName)
 	} else if step.RunScriptConfig != nil {
-		stepContent = fmt.Sprintf(`sh """%s"""`, step.RunScriptConfig.ShellScript)
+		if step.RunScriptConfig.IsShell {
+			stepContent = fmt.Sprintf(`sh """%s"""`, step.RunScriptConfig.ShellScript)
+		} else {
+			script := step.RunScriptConfig.Entrypoint
+			if step.RunScriptConfig.Command != "" {
+				script = script + " " + step.RunScriptConfig.Command
+			}
+			stepContent = fmt.Sprintf(`sh """%s"""`, script)
+		}
 	} else if step.PublishImageConfig != nil {
 		stepContent = fmt.Sprintf(`sh """/usr/local/bin/dockerd-entrypoint.sh /bin/drone-docker"""`)
 	} else {

@@ -52,8 +52,6 @@ func (g GithubDriver) Execute(req *http.Request) (int, error) {
 	if err != nil {
 		return http.StatusInternalServerError, err
 	}
-
-	//////
 	body, err := ioutil.ReadAll(req.Body)
 	if err != nil {
 		logrus.Errorf("receive github webhook, got error:%v", err)
@@ -63,7 +61,11 @@ func (g GithubDriver) Execute(req *http.Request) (int, error) {
 		logrus.Errorf("receive github webhook, invalid signature")
 		return http.StatusUnprocessableEntity, errors.New("github webhook invalid signature")
 	}
-	//check branch
+
+	if pipeline.Status.State == "inactive" {
+		return http.StatusUnavailableForLegalReasons, errors.New("Pipeline is not active")
+	}
+
 	payload := &github.WebHookPayload{}
 	if err := json.Unmarshal(body, payload); err != nil {
 		logrus.Error("fail to parse github webhook payload")
