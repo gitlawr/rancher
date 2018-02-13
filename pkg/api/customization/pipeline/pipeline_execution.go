@@ -61,9 +61,9 @@ func (h *ExecutionHandler) log(apiContext *types.APIContext) error {
 		return errors.New("Step index for log is not provided")
 	}
 
-	logId := fmt.Sprintf("%s-%s-%s", apiContext.ID, stage, step)
+	logID := fmt.Sprintf("%s-%s-%s", apiContext.ID, stage, step)
 	data := map[string]interface{}{}
-	if err := access.ByID(apiContext, apiContext.Version, client.PipelineExecutionLogType, logId, &data); err != nil {
+	if err := access.ByID(apiContext, apiContext.Version, client.PipelineExecutionLogType, logID, &data); err != nil {
 		return err
 	}
 

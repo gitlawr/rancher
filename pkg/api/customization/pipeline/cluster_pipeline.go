@@ -136,7 +136,7 @@ func (h *ClusterPipelineHandler) authapp(apiContext *types.APIContext) error {
 	}
 	//oauth and add user
 	userName := apiContext.Request.Header.Get("Impersonate-User")
-	if _, err := h.auth_add_account(clusterPipeline, authAppInput.SourceCodeType, userName, authAppInput.RedirectURL, authAppInput.Code); err != nil {
+	if _, err := h.authAddAccount(clusterPipeline, authAppInput.SourceCodeType, userName, authAppInput.RedirectURL, authAppInput.Code); err != nil {
 		return err
 	}
 	//update cluster pipeline config
@@ -184,7 +184,7 @@ func (h *ClusterPipelineHandler) authuser(apiContext *types.APIContext) error {
 	//oauth and add user
 	userName := apiContext.Request.Header.Get("Impersonate-User")
 	logrus.Debugf("try auth with %v,%v,%v,%v,%v", clusterPipeline, authUserInput.SourceCodeType, userName, authUserInput.RedirectURL, authUserInput.Code)
-	account, err := h.auth_add_account(clusterPipeline, authUserInput.SourceCodeType, userName, authUserInput.RedirectURL, authUserInput.Code)
+	account, err := h.authAddAccount(clusterPipeline, authUserInput.SourceCodeType, userName, authUserInput.RedirectURL, authUserInput.Code)
 	if err != nil {
 		return err
 	}
@@ -231,7 +231,7 @@ func (h *ClusterPipelineHandler) revokeapp(apiContext *types.APIContext) error {
 	return nil
 }
 
-func (h *ClusterPipelineHandler) auth_add_account(clusterPipeline *v3.ClusterPipeline, remoteType string, userID string, redirectURL string, code string) (*v3.SourceCodeCredential, error) {
+func (h *ClusterPipelineHandler) authAddAccount(clusterPipeline *v3.ClusterPipeline, remoteType string, userID string, redirectURL string, code string) (*v3.SourceCodeCredential, error) {
 
 	if userID == "" {
 		return nil, errors.New("unauth")

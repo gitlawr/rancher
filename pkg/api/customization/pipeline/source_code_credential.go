@@ -26,7 +26,7 @@ func SourceCodeCredentialFormatter(apiContext *types.APIContext, resource *types
 func (h SourceCodeCredentialHandler) LinkHandler(apiContext *types.APIContext, next types.RequestHandler) error {
 
 	if apiContext.Link == "repos" {
-		repos, err := h.getReposById(apiContext.ID)
+		repos, err := h.getReposByID(apiContext.ID)
 		if err != nil {
 			return err
 		}
@@ -64,7 +64,7 @@ func (h *SourceCodeCredentialHandler) ActionHandler(actionName string, action *t
 
 func (h *SourceCodeCredentialHandler) refreshrepos(apiContext *types.APIContext) error {
 
-	_, err := h.refreshReposById(apiContext.ID)
+	_, err := h.refreshReposByID(apiContext.ID)
 	if err != nil {
 		return err
 	}
@@ -83,23 +83,23 @@ func (h *SourceCodeCredentialHandler) refreshrepos(apiContext *types.APIContext)
 	return nil
 }
 
-func (h *SourceCodeCredentialHandler) getReposById(sourceCodeCredentialId string) ([]v3.SourceCodeRepository, error) {
+func (h *SourceCodeCredentialHandler) getReposByID(sourceCodeCredentialID string) ([]v3.SourceCodeRepository, error) {
 	result := []v3.SourceCodeRepository{}
 	repoList, err := h.Management.Management.SourceCodeRepositories("").List(metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
 	for _, repo := range repoList.Items {
-		if repo.Spec.SourceCodeCredentialName == sourceCodeCredentialId {
+		if repo.Spec.SourceCodeCredentialName == sourceCodeCredentialID {
 			result = append(result, repo)
 		}
 	}
 	return result, nil
 }
 
-func (h *SourceCodeCredentialHandler) refreshReposById(sourceCodeCredentialId string) ([]v3.SourceCodeRepository, error) {
+func (h *SourceCodeCredentialHandler) refreshReposByID(sourceCodeCredentialID string) ([]v3.SourceCodeRepository, error) {
 
-	credential, err := h.Management.Management.SourceCodeCredentials("").Get(sourceCodeCredentialId, metav1.GetOptions{})
+	credential, err := h.Management.Management.SourceCodeCredentials("").Get(sourceCodeCredentialID, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -135,7 +135,7 @@ func (h *SourceCodeCredentialHandler) refreshReposById(sourceCodeCredentialId st
 
 	//store new repos
 	for _, repo := range repos {
-		repo.Spec.SourceCodeCredentialName = sourceCodeCredentialId
+		repo.Spec.SourceCodeCredentialName = sourceCodeCredentialID
 		repo.Spec.ClusterName = credential.Spec.ClusterName
 		repo.Spec.UserName = credential.Spec.UserName
 		repo.Name = uuid.NewV4().String()

@@ -15,7 +15,7 @@ import (
 )
 
 //create webhook,return id of webhook
-func (c *client) createGithubWebhook(user string, repo string, accesstoken string, webhookUrl string, secret string) (string, error) {
+func (c *client) createGithubWebhook(user string, repo string, accesstoken string, webhookURL string, secret string) (string, error) {
 	data := user + ":" + accesstoken
 	sEnc := base64.StdEncoding.EncodeToString([]byte(data))
 	name := "web"
@@ -27,7 +27,7 @@ func (c *client) createGithubWebhook(user string, repo string, accesstoken strin
 		Events: []string{"push"},
 	}
 
-	hook.Config["url"] = webhookUrl
+	hook.Config["url"] = webhookURL
 	hook.Config["content_type"] = "json"
 	hook.Config["secret"] = secret
 	hook.Config["insecure_ssl"] = "1"
@@ -58,13 +58,13 @@ func (c *client) createGithubWebhook(user string, repo string, accesstoken strin
 	return strconv.Itoa(hook.GetID()), err
 }
 
-func getUserRepoFromURL(repoUrl string) (string, string, error) {
+func getUserRepoFromURL(repoURL string) (string, string, error) {
 	reg := regexp.MustCompile(".*/([^/]*?)/([^/]*?).git")
-	match := reg.FindStringSubmatch(repoUrl)
+	match := reg.FindStringSubmatch(repoURL)
 	if len(match) != 3 {
 		logrus.Infof("get match:%v", match)
-		logrus.Errorf("error getting user/repo from gitrepoUrl:%v", repoUrl)
-		return "", "", errors.New(fmt.Sprintf("error getting user/repo from gitrepoUrl:%v", repoUrl))
+		logrus.Errorf("error getting user/repo from gitrepoUrl:%v", repoURL)
+		return "", "", errors.New(fmt.Sprintf("error getting user/repo from gitrepoUrl:%v", repoURL))
 	}
 	return match[1], match[2], nil
 }

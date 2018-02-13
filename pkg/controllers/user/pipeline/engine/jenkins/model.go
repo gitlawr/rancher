@@ -3,19 +3,18 @@ package jenkins
 import "encoding/xml"
 
 const (
-	GIT_SCM_CLASS          = "hudson.plugins.git.GitSCM"
-	GIT_SCM_PLUGIN         = "git@3.3.1"
-	SCM_CONFIG_VERSION     = 2
-	WORKFLOW_JOB_PLUGIN    = "workflow-job@2.17"
-	FLOW_DEFINITION_CLASS  = "org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition"
-	FLOW_DEFINITION_PLUGIN = "workflow-cps@2.43"
-	JENKINS_JOB_PREFIX     = "Rancher_Pipeline_"
+	GitScmClass          = "hudson.plugins.git.GitSCM"
+	GitScmPlugin         = "git@3.3.1"
+	ScmConfigVersion     = 2
+	WorkflowJobPlugin    = "workflow-job@2.17"
+	FlowDefinitionClass  = "org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition"
+	FlowDefinitionPlugin = "workflow-cps@2.43"
+	JenkinsJobPrefix     = "Rancher_Pipeline_"
 )
 
-var JENKINS_DEFAULT_USER = "admin"
+var JenkinsDefaultUser = "admin"
 
-//TODO be random
-var JENKINS_DEFAULT_TOKEN = "admin"
+var JenkinsDefaultToken = "admin"
 
 type PipelineJob struct {
 	XMLName    xml.Name   `xml:"flow-definition"`
@@ -30,29 +29,29 @@ type Definition struct {
 	Sandbox bool   `xml:"sandbox"`
 }
 
-type JenkinsProject struct {
+type Project struct {
 	XMLName                          xml.Name `xml:"project"`
 	Actions                          string   `xml:"actions"`
 	Description                      string   `xml:"description"`
 	KeepDependencies                 bool     `xml:"keepDependencies"`
 	Properties                       string
-	Scm                              JenkinsSCM              `xml:"scm"`
+	Scm                              Scm                     `xml:"scm"`
 	AssignedNode                     string                  `xml:"assignedNode"`
 	CanRoam                          bool                    `xml:"canRoam"`
 	Disabled                         bool                    `xml:"disabled"`
 	BlockBuildWhenDownstreamBuilding bool                    `xml:"blockBuildWhenDownstreamBuilding"`
 	BlockBuildWhenUpstreamBuilding   bool                    `xml:"blockBuildWhenUpstreamBuilding"`
-	Triggers                         JenkinsTrigger          `xml:"triggers"`
+	Triggers                         Trigger                 `xml:"triggers"`
 	ConcurrentBuild                  bool                    `xml:"concurrentBuild"`
 	CustomWorkspace                  string                  `xml:"customWorkspace"`
-	Builders                         JenkinsBuilder          `xml:"builders,omitempty"`
+	Builders                         Builder                 `xml:"builders,omitempty"`
 	Publishers                       PostBuildTask           `xml:"publishers>org.jvnet.hudson.plugins.groovypostbuild.GroovyPostbuildRecorder"`
 	TimeStampWrapper                 TimestampWrapperPlugin  `xml:"buildWrappers>hudson.plugins.timestamper.TimestamperBuildWrapper"`
 	TimeoutWrapper                   *TimeoutWrapperPlugin   `xml:"buildWrappers>hudson.plugins.build__timeout.BuildTimeoutWrapper"`
 	PreSCMBuildStepsWrapper          PreSCMBuildStepsWrapper `xml:"buildWrappers>org.jenkinsci.plugins.preSCMbuildstep.PreSCMBuildStepsWrapper"`
 }
 
-type JenkinsSCM struct {
+type Scm struct {
 	Class                             string `xml:"class,attr"`
 	Plugin                            string `xml:"plugin,attr"`
 	ConfigVersion                     int    `xml:"configVersion"`
@@ -64,13 +63,12 @@ type JenkinsSCM struct {
 	Extensions                        string `xml:"extensions"`
 }
 
-type JenkinsTrigger struct {
-	BuildTrigger *JenkinsBuildTrigger `xml:"jenkins.triggers.ReverseBuildTrigger,omitempty"`
-	//CronTrigger              JenkinsCronTrigger  `xml:"hudson.triggers.TimerTrigger,omitempty"`
-	FanInReverseBuildTrigger *JenkinsBuildTrigger `xml:"org.lonkar.jobfanin.FanInReverseBuildTrigger,omitempty"`
+type Trigger struct {
+	BuildTrigger             *BuildTrigger `xml:"jenkins.triggers.ReverseBuildTrigger,omitempty"`
+	FanInReverseBuildTrigger *BuildTrigger `xml:"org.lonkar.jobfanin.FanInReverseBuildTrigger,omitempty"`
 }
 
-type JenkinsBuildTrigger struct {
+type BuildTrigger struct {
 	Spec                     string `xml:"spec"`
 	Plugin                   string `xml:"plugin,attr"`
 	UpstreamProjects         string `xml:"upstreamProjects"`
@@ -80,10 +78,6 @@ type JenkinsBuildTrigger struct {
 	ThresholdOrdinal         int    `xml:"threshold>ordinal"`
 	ThresholdColor           string `xml:"threshold>color"`
 	ThresholdCompleteBuild   bool   `xml:"threshold>completeBuild"`
-}
-
-type JenkinsCronTrigger struct {
-	Spec string `xml:"spec"`
 }
 
 type TimestampWrapperPlugin struct {
@@ -119,19 +113,19 @@ type GroovyScript struct {
 	Sandbox bool   `xml:"sandbox"`
 }
 
-type JenkinsBuilder struct {
-	TaskShells []JenkinsTaskShell `xml:"hudson.tasks.Shell"`
+type Builder struct {
+	TaskShells []TaskShell `xml:"hudson.tasks.Shell"`
 }
 
-type JenkinsTaskShell struct {
+type TaskShell struct {
 	Command string `xml:"command"`
 }
 
-type JenkinsBuild struct {
-	Id                string    `json:"id,omitempty"`
+type Build struct {
+	ID                string    `json:"id,omitempty"`
 	KeepLog           bool      `json:"keepLog,omitempty"`
 	Number            int       `json:"number,omitempty"`
-	QueueId           int       `json:"queueId,omitempty"`
+	QueueID           int       `json:"queueId,omitempty"`
 	Result            string    `json:"result,omitempty"`
 	TimeStamp         int64     `json:"timestamp,omitempty"`
 	BuiltOn           string    `json:"builtOn,omitempty"`
@@ -146,7 +140,7 @@ type ChangeSet struct {
 	Items []interface{}
 }
 
-type JenkinsJobInfo struct {
+type JobInfo struct {
 	Class   string `json:"_class"`
 	Actions []struct {
 		Class string `json:"_class"`
@@ -217,12 +211,12 @@ type JenkinsJobInfo struct {
 	URL              string        `json:"url"`
 }
 
-type JenkinsBuildInfo struct {
+type BuildInfo struct {
 	Class   string `json:"_class"`
 	Actions []struct {
 		Class              string `json:"_class"`
 		BuildsByBranchName struct {
-			Origin_master struct {
+			OriginMaster struct {
 				Class       string      `json:"_class"`
 				BuildNumber int64       `json:"buildNumber"`
 				BuildResult interface{} `json:"buildResult"`
@@ -281,72 +275,72 @@ type JenkinsBuildInfo struct {
 	URL               string      `json:"url"`
 }
 
-type JenkinsCredential struct {
+type Credential struct {
 	Scope       string `json:"scope"`
-	Id          string `json:"id"`
+	ID          string `json:"id"`
 	Username    string `json:"username"`
 	Password    string `json:"password"`
 	Description string `json:"description"`
 	Class       string `json:"$class"`
 }
 
-type JenkinsWFBuildInfo struct {
-	ID                  string         `json:"id"`
-	Name                string         `json:"name"`
-	Status              string         `json:"status"`
-	StartTimeMillis     int64          `json:"startTimeMillis"`
-	EndTimeMillis       int64          `json:"endTimeMillis"`
-	DurationMillis      int64          `json:"durationMillis"`
-	QueueDurationMillis int64          `json:"queueDurationMillis"`
-	PauseDurationMillis int64          `json:"pauseDurationMillis"`
-	Stages              []JenkinsStage `json:"stages"`
+type WFBuildInfo struct {
+	ID                  string  `json:"id"`
+	Name                string  `json:"name"`
+	Status              string  `json:"status"`
+	StartTimeMillis     int64   `json:"startTimeMillis"`
+	EndTimeMillis       int64   `json:"endTimeMillis"`
+	DurationMillis      int64   `json:"durationMillis"`
+	QueueDurationMillis int64   `json:"queueDurationMillis"`
+	PauseDurationMillis int64   `json:"pauseDurationMillis"`
+	Stages              []Stage `json:"stages"`
 }
 
-type JenkinsStage struct {
-	ID              string           `json:"id"`
-	Name            string           `json:"name"`
-	ExecNode        string           `json:"execNode"`
-	Status          string           `json:"status"`
-	StartTimeMillis int64            `json:"startTimeMillis"`
-	EndTimeMillis   int64            `json:"endTimeMillis"`
-	DurationMillis  int64            `json:"durationMillis"`
-	Error           JenkinsNodeError `json:"error"`
+type Stage struct {
+	ID              string    `json:"id"`
+	Name            string    `json:"name"`
+	ExecNode        string    `json:"execNode"`
+	Status          string    `json:"status"`
+	StartTimeMillis int64     `json:"startTimeMillis"`
+	EndTimeMillis   int64     `json:"endTimeMillis"`
+	DurationMillis  int64     `json:"durationMillis"`
+	Error           NodeError `json:"error"`
 }
 
-type JenkinsWFNodeInfo struct {
-	ID                  string         `json:"id"`
-	Name                string         `json:"name"`
-	Status              string         `json:"status"`
-	StartTimeMillis     int64          `json:"startTimeMillis"`
-	EndTimeMillis       int64          `json:"endTimeMillis"`
-	DurationMillis      int64          `json:"durationMillis"`
-	ParseDurationMillis int64          `json:"parseDurationMillis"`
-	PauseDurationMillis int64          `json:"pauseDurationMillis"`
-	StageFlowNodes      []JenkinsStage `json:"stageFlowNodes"`
+type WFNodeInfo struct {
+	ID                  string  `json:"id"`
+	Name                string  `json:"name"`
+	Status              string  `json:"status"`
+	StartTimeMillis     int64   `json:"startTimeMillis"`
+	EndTimeMillis       int64   `json:"endTimeMillis"`
+	DurationMillis      int64   `json:"durationMillis"`
+	ParseDurationMillis int64   `json:"parseDurationMillis"`
+	PauseDurationMillis int64   `json:"pauseDurationMillis"`
+	StageFlowNodes      []Stage `json:"stageFlowNodes"`
 }
 
-type JenkinsWFNodeLog struct {
-	NodeId     string `json:"nodeId"`
+type WFNodeLog struct {
+	NodeID     string `json:"nodeId"`
 	NodeStatus string `json:"nodeStatus"`
 	Length     int    `json:"length"`
 	HasMore    bool   `json:"hasMore"`
 	Text       string `json:"text"`
-	ConsoleUrl string `json:"consoleUrl"`
+	ConsoleURL string `json:"consoleUrl"`
 }
 
-type JenkinsFlowNode struct {
-	ID                   string           `json:"id"`
-	Name                 string           `json:"name"`
-	ExecNode             string           `json:"execNode"`
-	Status               string           `json:"status"`
-	ParameterDescription string           `json:"parameterDescription"`
-	StartTimeMillis      int64            `json:"startTimeMillis"`
-	DurationMillis       int64            `json:"durationMillis"`
-	PauseDurationMillis  int64            `json:"pauseDurationMillis"`
-	Error                JenkinsNodeError `json:"error"`
+type FlowNode struct {
+	ID                   string    `json:"id"`
+	Name                 string    `json:"name"`
+	ExecNode             string    `json:"execNode"`
+	Status               string    `json:"status"`
+	ParameterDescription string    `json:"parameterDescription"`
+	StartTimeMillis      int64     `json:"startTimeMillis"`
+	DurationMillis       int64     `json:"durationMillis"`
+	PauseDurationMillis  int64     `json:"pauseDurationMillis"`
+	Error                NodeError `json:"error"`
 }
 
-type JenkinsNodeError struct {
+type NodeError struct {
 	Type    string `json:"type"`
 	Message string `json:"message"`
 }

@@ -9,10 +9,10 @@ import (
 
 type PipelineEngine interface {
 	RunPipeline(pipeline *v3.Pipeline, triggerType string) error
-	RerunHistory(execution *v3.PipelineExecution) error
-	StopHistory(execution *v3.PipelineExecution) error
+	RerunExecution(execution *v3.PipelineExecution) error
+	StopExecution(execution *v3.PipelineExecution) error
 	GetStepLog(execution *v3.PipelineExecution, stage int, step int) (string, error)
-	OnHistoryCompelte(execution *v3.PipelineExecution)
+	OnExecutionCompelte(execution *v3.PipelineExecution)
 	SyncExecution(execution *v3.PipelineExecution) (bool, error)
 }
 
@@ -28,7 +28,7 @@ func New(cluster *config.UserContext) (PipelineEngine, error) {
 	if err != nil {
 		return nil, err
 	}
-	engine := &jenkins.JenkinsEngine{
+	engine := &jenkins.Engine{
 		Client:  client,
 		Cluster: cluster,
 	}

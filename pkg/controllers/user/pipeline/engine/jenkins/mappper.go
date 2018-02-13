@@ -11,10 +11,10 @@ import (
 
 func ConvertPipelineToJenkinsPipeline(pipeline *v3.Pipeline) PipelineJob {
 	pipelineJob := PipelineJob{
-		Plugin: WORKFLOW_JOB_PLUGIN,
+		Plugin: WorkflowJobPlugin,
 		Definition: Definition{
-			Class:   FLOW_DEFINITION_CLASS,
-			Plugin:  FLOW_DEFINITION_PLUGIN,
+			Class:   FlowDefinitionClass,
+			Plugin:  FlowDefinitionPlugin,
 			Sandbox: true,
 			Script:  convertPipeline(pipeline),
 		},
@@ -52,7 +52,7 @@ func convertStep(pipeline *v3.Pipeline, stageOrdinal int, stepOrdinal int) strin
 func convertStage(pipeline *v3.Pipeline, stageOrdinal int) string {
 	var buffer bytes.Buffer
 	stage := pipeline.Spec.Stages[stageOrdinal]
-	for i, _ := range stage.Steps {
+	for i := range stage.Steps {
 		buffer.WriteString(convertStep(pipeline, stageOrdinal, i))
 		if i != len(stage.Steps)-1 {
 			buffer.WriteString(",")

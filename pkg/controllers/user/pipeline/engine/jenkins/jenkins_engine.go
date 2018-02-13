@@ -6,6 +6,7 @@ import (
 
 	"bytes"
 	"encoding/json"
+	"github.com/kubernetes/kubernetes/pkg/controller/history"
 	"github.com/pkg/errors"
 	"github.com/rancher/norman/types/convert"
 	"github.com/rancher/rancher/pkg/controllers/user/pipeline/utils"
@@ -21,12 +22,12 @@ import (
 	"time"
 )
 
-type JenkinsEngine struct {
+type Engine struct {
 	Client  *Client
 	Cluster *config.UserContext
 }
 
-func (j JenkinsEngine) RunPipeline(pipeline *v3.Pipeline, triggerType string) error {
+func (j Engine) RunPipeline(pipeline *v3.Pipeline, triggerType string) error {
 
 	jobName := getJobName(pipeline)
 
@@ -56,7 +57,7 @@ func (j JenkinsEngine) RunPipeline(pipeline *v3.Pipeline, triggerType string) er
 	return nil
 }
 
-func (j JenkinsEngine) preparePipeline(pipeline *v3.Pipeline) error {
+func (j Engine) preparePipeline(pipeline *v3.Pipeline) error {
 	for n, stage := range pipeline.Spec.Stages {
 		for m, step := range stage.Steps {
 			if step.PublishImageConfig != nil {
@@ -70,7 +71,7 @@ func (j JenkinsEngine) preparePipeline(pipeline *v3.Pipeline) error {
 	return nil
 }
 
-func (j JenkinsEngine) prepareRegistryCredential(pipeline *v3.Pipeline, stage int, step int) error {
+func (j Engine) prepareRegistryCredential(pipeline *v3.Pipeline, stage int, step int) error {
 
 	publishImageStep := pipeline.Spec.Stages[stage].Steps[step]
 	registry, _, _ := utils.SplitImageTag(publishImageStep.PublishImageConfig.Tag)
@@ -133,7 +134,7 @@ func (j JenkinsEngine) prepareRegistryCredential(pipeline *v3.Pipeline, stage in
 	return nil
 }
 
-func (j JenkinsEngine) CreatePipelineJob(pipeline *v3.Pipeline) error {
+func (j Engine) CreatePipelineJob(pipeline *v3.Pipeline) error {
 	logrus.Debug("create jenkins job for pipeline")
 	jobconf := ConvertPipelineToJenkinsPipeline(pipeline)
 
@@ -145,7 +146,7 @@ func (j JenkinsEngine) CreatePipelineJob(pipeline *v3.Pipeline) error {
 	return nil
 }
 
-func (j JenkinsEngine) UpdatePipelineJob(pipeline *v3.Pipeline) error {
+func (j Engine) UpdatePipelineJob(pipeline *v3.Pipeline) error {
 	logrus.Debug("update jenkins job for pipeline")
 	jobconf := ConvertPipelineToJenkinsPipeline(pipeline)
 
@@ -157,11 +158,11 @@ func (j JenkinsEngine) UpdatePipelineJob(pipeline *v3.Pipeline) error {
 	return nil
 }
 
-func (j JenkinsEngine) RerunHistory(history *v3.PipelineExecution) error {
-	return j.RunPipeline(&history.Spec.Pipeline, utils.TriggerTypeUser)
+func (j Engine) RerunExecution(execution *v3.PipelineExecution) error {
+	return j.RunPipeline(&execution.Spec.Pipeline, utils.TriggerTypeUser)
 }
 
-func (j JenkinsEngine) StopHistory(execution *v3.PipelineExecution) error {
+func (j Engine) StopExecution(execution *v3.PipelineExecution) error {
 	jobName := getJobName(&execution.Spec.Pipeline)
 	buildNumber := execution.Spec.Run
 	info, err := j.Client.GetJobInfo(jobName)
@@ -177,11 +178,11 @@ func (j JenkinsEngine) StopHistory(execution *v3.PipelineExecution) error {
 		if !ok {
 			return fmt.Errorf("type assertion fail for queueitem")
 		}
-		queueId, ok := queueItem["id"].(float64)
+		queueID, ok := queueItem["id"].(float64)
 		if !ok {
-			return fmt.Errorf("type assertion fail for queueId")
+			return fmt.Errorf("type assertion fail for queueID")
 		}
-		if err := j.Client.CancelQueueItem(int(queueId)); err != nil {
+		if err := j.Client.CancelQueueItem(int(queueID)); err != nil {
 			return fmt.Errorf("cancel queueitem error:%v", err)
 		}
 	} else {
@@ -198,7 +199,7 @@ func (j JenkinsEngine) StopHistory(execution *v3.PipelineExecution) error {
 	return nil
 }
 
-func (j JenkinsEngine) SyncExecution(execution *v3.PipelineExecution) (bool, error) {
+func (j Engine) SyncExecution(execution *v3.PipelineExecution) (bool, error) {
 
 	updated := false
 
@@ -265,7 +266,7 @@ func (j JenkinsEngine) SyncExecution(execution *v3.PipelineExecution) (bool, err
 	return updated, nil
 }
 
-func successStep(execution *v3.PipelineExecution, stage int, step int, jenkinsStage JenkinsStage) {
+func successStep(execution *v3.PipelineExecution, stage int, step int, jenkinsStage Stage) {
 
 	startTime := time.Unix(jenkinsStage.StartTimeMillis/1000, 0).Format(time.RFC3339)
 	endTime := time.Unix((jenkinsStage.StartTimeMillis+jenkinsStage.DurationMillis)/1000, 0).Format(time.RFC3339)
@@ -290,7 +291,7 @@ func successStep(execution *v3.PipelineExecution, stage int, step int, jenkinsSt
 	}
 }
 
-func failStep(execution *v3.PipelineExecution, stage int, step int, jenkinsStage JenkinsStage) {
+func failStep(execution *v3.PipelineExecution, stage int, step int, jenkinsStage Stage) {
 
 	startTime := time.Unix(jenkinsStage.StartTimeMillis/1000, 0).Format(time.RFC3339)
 	endTime := time.Unix((jenkinsStage.StartTimeMillis+jenkinsStage.DurationMillis)/1000, 0).Format(time.RFC3339)
@@ -315,7 +316,7 @@ func failStep(execution *v3.PipelineExecution, stage int, step int, jenkinsStage
 	}
 }
 
-func buildingStep(execution *v3.PipelineExecution, stage int, step int, jenkinsStage JenkinsStage) {
+func buildingStep(execution *v3.PipelineExecution, stage int, step int, jenkinsStage Stage) {
 	startTime := time.Unix(jenkinsStage.StartTimeMillis/1000, 0).Format(time.RFC3339)
 	execution.Status.Stages[stage].Steps[step].State = utils.StateBuilding
 	if execution.Status.Stages[stage].Steps[step].Started == "" {
@@ -329,90 +330,65 @@ func buildingStep(execution *v3.PipelineExecution, stage int, step int, jenkinsS
 	}
 }
 
-//OnActivityCompelte helps clean up
-func (j JenkinsEngine) OnHistoryCompelte(history *v3.PipelineExecution) {
-	//TODO
-	return
-	/*
-		//clean related container by label
-		command := fmt.Sprintf("docker ps --filter label=activityid=%s -q | xargs docker rm -f", activity.Id)
-		cleanServiceScript := fmt.Sprintf(ScriptSkel, activity.NodeName, strings.Replace(command, "\"", "\\\"", -1))
-		logrus.Debugf("cleanservicescript is: %v", cleanServiceScript)
-		res, err := ExecScript(cleanServiceScript)
-		logrus.Debugf("clean services result:%v,%v", res, err)
-		if err != nil {
-			logrus.Errorf("error cleanning up on worker node: %v, got result '%s'", err, res)
-		}
-		logrus.Infof("activity '%s' complete", activity.Id)
-		//clean workspace
-		if !activity.Pipeline.KeepWorkspace {
-			command = "rm -rf ${System.getenv('JENKINS_HOME')}/workspace/" + activity.Id
-			cleanWorkspaceScript := fmt.Sprintf(ScriptSkel, activity.NodeName, strings.Replace(command, "\"", "\\\"", -1))
-			res, err = ExecScript(cleanWorkspaceScript)
-			if err != nil {
-				logrus.Errorf("error cleanning up on worker node: %v, got result '%s'", err, res)
-			}
-			logrus.Debugf("clean workspace result:%v,%v", res, err)
-		}
-	*/
+func (j Engine) OnExecutionCompelte(history *v3.PipelineExecution) {
 }
 
-func (j JenkinsEngine) GetStepLog(execution *v3.PipelineExecution, stage int, step int) (string, error) {
+func (j Engine) GetStepLog(execution *v3.PipelineExecution, stage int, step int) (string, error) {
 
 	jobName := getJobName(&execution.Spec.Pipeline)
 	info, err := j.Client.GetWFBuildInfo(jobName)
 	if err != nil {
 		return "", err
 	}
-	WFnodeId := ""
+	WFnodeID := ""
 	for _, jStage := range info.Stages {
 		if jStage.Name == fmt.Sprintf("step-%d-%d", stage, step) {
-			WFnodeId = jStage.ID
+			WFnodeID = jStage.ID
 			break
 		}
 	}
-	if WFnodeId == "" {
+	if WFnodeID == "" {
 		return "", errors.New("Error WF Node for the step not found")
 	}
-	WFnodeInfo, err := j.Client.GetWFNodeInfo(jobName, WFnodeId)
+	WFnodeInfo, err := j.Client.GetWFNodeInfo(jobName, WFnodeID)
 	if err != nil {
 		return "", err
 	}
 	if len(WFnodeInfo.StageFlowNodes) < 1 {
 		return "", errors.New("Error step Node not found")
 	}
-	logNodeId := WFnodeInfo.StageFlowNodes[0].ID
-	logrus.Debugf("trying GetWFNodeLog, %v, %v", jobName, logNodeId)
-	nodeLog, err := j.Client.GetWFNodeLog(jobName, logNodeId)
+	logNodeID := WFnodeInfo.StageFlowNodes[0].ID
+	logrus.Debugf("trying GetWFNodeLog, %v, %v", jobName, logNodeID)
+	nodeLog, err := j.Client.GetWFNodeLog(jobName, logNodeID)
 	if err != nil {
 		return "", err
 	}
-	//TODO hasNext
+
 	return nodeLog.Text, nil
 }
 
 func getJobName(pipeline *v3.Pipeline) string {
-	return fmt.Sprintf("%s%s-%d", JENKINS_JOB_PREFIX, pipeline.Name, pipeline.Status.NextRun)
+	return fmt.Sprintf("%s%s-%d", JenkinsJobPrefix, pipeline.Name, pipeline.Status.NextRun)
 }
 
-func (j JenkinsEngine) setCredential(pipeline *v3.Pipeline) error {
+func (j Engine) setCredential(pipeline *v3.Pipeline) error {
 	if len(pipeline.Spec.Stages) < 1 || len(pipeline.Spec.Stages[0].Steps) < 1 || pipeline.Spec.Stages[0].Steps[0].SourceCodeConfig == nil {
 		return errors.New("Invalid pipeline definition")
 	}
-	credentialId := pipeline.Spec.Stages[0].Steps[0].SourceCodeConfig.SourceCodeCredentialName
-	souceCodeCredential, err := j.Cluster.Management.Management.SourceCodeCredentials("").Get(credentialId, metav1.GetOptions{})
+	credentialID := pipeline.Spec.Stages[0].Steps[0].SourceCodeConfig.SourceCodeCredentialName
+	souceCodeCredential, err := j.Cluster.Management.Management.SourceCodeCredentials("").Get(credentialID, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
 
-	if err := j.Client.GetCredential(credentialId); err != ErrNotFound {
+	if err := j.Client.GetCredential(credentialID); err != ErrNotFound {
 		return err
 	}
 	//set credential when it is not exist
-	jenkinsCred := &JenkinsCredential{}
+	jenkinsCred := &Credential{}
 	jenkinsCred.Class = "com.cloudbees.plugins.credentials.impl.UsernamePasswordCredentialsImpl"
 	jenkinsCred.Scope = "GLOBAL"
-	jenkinsCred.Id = credentialId
+	jenkinsCred.ID = credentialID
 
 	jenkinsCred.Username = souceCodeCredential.Spec.LoginName
 	jenkinsCred.Password = souceCodeCredential.Spec.AccessToken

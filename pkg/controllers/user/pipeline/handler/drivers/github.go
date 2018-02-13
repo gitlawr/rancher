@@ -18,7 +18,7 @@ import (
 	"strings"
 )
 
-const GITHUB_WEBHOOK_HEADER = "X-GitHub-Event"
+const GithubWebhookHeader = "X-GitHub-Event"
 
 type GithubDriver struct {
 	Management *config.ManagementContext
@@ -30,7 +30,7 @@ func (g GithubDriver) Execute(req *http.Request) (int, error) {
 		logrus.Errorf("receive github webhook,no signature")
 		return http.StatusUnprocessableEntity, errors.New("github webhook missing signature")
 	}
-	event := req.Header.Get(GITHUB_WEBHOOK_HEADER)
+	event := req.Header.Get(GithubWebhookHeader)
 	if event == "ping" {
 		return http.StatusOK, nil
 	} else if event != "push" {
@@ -38,10 +38,10 @@ func (g GithubDriver) Execute(req *http.Request) (int, error) {
 		return http.StatusUnprocessableEntity, fmt.Errorf("not trigger for event:%s", event)
 	}
 
-	pipelineId := req.URL.Query().Get("pipelineId")
-	parts := strings.Split(pipelineId, ":")
+	pipelineID := req.URL.Query().Get("pipelineId")
+	parts := strings.Split(pipelineID, ":")
 	if len(parts) < 0 {
-		return http.StatusUnprocessableEntity, fmt.Errorf("pipeline id '%s' is not valid", pipelineId)
+		return http.StatusUnprocessableEntity, fmt.Errorf("pipeline id '%s' is not valid", pipelineID)
 	}
 	ns := parts[0]
 	id := parts[1]

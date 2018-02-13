@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	JENKINS_IMAGE = "jenkins/jenkins:lts"
+	JenkinsImage = "jenkins/jenkins:lts"
 )
 
 func getSecret() *corev1.Secret {
@@ -20,8 +20,8 @@ func getSecret() *corev1.Secret {
 			Name:      "jenkins",
 		},
 		Data: map[string][]byte{
-			"jenkins-admin-password": []byte(jenkins.JENKINS_DEFAULT_TOKEN),
-			"jenkins-admin-user":     []byte(jenkins.JENKINS_DEFAULT_USER),
+			"jenkins-admin-password": []byte(jenkins.JenkinsDefaultToken),
+			"jenkins-admin-user":     []byte(jenkins.JenkinsDefaultUser),
 		},
 	}
 }
@@ -75,10 +75,10 @@ func getConfigMap() *corev1.ConfigMap {
 			Name:      "jenkins",
 		},
 		Data: map[string]string{
-			"config.xml":      JENKINS_CONFIG,
-			"apply_config.sh": JENKINS_APPLY_CONFIG,
-			"plugins.txt":     JENKINS_PLUGINS,
-			"user-config.xml": JENKINS_USER_CONFIG,
+			"config.xml":      JenkinsConfig,
+			"apply_config.sh": JenkinsApplyConfig,
+			"plugins.txt":     JenkinsPlugins,
+			"user-config.xml": JenkinsUserConfig,
 		},
 	}
 }
@@ -131,7 +131,7 @@ func getJenkinsDeployment() *appsv1beta2.Deployment {
 					InitContainers: []corev1.Container{
 						{
 							Name:            "jenkins-config",
-							Image:           JENKINS_IMAGE,
+							Image:           JenkinsImage,
 							ImagePullPolicy: corev1.PullAlways,
 							Command:         []string{"sh", "/var/jenkins_config/apply_config.sh"},
 							VolumeMounts: []corev1.VolumeMount{
@@ -153,7 +153,7 @@ func getJenkinsDeployment() *appsv1beta2.Deployment {
 					Containers: []corev1.Container{
 						{
 							Name:            "jenkins",
-							Image:           JENKINS_IMAGE,
+							Image:           JenkinsImage,
 							ImagePullPolicy: corev1.PullAlways,
 							Args: []string{"--argumentsRealm.passwd.$(ADMIN_USER)=$(ADMIN_PASSWORD)",
 								"--argumentsRealm.roles.$(ADMIN_USER)=admin"},
@@ -234,7 +234,7 @@ func getJenkinsDeployment() *appsv1beta2.Deployment {
 	}
 }
 
-const JENKINS_CONFIG = `
+const JenkinsConfig = `
 <?xml version='1.0' encoding='UTF-8'?>
 <hudson>
   <disabledAdministrativeMonitors/>
@@ -328,7 +328,7 @@ const JENKINS_CONFIG = `
   <noUsageStatistics>true</noUsageStatistics>
 </hudson>`
 
-const JENKINS_USER_CONFIG = `
+const JenkinsUserConfig = `
 <?xml version='1.0' encoding='UTF-8'?>
 <user>
   <fullName>admin</fullName>
@@ -381,14 +381,14 @@ const JENKINS_USER_CONFIG = `
     </hudson.search.UserSearchProperty>
   </properties>
 </user>`
-const JENKINS_APPLY_CONFIG = `
+const JenkinsApplyConfig = `
 mkdir -p /var/jenkins_home/users/admin && cp /var/jenkins_config/user-config.xml /var/jenkins_home/users/admin
 cp -n /var/jenkins_config/config.xml /var/jenkins_home;
 cp /var/jenkins_config/plugins.txt /var/jenkins_home;
 rm -rf /usr/share/jenkins/ref/plugins/*.lock
 /usr/local/bin/install-plugins.sh ` + "`echo $(cat /var/jenkins_home/plugins.txt)`;"
 
-const JENKINS_PLUGINS = `
+const JenkinsPlugins = `
 kubernetes:1.1.4
 timestamper:1.8.9
 workflow-aggregator:2.5

@@ -10,7 +10,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-type PipelineLifecycle struct {
+type Lifecycle struct {
 	pipelines                  v3.PipelineInterface
 	pipelineLister             v3.PipelineLister
 	sourceCodeCredentialLister v3.SourceCodeCredentialLister
@@ -23,7 +23,7 @@ func Register(ctx context.Context, cluster *config.UserContext) {
 	pipelineExecutionLogs := cluster.Management.Management.PipelineExecutionLogs("")
 	sourceCodeCredentialLister := cluster.Management.Management.SourceCodeCredentials("").Controller().Lister()
 
-	pipelineLifecycle := &PipelineLifecycle{
+	pipelineLifecycle := &Lifecycle{
 		pipelines:                  pipelines,
 		pipelineLister:             pipelineLister,
 		sourceCodeCredentialLister: sourceCodeCredentialLister,
@@ -39,7 +39,7 @@ func Register(ctx context.Context, cluster *config.UserContext) {
 	go s.sync(ctx, syncInterval)
 }
 
-func (l *PipelineLifecycle) Create(obj *v3.Pipeline) (*v3.Pipeline, error) {
+func (l *Lifecycle) Create(obj *v3.Pipeline) (*v3.Pipeline, error) {
 
 	if obj.Status.Token == "" {
 		//random token for webhook validation
@@ -59,7 +59,7 @@ func (l *PipelineLifecycle) Create(obj *v3.Pipeline) (*v3.Pipeline, error) {
 	return obj, nil
 }
 
-func (l *PipelineLifecycle) Updated(obj *v3.Pipeline) (*v3.Pipeline, error) {
+func (l *Lifecycle) Updated(obj *v3.Pipeline) (*v3.Pipeline, error) {
 	previous, err := l.pipelineLister.Get(obj.Namespace, obj.Name)
 	if err != nil {
 		return obj, err
@@ -90,7 +90,7 @@ func (l *PipelineLifecycle) Updated(obj *v3.Pipeline) (*v3.Pipeline, error) {
 	return obj, nil
 }
 
-func (l *PipelineLifecycle) Remove(obj *v3.Pipeline) (*v3.Pipeline, error) {
+func (l *Lifecycle) Remove(obj *v3.Pipeline) (*v3.Pipeline, error) {
 
 	if obj.Status.WebHookID != "" {
 		if err := l.deleteHook(obj); err != nil {
@@ -100,7 +100,7 @@ func (l *PipelineLifecycle) Remove(obj *v3.Pipeline) (*v3.Pipeline, error) {
 	return obj, nil
 }
 
-func (l *PipelineLifecycle) createHook(obj *v3.Pipeline) (string, error) {
+func (l *Lifecycle) createHook(obj *v3.Pipeline) (string, error) {
 	if len(obj.Spec.Stages) <= 0 || len(obj.Spec.Stages[0].Steps) <= 0 || obj.Spec.Stages[0].Steps[0].SourceCodeConfig == nil {
 		return "", errors.New("invalid pipeline, missing sourcecode step")
 	}
@@ -128,7 +128,7 @@ func (l *PipelineLifecycle) createHook(obj *v3.Pipeline) (string, error) {
 	return id, nil
 }
 
-func (l *PipelineLifecycle) deleteHook(obj *v3.Pipeline) error {
+func (l *Lifecycle) deleteHook(obj *v3.Pipeline) error {
 	if len(obj.Spec.Stages) <= 0 || len(obj.Spec.Stages[0].Steps) <= 0 || obj.Spec.Stages[0].Steps[0].SourceCodeConfig == nil {
 		return errors.New("invalid pipeline, missing sourcecode step")
 	}

@@ -225,7 +225,7 @@ func (c *Client) BuildJob(jobname string, params map[string]string) (string, err
 	return "", nil
 }
 
-func (c *Client) GetBuildInfo(jobname string) (*JenkinsBuildInfo, error) {
+func (c *Client) GetBuildInfo(jobname string) (*BuildInfo, error) {
 	buildInfoURI := fmt.Sprintf(JenkinsBuildInfoURI, jobname)
 
 	var targetURL *url.URL
@@ -250,7 +250,7 @@ func (c *Client) GetBuildInfo(jobname string) (*JenkinsBuildInfo, error) {
 		logrus.Error(ErrGetBuildInfoFail)
 		return nil, ErrGetBuildInfoFail
 	}
-	buildInfo := &JenkinsBuildInfo{}
+	buildInfo := &BuildInfo{}
 	respBytes, err := ioutil.ReadAll(resp.Body)
 	err = json.Unmarshal(respBytes, buildInfo)
 	if err != nil {
@@ -261,7 +261,7 @@ func (c *Client) GetBuildInfo(jobname string) (*JenkinsBuildInfo, error) {
 
 }
 
-func (c *Client) GetJobInfo(jobname string) (*JenkinsJobInfo, error) {
+func (c *Client) GetJobInfo(jobname string) (*JobInfo, error) {
 	jobInfoURI := fmt.Sprintf(JenkinsJobInfoURI, jobname)
 	var targetURL *url.URL
 	var err error
@@ -288,7 +288,7 @@ func (c *Client) GetJobInfo(jobname string) (*JenkinsJobInfo, error) {
 		logrus.Error(ErrGetJobInfoFail)
 		return nil, ErrGetJobInfoFail
 	}
-	jobInfo := &JenkinsJobInfo{}
+	jobInfo := &JobInfo{}
 	respBytes, err := ioutil.ReadAll(resp.Body)
 	err = json.Unmarshal(respBytes, jobInfo)
 	if err != nil {
@@ -389,7 +389,7 @@ func (c *Client) CancelQueueItem(id int) error {
 	return nil
 }
 
-func (c *Client) GetWFBuildInfo(jobname string) (*JenkinsWFBuildInfo, error) {
+func (c *Client) GetWFBuildInfo(jobname string) (*WFBuildInfo, error) {
 	buildInfoURI := fmt.Sprintf(JenkinsWFBuildInfoURI, jobname)
 
 	var targetURL *url.URL
@@ -414,7 +414,7 @@ func (c *Client) GetWFBuildInfo(jobname string) (*JenkinsWFBuildInfo, error) {
 		logrus.Error(ErrGetBuildInfoFail)
 		return nil, ErrGetBuildInfoFail
 	}
-	buildInfo := &JenkinsWFBuildInfo{}
+	buildInfo := &WFBuildInfo{}
 	respBytes, err := ioutil.ReadAll(resp.Body)
 	err = json.Unmarshal(respBytes, buildInfo)
 	if err != nil {
@@ -425,8 +425,8 @@ func (c *Client) GetWFBuildInfo(jobname string) (*JenkinsWFBuildInfo, error) {
 
 }
 
-func (c *Client) GetWFNodeInfo(jobname string, nodeId string) (*JenkinsWFNodeInfo, error) {
-	nodeInfoURI := fmt.Sprintf(JenkinsWFNodeInfoURI, jobname, nodeId)
+func (c *Client) GetWFNodeInfo(jobname string, nodeID string) (*WFNodeInfo, error) {
+	nodeInfoURI := fmt.Sprintf(JenkinsWFNodeInfoURI, jobname, nodeID)
 
 	var targetURL *url.URL
 	var err error
@@ -450,7 +450,7 @@ func (c *Client) GetWFNodeInfo(jobname string, nodeId string) (*JenkinsWFNodeInf
 		logrus.Error("Error get jenkins node info")
 		return nil, errors.New("Error get jenkins node info")
 	}
-	nodeInfo := &JenkinsWFNodeInfo{}
+	nodeInfo := &WFNodeInfo{}
 	respBytes, err := ioutil.ReadAll(resp.Body)
 	err = json.Unmarshal(respBytes, nodeInfo)
 	if err != nil {
@@ -461,8 +461,8 @@ func (c *Client) GetWFNodeInfo(jobname string, nodeId string) (*JenkinsWFNodeInf
 
 }
 
-func (c *Client) GetWFNodeLog(jobname string, nodeId string) (*JenkinsWFNodeLog, error) {
-	nodeLogURI := fmt.Sprintf(JenkinsWFNodeLogURI, jobname, nodeId)
+func (c *Client) GetWFNodeLog(jobname string, nodeID string) (*WFNodeLog, error) {
+	nodeLogURI := fmt.Sprintf(JenkinsWFNodeLogURI, jobname, nodeID)
 
 	var targetURL *url.URL
 	var err error
@@ -486,7 +486,7 @@ func (c *Client) GetWFNodeLog(jobname string, nodeId string) (*JenkinsWFNodeLog,
 		logrus.Error("Error get jenkins node log")
 		return nil, errors.New("Error get jenkins node log")
 	}
-	nodeLog := &JenkinsWFNodeLog{}
+	nodeLog := &WFNodeLog{}
 	respBytes, err := ioutil.ReadAll(resp.Body)
 	err = json.Unmarshal(respBytes, nodeLog)
 	if err != nil {
@@ -526,9 +526,9 @@ func (c *Client) CreateCredential(content []byte) error {
 	return nil
 }
 
-func (c *Client) GetCredential(credentialId string) error {
+func (c *Client) GetCredential(credentialID string) error {
 
-	getCredURI := fmt.Sprintf(JenkinsGetCredURI, credentialId)
+	getCredURI := fmt.Sprintf(JenkinsGetCredURI, credentialID)
 	getCredURL, err := url.Parse(c.API + getCredURI)
 	if err != nil {
 		return err

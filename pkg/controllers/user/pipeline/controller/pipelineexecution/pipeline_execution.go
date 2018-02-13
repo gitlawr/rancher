@@ -9,7 +9,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-type PipelineExecutionLifecycle struct {
+type Lifecycle struct {
 	cluster            *config.UserContext
 	pipelineExecutions v3.PipelineExecutionInterface
 }
@@ -22,7 +22,7 @@ func Register(ctx context.Context, cluster *config.UserContext) {
 	pipelineExecutionLogs := cluster.Management.Management.PipelineExecutionLogs("")
 	pipelineExecutionLogLister := pipelineExecutionLogs.Controller().Lister()
 
-	pipelineExecutionLifecycle := &PipelineExecutionLifecycle{
+	pipelineExecutionLifecycle := &Lifecycle{
 		pipelineExecutions: pipelineExecutions,
 		cluster:            cluster,
 	}
@@ -47,7 +47,7 @@ func Register(ctx context.Context, cluster *config.UserContext) {
 
 }
 
-func (l *PipelineExecutionLifecycle) Create(obj *v3.PipelineExecution) (*v3.PipelineExecution, error) {
+func (l *Lifecycle) Create(obj *v3.PipelineExecution) (*v3.PipelineExecution, error) {
 
 	if obj.Status.State != utils.StateWaiting {
 		return obj, nil
@@ -63,7 +63,7 @@ func (l *PipelineExecutionLifecycle) Create(obj *v3.PipelineExecution) (*v3.Pipe
 	}
 	return obj, nil
 }
-func (l *PipelineExecutionLifecycle) errorHistory(obj *v3.PipelineExecution) (*v3.PipelineExecution, error) {
+func (l *Lifecycle) errorHistory(obj *v3.PipelineExecution) (*v3.PipelineExecution, error) {
 	obj.Status.State = "error"
 	if _, err := l.pipelineExecutions.Update(obj); err != nil {
 		logrus.Error(err)
@@ -72,14 +72,14 @@ func (l *PipelineExecutionLifecycle) errorHistory(obj *v3.PipelineExecution) (*v
 	return obj, nil
 }
 
-func (l *PipelineExecutionLifecycle) Updated(obj *v3.PipelineExecution) (*v3.PipelineExecution, error) {
+func (l *Lifecycle) Updated(obj *v3.PipelineExecution) (*v3.PipelineExecution, error) {
 	return obj, nil
 }
 
-func (l *PipelineExecutionLifecycle) Remove(obj *v3.PipelineExecution) (*v3.PipelineExecution, error) {
+func (l *Lifecycle) Remove(obj *v3.PipelineExecution) (*v3.PipelineExecution, error) {
 	return obj, nil
 }
 
-func (s *PipelineExecutionLifecycle) GetName() string {
+func (l *Lifecycle) GetName() string {
 	return "pipeline-execution-controller"
 }

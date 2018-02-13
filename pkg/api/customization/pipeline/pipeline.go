@@ -25,20 +25,6 @@ func Formatter(apiContext *types.APIContext, resource *types.RawResource) {
 	resource.AddAction(apiContext, "export")
 }
 
-func CollectionFormatter(apiContext *types.APIContext, collection *types.GenericCollection) {
-	//collection.Links["envvars"] = apiContext.URLBuilder.Link("envvars",collection)
-}
-
-func (h *Handler) LinkHandler(apiContext *types.APIContext, next types.RequestHandler) error {
-	logrus.Debugf("enter link - %v", apiContext.Link)
-	if apiContext.Link == "envvars" {
-		//TODO
-		return nil
-	} else {
-		return httperror.NewAPIError(httperror.NotFound, "Link not found")
-	}
-}
-
 func (h *Handler) CreateHandler(apiContext *types.APIContext, next types.RequestHandler) error {
 	//update hooks endpoint for webhook
 	if err := utils.UpdateEndpoint(apiContext); err != nil {

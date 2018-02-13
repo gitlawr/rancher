@@ -14,5 +14,5 @@ type Driver interface {
 
 func RegisterDrivers(Management *config.ManagementContext) {
 	Drivers = map[string]Driver{}
-	Drivers[drivers.GITHUB_WEBHOOK_HEADER] = drivers.GithubDriver{Management: Management}
+	Drivers[drivers.GithubWebhookHeader] = drivers.GithubDriver{Management: Management}
 }

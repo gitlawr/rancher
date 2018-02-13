@@ -27,7 +27,7 @@ const (
 type client struct {
 	Scheme       string
 	Host         string
-	ClientId     string
+	ClientID     string
 	ClientSecret string
 	API          string
 }
@@ -37,7 +37,7 @@ func New(pipeline v3.ClusterPipeline) (model.Remote, error) {
 		return nil, errors.New("github is not configured")
 	}
 	remote := &client{
-		ClientId:     pipeline.Spec.GithubConfig.ClientID,
+		ClientID:     pipeline.Spec.GithubConfig.ClientID,
 		ClientSecret: pipeline.Spec.GithubConfig.ClientSecret,
 	}
 	if pipeline.Spec.GithubConfig.Host != "" && pipeline.Spec.GithubConfig.Host != "github.com" {
@@ -74,7 +74,7 @@ func (c *client) CanHook() bool {
 func (c *client) Login(redirectURL string, code string) (*v3.SourceCodeCredential, error) {
 	githubOauthConfig := &oauth2.Config{
 		RedirectURL:  redirectURL,
-		ClientID:     c.ClientId,
+		ClientID:     c.ClientID,
 		ClientSecret: c.ClientSecret,
 		Scopes: []string{"repo",
 			"admin:repo_hook"},
@@ -103,8 +103,8 @@ func (c *client) CreateHook(pipeline *v3.Pipeline, accessToken string) (string, 
 	if err != nil {
 		return "", err
 	}
-	hookUrl := fmt.Sprintf("%s?pipelineId=%s:%s", utils.CI_ENDPOINT, pipeline.Namespace, pipeline.Name)
-	id, err := c.createGithubWebhook(user, repo, accessToken, hookUrl, pipeline.Status.Token)
+	hookURL := fmt.Sprintf("%s?pipelineId=%s:%s", utils.CI_ENDPOINT, pipeline.Namespace, pipeline.Name)
+	id, err := c.createGithubWebhook(user, repo, accessToken, hookURL, pipeline.Status.Token)
 	if err != nil {
 		return "", err
 	}
