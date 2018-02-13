@@ -64,7 +64,7 @@ func getUserRepoFromURL(repoURL string) (string, string, error) {
 	if len(match) != 3 {
 		logrus.Infof("get match:%v", match)
 		logrus.Errorf("error getting user/repo from gitrepoUrl:%v", repoURL)
-		return "", "", errors.New(fmt.Sprintf("error getting user/repo from gitrepoUrl:%v", repoURL))
+		return "", "", fmt.Errorf("error getting user/repo from gitrepoUrl:%v", repoURL)
 	}
 	return match[1], match[2], nil
 }

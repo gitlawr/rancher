@@ -113,7 +113,7 @@ func (j Engine) prepareRegistryCredential(pipeline *v3.Pipeline, stage int, step
 		logrus.Debugf("preparing registry credential %s for %s", secretName, registry)
 		secret := &corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
-				Namespace: utils.PIPELINE_NAMESPACE,
+				Namespace: utils.PipelineNamespace,
 				Name:      secretName,
 			},
 			Data: map[string][]byte{

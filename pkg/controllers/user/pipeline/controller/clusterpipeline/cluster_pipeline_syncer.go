@@ -43,7 +43,7 @@ func (s *Syncer) Sync(key string, obj *v3.ClusterPipeline) error {
 }
 
 func (s *Syncer) destroy() error {
-	if err := s.cluster.Core.Namespaces("").Delete(utils.PIPELINE_NAMESPACE, &metav1.DeleteOptions{}); err != nil && !apierrors.IsNotFound(err) {
+	if err := s.cluster.Core.Namespaces("").Delete(utils.PipelineNamespace, &metav1.DeleteOptions{}); err != nil && !apierrors.IsNotFound(err) {
 
 		logrus.Errorf("Error occured while removing ns: %v", err)
 		return err
@@ -56,7 +56,7 @@ func (s *Syncer) destroy() error {
 func (s *Syncer) deploy() error {
 	ns := &corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: utils.PIPELINE_NAMESPACE,
+			Name: utils.PipelineNamespace,
 		},
 	}
 	if _, err := s.cluster.Core.Namespaces("").Create(ns); err != nil && !apierrors.IsAlreadyExists(err) {
@@ -71,7 +71,7 @@ func (s *Syncer) deploy() error {
 	}
 
 	configmap := getConfigMap()
-	if _, err := s.cluster.K8sClient.CoreV1().ConfigMaps(utils.PIPELINE_NAMESPACE).Create(configmap); err != nil && !apierrors.IsAlreadyExists(err) {
+	if _, err := s.cluster.K8sClient.CoreV1().ConfigMaps(utils.PipelineNamespace).Create(configmap); err != nil && !apierrors.IsAlreadyExists(err) {
 		logrus.Errorf("Error occured while create configmap: %v", err)
 		return errors.Wrapf(err, "Creating configmap")
 	}
@@ -89,7 +89,7 @@ func (s *Syncer) deploy() error {
 	}
 
 	sa := getServiceAccount()
-	if _, err := s.cluster.K8sClient.CoreV1().ServiceAccounts(utils.PIPELINE_NAMESPACE).Create(sa); err != nil && !apierrors.IsAlreadyExists(err) {
+	if _, err := s.cluster.K8sClient.CoreV1().ServiceAccounts(utils.PipelineNamespace).Create(sa); err != nil && !apierrors.IsAlreadyExists(err) {
 		logrus.Errorf("Error occured while create service account: %v", err)
 		return errors.Wrapf(err, "Creating service account")
 	}

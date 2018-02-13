@@ -119,7 +119,7 @@ func GetJenkinsURL(cluster *config.UserContext) (string, error) {
 	host := nodes[0].Status.Addresses[0].Address
 
 	svcport := 0
-	service, err := serviceLister.Get(PIPELINE_NAMESPACE, "jenkins")
+	service, err := serviceLister.Get(PipelineNamespace, "jenkins")
 	if err != nil {
 		return "", err
 	}
@@ -187,7 +187,7 @@ func SplitImageTag(image string) (string, string, string) {
 	registry, repo, tag := "", "", ""
 	i := strings.Index(image, "/")
 	if i == -1 || (!strings.ContainsAny(image[:i], ".:") && image[:i] != "localhost") {
-		registry = DEFAULT_REGISTRY
+		registry = DefaultRegistry
 	} else {
 		registry = image[:i]
 		image = image[i+1:]
@@ -195,7 +195,7 @@ func SplitImageTag(image string) (string, string, string) {
 	i = strings.Index(image, ":")
 	if i == -1 {
 		repo = image
-		tag = DEFAULT_TAG
+		tag = DefaultTag
 	} else {
 		repo = image[:i]
 		tag = image[i+1:]

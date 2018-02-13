@@ -56,7 +56,7 @@ type Scm struct {
 	Plugin                            string `xml:"plugin,attr"`
 	ConfigVersion                     int    `xml:"configVersion"`
 	GitRepo                           string `xml:"userRemoteConfigs>hudson.plugins.git.UserRemoteConfig>url"`
-	GitCredentialId                   string `xml:"userRemoteConfigs>hudson.plugins.git.UserRemoteConfig>credentialsId"`
+	GitCredentialID                   string `xml:"userRemoteConfigs>hudson.plugins.git.UserRemoteConfig>credentialsId"`
 	GitBranch                         string `xml:"branches>hudson.plugins.git.BranchSpec>name"`
 	DoGenerateSubmoduleConfigurations bool   `xml:"doGenerateSubmoduleConfigurations"`
 	SubmodelCfg                       string `xml:"submoduleCfg,omitempty"`
