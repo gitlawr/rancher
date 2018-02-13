@@ -251,11 +251,11 @@ func (j Engine) SyncExecution(execution *v3.PipelineExecution) (bool, error) {
 
 	if info.Status == "SUCCESS" && execution.Status.State != utils.StateSuccess {
 		updated = true
-		execution.Labels = utils.PIPELINE_FINISH_LABEL
+		execution.Labels = utils.PipelineFinishLabel
 		execution.Status.State = utils.StateSuccess
 	} else if info.Status == "FAILED" && execution.Status.State != utils.StateFail {
 		updated = true
-		execution.Labels = utils.PIPELINE_FINISH_LABEL
+		execution.Labels = utils.PipelineFinishLabel
 		execution.Status.State = utils.StateFail
 	} else if info.Status == "IN_PROGRESS" && execution.Status.State != utils.StateBuilding {
 		updated = true

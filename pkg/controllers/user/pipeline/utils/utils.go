@@ -14,10 +14,10 @@ import (
 	"time"
 )
 
-var CI_ENDPOINT = ""
+var CIEndpoint = ""
 
-var PIPELINE_FINISH_LABEL = labels.Set(map[string]string{"pipeline.management.cattle.io/finish": "true"})
-var PIPELINE_INPROGRESS_LABEL = labels.Set(map[string]string{"pipeline.management.cattle.io/finish": "false"})
+var PipelineFinishLabel = labels.Set(map[string]string{"pipeline.management.cattle.io/finish": "true"})
+var PipelineInprogressLabel = labels.Set(map[string]string{"pipeline.management.cattle.io/finish": "false"})
 
 func InitClusterPipeline(cluster *config.UserContext) error {
 	clusterPipelines := cluster.Management.Management.ClusterPipelines("")
@@ -42,7 +42,7 @@ func InitHistory(p *v3.Pipeline, triggerType string) *v3.PipelineExecution {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      getNextHistoryName(p),
 			Namespace: p.Namespace,
-			Labels:    PIPELINE_INPROGRESS_LABEL,
+			Labels:    PipelineInprogressLabel,
 		},
 		Spec: v3.PipelineExecutionSpec{
 			ProjectName:  p.Spec.ProjectName,
@@ -92,18 +92,17 @@ func IsStageSuccess(stage v3.StageStatus) bool {
 }
 
 func UpdateEndpoint(apiContext *types.APIContext) error {
-
-	reqUrl := apiContext.URLBuilder.Current()
-	u, err := url.Parse(reqUrl)
+	reqURL := apiContext.URLBuilder.Current()
+	u, err := url.Parse(reqURL)
 	if err != nil {
 		return err
 	}
-	CI_ENDPOINT = fmt.Sprintf("%s://%s/hooks", u.Scheme, u.Host)
+	CIEndpoint = fmt.Sprintf("%s://%s/hooks", u.Scheme, u.Host)
 	return nil
 }
 
-//FIXME proper way to connect to Jenkins in cluster
 func GetJenkinsURL(cluster *config.UserContext) (string, error) {
+	//FIXME proper way to connect to Jenkins in cluster
 	nodeLister := cluster.Core.Nodes("").Controller().Lister()
 	serviceLister := cluster.Core.Services("").Controller().Lister()
 	nodes, err := nodeLister.List("", labels.NewSelector())
@@ -154,11 +153,11 @@ func RunPipeline(pipelines v3.PipelineInterface, executions v3.PipelineExecution
 	}
 	//create log entries
 	for j, stage := range pipeline.Spec.Stages {
-		for k, _ := range stage.Steps {
+		for k := range stage.Steps {
 			log := &v3.PipelineExecutionLog{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:   fmt.Sprintf("%s-%d-%d", execution.Name, j, k),
-					Labels: PIPELINE_INPROGRESS_LABEL,
+					Labels: PipelineInprogressLabel,
 				},
 				Spec: v3.PipelineExecutionLogSpec{
 					ProjectName:           pipeline.Spec.ProjectName,

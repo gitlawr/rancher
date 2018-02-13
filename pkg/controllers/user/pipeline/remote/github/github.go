@@ -103,7 +103,7 @@ func (c *client) CreateHook(pipeline *v3.Pipeline, accessToken string) (string, 
 	if err != nil {
 		return "", err
 	}
-	hookURL := fmt.Sprintf("%s?pipelineId=%s:%s", utils.CI_ENDPOINT, pipeline.Namespace, pipeline.Name)
+	hookURL := fmt.Sprintf("%s?pipelineId=%s:%s", utils.CIEndpoint, pipeline.Namespace, pipeline.Name)
 	id, err := c.createGithubWebhook(user, repo, accessToken, hookURL, pipeline.Status.Token)
 	if err != nil {
 		return "", err

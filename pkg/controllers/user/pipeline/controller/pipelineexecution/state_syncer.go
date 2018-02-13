@@ -33,7 +33,7 @@ func (s *ExecutionStateSyncer) sync(ctx context.Context, syncInterval time.Durat
 }
 
 func (s *ExecutionStateSyncer) syncState() {
-	executions, err := s.pipelineExecutionLister.List("", utils.PIPELINE_INPROGRESS_LABEL.AsSelector())
+	executions, err := s.pipelineExecutionLister.List("", utils.PipelineInprogressLabel.AsSelector())
 	if err != nil {
 		logrus.Errorf("Error listing PipelineExecutions - %v", err)
 	}

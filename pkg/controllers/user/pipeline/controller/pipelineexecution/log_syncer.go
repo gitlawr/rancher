@@ -33,7 +33,7 @@ func (s *ExecutionLogSyncer) sync(ctx context.Context, syncInterval time.Duratio
 }
 
 func (s *ExecutionLogSyncer) syncLogs() {
-	Logs, err := s.pipelineExecutionLogLister.List("", utils.PIPELINE_INPROGRESS_LABEL.AsSelector())
+	Logs, err := s.pipelineExecutionLogLister.List("", utils.PipelineInprogressLabel.AsSelector())
 	if err != nil {
 		logrus.Errorf("Error listing PipelineExecutionLogs - %v", err)
 	}
@@ -57,7 +57,7 @@ func (s *ExecutionLogSyncer) syncLogs() {
 		if err != nil {
 			logrus.Errorf("Error get pipeline execution log - %v", err)
 			e.Spec.Message += fmt.Sprintf("\nError get pipeline execution log - %v", err)
-			e.Labels = utils.PIPELINE_FINISH_LABEL
+			e.Labels = utils.PipelineFinishLabel
 			if _, err := s.pipelineExecutionLogs.Update(e); err != nil {
 				logrus.Errorf("Error update pipeline execution log - %v", err)
 			}
@@ -67,7 +67,7 @@ func (s *ExecutionLogSyncer) syncLogs() {
 		e.Spec.Message = logText
 		stepState := execution.Status.Stages[e.Spec.Stage].Steps[e.Spec.Step].State
 		if stepState != utils.StateWaiting && stepState != utils.StateBuilding {
-			e.Labels = utils.PIPELINE_FINISH_LABEL
+			e.Labels = utils.PipelineFinishLabel
 		}
 		if _, err := s.pipelineExecutionLogs.Update(e); err != nil {
 			logrus.Errorf("Error update pipeline execution log - %v", err)
