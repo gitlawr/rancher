@@ -1,7 +1,7 @@
-package handler
+package hooks
 
 import (
-	"github.com/rancher/rancher/pkg/controllers/user/pipeline/handler/drivers"
+	"github.com/rancher/rancher/pkg/controllers/user/pipeline/hooks/drivers"
 	"github.com/rancher/types/config"
 	"net/http"
 )

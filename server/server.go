@@ -10,7 +10,7 @@ import (
 	"github.com/rancher/rancher/pkg/auth/providers/publicapi"
 	authrequests "github.com/rancher/rancher/pkg/auth/requests"
 	"github.com/rancher/rancher/pkg/auth/tokens"
-	hooks "github.com/rancher/rancher/pkg/controllers/user/pipeline/handler"
+	"github.com/rancher/rancher/pkg/controllers/user/pipeline/hooks"
 	"github.com/rancher/rancher/pkg/proxy"
 	"github.com/rancher/rancher/pkg/remotedialer"
 	"github.com/rancher/rancher/pkg/tunnel"
@@ -72,7 +72,6 @@ func New(ctx context.Context, httpPort, httpsPort int, management *config.Manage
 		return nil, err
 	}
 
-	//webhook endpoint for pipeline
 	webhookHandler := &hooks.WebhookHandler{
 		Management: management,
 	}

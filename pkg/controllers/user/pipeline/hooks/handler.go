@@ -1,4 +1,4 @@
-package handler
+package hooks
 
 import (
 	"github.com/rancher/types/config"
