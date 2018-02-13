@@ -41,6 +41,11 @@ func Register(ctx context.Context, cluster *config.UserContext) {
 
 func (l *PipelineLifecycle) Create(obj *v3.Pipeline) (*v3.Pipeline, error) {
 
+	if obj.Status.Token == "" {
+		//random token for webhook validation
+		obj.Status.Token = uuid.NewV4().String()
+	}
+
 	if obj.Spec.TriggerWebhook && obj.Status.WebHookID == "" {
 		id, err := l.createHook(obj)
 		if err != nil {
@@ -50,10 +55,6 @@ func (l *PipelineLifecycle) Create(obj *v3.Pipeline) (*v3.Pipeline, error) {
 		if _, err := l.pipelines.Update(obj); err != nil {
 			return obj, err
 		}
-	}
-	if obj.Status.Token == "" {
-		//random token for webhook validation
-		obj.Status.Token = uuid.NewV4().String()
 	}
 	return obj, nil
 }
