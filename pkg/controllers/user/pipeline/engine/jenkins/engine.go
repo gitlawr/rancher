@@ -102,32 +102,31 @@ func (j Engine) prepareRegistryCredential(pipeline *v3.Pipeline, stage int, step
 		}
 
 	}
-	if username != "" && password != "" {
-		//store dockercredential in pipeline namespace
-		//TODO key-key mapping instead of registry-key mapping
-		reg, _ := regexp.Compile("[^a-zA-Z0-9]+")
-		proceccedRegistry := strings.ToLower(reg.ReplaceAllString(registry, ""))
 
-		secretName := fmt.Sprintf("%s-%s", pipeline.Namespace, proceccedRegistry)
-		logrus.Debugf("preparing registry credential %s for %s", secretName, registry)
-		secret := &corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{
-				Namespace: utils.PipelineNamespace,
-				Name:      secretName,
-			},
-			Data: map[string][]byte{
-				"username": []byte(username),
-				"password": []byte(password),
-			},
-		}
-		_, err := secrets.Create(secret)
-		if apierrors.IsAlreadyExists(err) {
-			if _, err := secrets.Update(secret); err != nil {
-				return err
-			}
-		} else if err != nil {
+	//store dockercredential in pipeline namespace
+	//TODO key-key mapping instead of registry-key mapping
+	reg, _ := regexp.Compile("[^a-zA-Z0-9]+")
+	proceccedRegistry := strings.ToLower(reg.ReplaceAllString(registry, ""))
+
+	secretName := fmt.Sprintf("%s-%s", pipeline.Namespace, proceccedRegistry)
+	logrus.Debugf("preparing registry credential %s for %s", secretName, registry)
+	secret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: utils.PipelineNamespace,
+			Name:      secretName,
+		},
+		Data: map[string][]byte{
+			"username": []byte(username),
+			"password": []byte(password),
+		},
+	}
+	_, err = secrets.Create(secret)
+	if apierrors.IsAlreadyExists(err) {
+		if _, err := secrets.Update(secret); err != nil {
 			return err
 		}
+	} else if err != nil {
+		return err
 	}
 
 	return nil
@@ -139,10 +138,7 @@ func (j Engine) CreatePipelineJob(pipeline *v3.Pipeline) error {
 
 	jobName := getJobName(pipeline)
 	bconf, _ := xml.MarshalIndent(jobconf, "  ", "    ")
-	if err := j.Client.CreateJob(jobName, bconf); err != nil {
-		return err
-	}
-	return nil
+	return j.Client.CreateJob(jobName, bconf)
 }
 
 func (j Engine) UpdatePipelineJob(pipeline *v3.Pipeline) error {
@@ -151,10 +147,7 @@ func (j Engine) UpdatePipelineJob(pipeline *v3.Pipeline) error {
 
 	jobName := getJobName(pipeline)
 	bconf, _ := xml.MarshalIndent(jobconf, "  ", "    ")
-	if err := j.Client.UpdateJob(jobName, bconf); err != nil {
-		return err
-	}
-	return nil
+	return j.Client.UpdateJob(jobName, bconf)
 }
 
 func (j Engine) RerunExecution(execution *v3.PipelineExecution) error {
@@ -400,8 +393,5 @@ func (j Engine) setCredential(pipeline *v3.Pipeline) error {
 	}
 	buff := bytes.NewBufferString("json=")
 	buff.Write(b)
-	if err := j.Client.CreateCredential(buff.Bytes()); err != nil {
-		return err
-	}
-	return nil
+	return j.Client.CreateCredential(buff.Bytes())
 }
