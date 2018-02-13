@@ -6,7 +6,6 @@ import (
 
 	"bytes"
 	"encoding/json"
-	"github.com/kubernetes/kubernetes/pkg/controller/history"
 	"github.com/pkg/errors"
 	"github.com/rancher/norman/types/convert"
 	"github.com/rancher/rancher/pkg/controllers/user/pipeline/utils"

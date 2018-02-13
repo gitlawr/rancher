@@ -11,6 +11,7 @@ import (
 	"github.com/rancher/types/client/management/v3"
 	"github.com/rancher/types/config"
 	"github.com/sirupsen/logrus"
+	"k8s.io/apimachinery/pkg/apis/meta/v1"
 	"net/http"
 )
 
@@ -55,8 +56,7 @@ func (h *Handler) activate(apiContext *types.APIContext) error {
 	name := parts[1]
 
 	pipelines := h.Management.Management.Pipelines(ns)
-	pipelineLister := pipelines.Controller().Lister()
-	pipeline, err := pipelineLister.Get(ns, name)
+	pipeline, err := pipelines.Get(name, v1.GetOptions{})
 	if err != nil {
 		logrus.Errorf("Error while getting pipeline for %s :%v", apiContext.ID, err)
 		return err
@@ -85,8 +85,7 @@ func (h *Handler) deactivate(apiContext *types.APIContext) error {
 	name := parts[1]
 
 	pipelines := h.Management.Management.Pipelines(ns)
-	pipelineLister := pipelines.Controller().Lister()
-	pipeline, err := pipelineLister.Get(ns, name)
+	pipeline, err := pipelines.Get(name, v1.GetOptions{})
 	if err != nil {
 		logrus.Errorf("Error while getting pipeline for %s :%v", apiContext.ID, err)
 		return err
@@ -114,12 +113,11 @@ func (h *Handler) run(apiContext *types.APIContext) error {
 	ns := parts[0]
 	name := parts[1]
 	pipelines := h.Management.Management.Pipelines(ns)
-	pipelineLister := pipelines.Controller().Lister()
 
 	executions := h.Management.Management.PipelineExecutions(ns)
 	logs := h.Management.Management.PipelineExecutionLogs(ns)
 
-	pipeline, err := pipelineLister.Get(ns, name)
+	pipeline, err := pipelines.Get(name, v1.GetOptions{})
 	if err != nil {
 		logrus.Errorf("Error while getting pipeline for %s :%v", apiContext.ID, err)
 		return err

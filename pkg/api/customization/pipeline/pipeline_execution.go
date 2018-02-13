@@ -39,7 +39,7 @@ func (h *ExecutionHandler) ActionHandler(actionName string, action *types.Action
 	switch actionName {
 	case "rerun":
 		return h.rerun(apiContext)
-	case "deactivate":
+	case "stop":
 		return h.stop(apiContext)
 	}
 

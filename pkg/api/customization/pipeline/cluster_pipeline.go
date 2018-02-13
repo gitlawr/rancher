@@ -56,8 +56,7 @@ func (h *ClusterPipelineHandler) deploy(apiContext *types.APIContext) error {
 	ns := parts[0]
 	name := parts[1]
 	clusterPipelines := h.Management.Management.ClusterPipelines(ns)
-	clusterPipelineLister := clusterPipelines.Controller().Lister()
-	clusterPipeline, err := clusterPipelineLister.Get(ns, name)
+	clusterPipeline, err := clusterPipelines.Get(name, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
@@ -83,8 +82,7 @@ func (h *ClusterPipelineHandler) destroy(apiContext *types.APIContext) error {
 	ns := parts[0]
 	name := parts[1]
 	clusterPipelines := h.Management.Management.ClusterPipelines(ns)
-	clusterPipelineLister := clusterPipelines.Controller().Lister()
-	clusterPipeline, err := clusterPipelineLister.Get(ns, name)
+	clusterPipeline, err := clusterPipelines.Get(name, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
@@ -119,8 +117,8 @@ func (h *ClusterPipelineHandler) authapp(apiContext *types.APIContext) error {
 	if err := json.Unmarshal(requestBytes, &authAppInput); err != nil {
 		return err
 	}
-	clusterPipelineLister := h.Management.Management.ClusterPipelines("").Controller().Lister()
-	clusterPipeline, err := clusterPipelineLister.Get(ns, name)
+	clusterPipelines := h.Management.Management.ClusterPipelines(ns)
+	clusterPipeline, err := clusterPipelines.Get(name, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
@@ -171,8 +169,8 @@ func (h *ClusterPipelineHandler) authuser(apiContext *types.APIContext) error {
 		return err
 	}
 
-	clusterPipelineLister := h.Management.Management.ClusterPipelines("").Controller().Lister()
-	clusterPipeline, err := clusterPipelineLister.Get(ns, name)
+	clusterPipelines := h.Management.Management.ClusterPipelines(ns)
+	clusterPipeline, err := clusterPipelines.Get(name, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
@@ -206,8 +204,7 @@ func (h *ClusterPipelineHandler) revokeapp(apiContext *types.APIContext) error {
 	name := parts[1]
 
 	clusterPipelines := h.Management.Management.ClusterPipelines(ns)
-	clusterPipelineLister := clusterPipelines.Controller().Lister()
-	clusterPipeline, err := clusterPipelineLister.Get(ns, name)
+	clusterPipeline, err := clusterPipelines.Get(name, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
