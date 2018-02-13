@@ -6,6 +6,7 @@ import (
 	"github.com/rancher/rancher/pkg/controllers/user/pipeline/remote"
 	"github.com/rancher/types/apis/management.cattle.io/v3"
 	"github.com/rancher/types/config"
+	"github.com/satori/uuid"
 	"github.com/sirupsen/logrus"
 )
 
@@ -49,6 +50,10 @@ func (l *PipelineLifecycle) Create(obj *v3.Pipeline) (*v3.Pipeline, error) {
 		if _, err := l.pipelines.Update(obj); err != nil {
 			return obj, err
 		}
+	}
+	if obj.Status.Token == "" {
+		//random token for webhook validation
+		obj.Status.Token = uuid.NewV4().String()
 	}
 	return obj, nil
 }
