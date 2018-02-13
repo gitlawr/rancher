@@ -37,8 +37,8 @@ func InitClusterPipeline(cluster *config.UserContext) error {
 	return nil
 }
 
-func InitHistory(p *v3.Pipeline, triggerType string) *v3.PipelineExecution {
-	history := &v3.PipelineExecution{
+func InitExecution(p *v3.Pipeline, triggerType string) *v3.PipelineExecution {
+	execution := &v3.PipelineExecution{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      getNextHistoryName(p),
 			Namespace: p.Namespace,
@@ -50,14 +50,14 @@ func InitHistory(p *v3.Pipeline, triggerType string) *v3.PipelineExecution {
 			Run:          p.Status.NextRun,
 			TriggeredBy:  triggerType,
 			Pipeline:     *p,
-			//DisplayName: getNextHistoryName(pipeline),
 		},
 	}
-	history.Status.State = StateWaiting
-	history.Status.Stages = make([]v3.StageStatus, len(p.Spec.Stages))
+	execution.Status.State = StateWaiting
+	execution.Status.Started = time.Now().Format(time.RFC3339)
+	execution.Status.Stages = make([]v3.StageStatus, len(p.Spec.Stages))
 
-	for i := 0; i < len(history.Status.Stages); i++ {
-		stage := &history.Status.Stages[i]
+	for i := 0; i < len(execution.Status.Stages); i++ {
+		stage := &execution.Status.Stages[i]
 		stage.State = StateWaiting
 		stepsize := len(p.Spec.Stages[i].Steps)
 		stage.Steps = make([]v3.StepStatus, stepsize)
@@ -66,7 +66,7 @@ func InitHistory(p *v3.Pipeline, triggerType string) *v3.PipelineExecution {
 			step.State = StateWaiting
 		}
 	}
-	return history
+	return execution
 }
 
 func getNextHistoryName(p *v3.Pipeline) string {
@@ -146,7 +146,7 @@ func IsExecutionFinish(execution *v3.PipelineExecution) bool {
 func RunPipeline(pipelines v3.PipelineInterface, executions v3.PipelineExecutionInterface, logs v3.PipelineExecutionLogInterface, pipeline *v3.Pipeline, triggerType string) (*v3.PipelineExecution, error) {
 
 	//Generate a new pipeline execution
-	execution := InitHistory(pipeline, triggerType)
+	execution := InitExecution(pipeline, triggerType)
 	execution, err := executions.Create(execution)
 	if err != nil {
 		return nil, err

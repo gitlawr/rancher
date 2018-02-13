@@ -70,6 +70,11 @@ func (s *ExecutionStateSyncer) syncState() {
 					}
 				}
 			}
+		} else {
+			e.SetLabels(utils.PipelineFinishLabel)
+			if _, err := s.pipelineExecutions.Update(e); err != nil {
+				logrus.Errorf("Error update pipeline execution - %v", err)
+			}
 		}
 	}
 }
