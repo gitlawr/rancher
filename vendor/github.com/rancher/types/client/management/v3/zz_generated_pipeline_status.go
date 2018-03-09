@@ -2,6 +2,7 @@ package client
 
 const (
 	PipelineStatusType                      = "pipelineStatus"
+	PipelineStatusFieldConditions           = "conditions"
 	PipelineStatusFieldLastExecutionID      = "lastExecutionId"
 	PipelineStatusFieldLastRunState         = "lastRunState"
 	PipelineStatusFieldLastStarted          = "lastStarted"
@@ -14,6 +15,7 @@ const (
 )
 
 type PipelineStatus struct {
+	Conditions           []PipelineCondition   `json:"conditions,omitempty" yaml:"conditions,omitempty"`
 	LastExecutionID      string                `json:"lastExecutionId,omitempty" yaml:"lastExecutionId,omitempty"`
 	LastRunState         string                `json:"lastRunState,omitempty" yaml:"lastRunState,omitempty"`
 	LastStarted          string                `json:"lastStarted,omitempty" yaml:"lastStarted,omitempty"`

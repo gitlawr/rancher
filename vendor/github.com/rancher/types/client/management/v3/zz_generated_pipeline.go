@@ -7,6 +7,7 @@ import (
 const (
 	PipelineType                       = "pipeline"
 	PipelineFieldAnnotations           = "annotations"
+	PipelineFieldConditions            = "conditions"
 	PipelineFieldCreated               = "created"
 	PipelineFieldCreatorID             = "creatorId"
 	PipelineFieldLabels                = "labels"
@@ -30,7 +31,8 @@ const (
 	PipelineFieldTransitioningMessage  = "transitioningMessage"
 	PipelineFieldTriggerCronExpression = "triggerCronExpression"
 	PipelineFieldTriggerCronTimezone   = "triggerCronTimezone"
-	PipelineFieldTriggerWebhook        = "triggerWebhook"
+	PipelineFieldTriggerWebhookPr      = "triggerWebhookPr"
+	PipelineFieldTriggerWebhookPush    = "triggerWebhookPush"
 	PipelineFieldUuid                  = "uuid"
 	PipelineFieldWebHookID             = "webhookId"
 )
@@ -38,6 +40,7 @@ const (
 type Pipeline struct {
 	types.Resource
 	Annotations           map[string]string     `json:"annotations,omitempty" yaml:"annotations,omitempty"`
+	Conditions            []PipelineCondition   `json:"conditions,omitempty" yaml:"conditions,omitempty"`
 	Created               string                `json:"created,omitempty" yaml:"created,omitempty"`
 	CreatorID             string                `json:"creatorId,omitempty" yaml:"creatorId,omitempty"`
 	Labels                map[string]string     `json:"labels,omitempty" yaml:"labels,omitempty"`
@@ -61,7 +64,8 @@ type Pipeline struct {
 	TransitioningMessage  string                `json:"transitioningMessage,omitempty" yaml:"transitioningMessage,omitempty"`
 	TriggerCronExpression string                `json:"triggerCronExpression,omitempty" yaml:"triggerCronExpression,omitempty"`
 	TriggerCronTimezone   string                `json:"triggerCronTimezone,omitempty" yaml:"triggerCronTimezone,omitempty"`
-	TriggerWebhook        bool                  `json:"triggerWebhook,omitempty" yaml:"triggerWebhook,omitempty"`
+	TriggerWebhookPr      bool                  `json:"triggerWebhookPr,omitempty" yaml:"triggerWebhookPr,omitempty"`
+	TriggerWebhookPush    bool                  `json:"triggerWebhookPush,omitempty" yaml:"triggerWebhookPush,omitempty"`
 	Uuid                  string                `json:"uuid,omitempty" yaml:"uuid,omitempty"`
 	WebHookID             string                `json:"webhookId,omitempty" yaml:"webhookId,omitempty"`
 }

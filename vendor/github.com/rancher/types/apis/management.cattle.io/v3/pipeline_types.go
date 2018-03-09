@@ -1,8 +1,17 @@
 package v3
 
 import (
+	"github.com/rancher/norman/condition"
 	"github.com/rancher/norman/types"
+	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+)
+
+type PipelineConditionType string
+
+const (
+	PipelineExecutionConditonProvisioned condition.Cond = "Provisioned"
+	PipelineExecutionConditionFailed     condition.Cond = "Failed"
 )
 
 type ClusterPipeline struct {
@@ -88,6 +97,8 @@ type GithubClusterConfig struct {
 }
 
 type PipelineStatus struct {
+	Conditions []PipelineCondition `json:"conditions,omitempty"`
+
 	PipelineState        string                `json:"pipelineState,omitempty" norman:"required,options=active|inactive,default=active"`
 	NextRun              int                   `json:"nextRun" yaml:"nextRun,omitempty" norman:"default=1,min=1"`
 	LastExecutionID      string                `json:"lastExecutionId,omitempty" yaml:"lastExecutionId,omitempty"`
@@ -100,14 +111,30 @@ type PipelineStatus struct {
 }
 
 type PipelineSpec struct {
-	DisplayName           string `json:"displayName,omitempty" yaml:"displayName,omitempty"`
-	TriggerWebhook        bool   `json:"triggerWebhook,omitempty" yaml:"triggerWebhook,omitempty"`
+	DisplayName           string `json:"displayName,omitempty" yaml:"displayName,omitempty" norman:"required"`
+	TriggerWebhookPush    bool   `json:"triggerWebhookPush,omitempty" yaml:"triggerWebhookPush,omitempty"`
+	TriggerWebhookPr      bool   `json:"triggerWebhookPr,omitempty" yaml:"triggerWebhookPr,omitempty"`
 	TriggerCronTimezone   string `json:"triggerCronTimezone,omitempty" yaml:"triggerCronTimezone,omitempty"`
 	TriggerCronExpression string `json:"triggerCronExpression,omitempty" yaml:"triggerCronExpression,omitempty"`
 
 	Stages []Stage `json:"stages,omitempty" yaml:"stages,omitempty"`
 
 	Templates map[string]string `json:"templates,omitempty" yaml:"templates,omitempty"`
+}
+
+type PipelineCondition struct {
+	// Type of cluster condition.
+	Type PipelineConditionType `json:"type"`
+	// Status of the condition, one of True, False, Unknown.
+	Status v1.ConditionStatus `json:"status"`
+	// The last time this condition was updated.
+	LastUpdateTime string `json:"lastUpdateTime,omitempty"`
+	// Last time the condition transitioned from one status to another.
+	LastTransitionTime string `json:"lastTransitionTime,omitempty"`
+	// The reason for the condition's last transition.
+	Reason string `json:"reason,omitempty"`
+	// Human-readable message indicating details about last transition
+	Message string `json:"message,omitempty"`
 }
 
 type Stage struct {
@@ -154,6 +181,8 @@ type PipelineExecutionSpec struct {
 }
 
 type PipelineExecutionStatus struct {
+	Conditions []PipelineCondition `json:"conditions,omitempty"`
+
 	Commit         string        `json:"commit,omitempty"`
 	ExecutionState string        `json:"executionState,omitempty"`
 	Started        string        `json:"started,omitempty"`
