@@ -328,6 +328,26 @@ func (j *Engine) SyncExecution(execution *v3.PipelineExecution) (bool, error) {
 		execution.Status.ExecutionState = utils.StateBuilding
 	}
 
+	if execution.Status.ExecutionState == utils.StateBuilding {
+		if len(execution.Status.Stages) > 0 &&
+			len(execution.Status.Stages[0].Steps) > 0 &&
+			execution.Status.Stages[0].Steps[0].State == utils.StateWaiting {
+			//update ProvisionCondition
+			prepareLog, err := j.Client.getWFNodeLog(jobName, PrepareWFNodeID)
+			if err != nil {
+				return false, err
+			}
+			prevMessage := v3.PipelineExecutionConditonProvisioned.GetMessage(execution)
+			curMessage := translatePreparingMessage(prepareLog.Text)
+			if prevMessage != curMessage {
+				v3.PipelineExecutionConditonProvisioned.Message(execution, curMessage)
+				updated = true
+			}
+		} else {
+			v3.PipelineExecutionConditonProvisioned.True(execution)
+		}
+	}
+
 	return updated, nil
 }
 
@@ -471,4 +491,18 @@ func (j Engine) setCredential(pipeline *v3.Pipeline) error {
 	buff := bytes.NewBufferString("json=")
 	buff.Write(b)
 	return j.Client.createCredential(buff.Bytes())
+}
+
+func translatePreparingMessage(log string) string {
+	log = strings.TrimRight(log, "\n")
+	lines := strings.Split(log, "\n")
+
+	message := lines[len(lines)-1]
+	if message == "" {
+		message = "Setting up executors"
+	}
+	if strings.Contains(message, " offline") {
+		message = "Waiting executors to be online"
+	}
+	return message
 }

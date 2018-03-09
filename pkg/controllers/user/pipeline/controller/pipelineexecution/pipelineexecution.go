@@ -69,15 +69,22 @@ func (l *Lifecycle) Create(obj *v3.PipelineExecution) (*v3.PipelineExecution, er
 	if err := l.initLogs(obj); err != nil {
 		return obj, err
 	}
+
+	v3.PipelineExecutionConditonProvisioned.CreateUnknownIfNotExists(obj)
+
 	obj.Status.ExecutionState = utils.StateBuilding
 	if err := l.pipelineEngine.PreCheck(); err != nil {
 		logrus.Errorf("Error get Jenkins engine - %v", err)
 		obj.Status.ExecutionState = utils.StateFail
+		v3.PipelineExecutionConditionFailed.False(obj)
+		v3.PipelineExecutionConditionFailed.ReasonAndMessageFromError(obj, err)
 		return obj, nil
 	}
 	if err := l.pipelineEngine.RunPipeline(&obj.Spec.Pipeline, obj.Spec.TriggeredBy); err != nil {
 		logrus.Errorf("Error run pipeline - %v", err)
 		obj.Status.ExecutionState = utils.StateFail
+		v3.PipelineExecutionConditionFailed.False(obj)
+		v3.PipelineExecutionConditionFailed.ReasonAndMessageFromError(obj, err)
 		return obj, nil
 	}
 	return obj, nil

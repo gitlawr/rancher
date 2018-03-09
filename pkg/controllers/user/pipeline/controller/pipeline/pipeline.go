@@ -93,6 +93,15 @@ func (l *Lifecycle) sync(obj *v3.Pipeline) (*v3.Pipeline, error) {
 		obj.Status.SourceCodeCredential = updatedCred
 	}
 
+	//TODO test
+	//if obj.Status.PipelineState == "inactive" {
+	//	v3.PipelineConditionActive.False(obj)
+	//	v3.PipelineConditionActive.Message(obj, "Pipeline is deactivated")
+	//} else {
+	//	v3.PipelineConditionActive.True(obj)
+	//	v3.PipelineConditionActive.Message(obj, "Pipeline is activated")
+	//}
+
 	//handle cron
 	if obj.Spec.TriggerCronExpression == "" {
 		obj.Labels = map[string]string{utils.PipelineCronLabel: "false"}
