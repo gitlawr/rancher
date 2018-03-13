@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/rancher/rancher/pkg/controllers/user/pipeline/utils"
 	"github.com/rancher/types/apis/management.cattle.io/v3"
+	"github.com/sirupsen/logrus"
 	"regexp"
 	"strconv"
 	"strings"
@@ -40,7 +41,13 @@ func convertStep(pipeline *v3.Pipeline, stageOrdinal int, stepOrdinal int) strin
 		} else if branchCondition == "all" {
 			branch = "**"
 		}
-		stepContent = fmt.Sprintf("git url: '%s', branch: '%s', credentialsId: '%s'", step.SourceCodeConfig.URL, branch, step.SourceCodeConfig.SourceCodeCredentialName)
+		isPr, _ := regexp.MatchString("refs/pull/([1-9]+)/head", branch)
+		if isPr {
+			stepContent = fmt.Sprintf("checkout([$class: 'GitSCM', branches: [[name: 'pr/temp']], userRemoteConfigs: [[url: '%s', refspec: '+%s:refs/remotes/pr/temp', credentialsId: '%s']]])",
+				step.SourceCodeConfig.URL, branch, step.SourceCodeConfig.SourceCodeCredentialName)
+		} else {
+			stepContent = fmt.Sprintf("git url: '%s', branch: '%s', credentialsId: '%s'", step.SourceCodeConfig.URL, branch, step.SourceCodeConfig.SourceCodeCredentialName)
+		}
 	} else if step.RunScriptConfig != nil {
 		if step.RunScriptConfig.IsShell {
 			stepContent = fmt.Sprintf(`sh ''' %s '''`, step.RunScriptConfig.ShellScript)

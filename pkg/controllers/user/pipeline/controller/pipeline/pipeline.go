@@ -79,8 +79,8 @@ func (l *Lifecycle) sync(obj *v3.Pipeline) (*v3.Pipeline, error) {
 	if !utils.ValidSourceCodeConfig(obj.Spec) {
 		return obj, fmt.Errorf("error invalid definition of pipeline '%s'", obj.Spec.DisplayName)
 	}
-	sourceCodeCredentialID := obj.Spec.Stages[0].Steps[0].SourceCodeConfig.SourceCodeCredentialName
 
+	sourceCodeCredentialID := obj.Spec.Stages[0].Steps[0].SourceCodeConfig.SourceCodeCredentialName
 	ns, name := ref.Parse(sourceCodeCredentialID)
 	if obj.Status.SourceCodeCredential == nil ||
 		obj.Status.SourceCodeCredential.Namespace != ns ||
@@ -118,12 +118,12 @@ func (l *Lifecycle) sync(obj *v3.Pipeline) (*v3.Pipeline, error) {
 	}
 
 	//handle webhook
-	if obj.Status.WebHookID != "" && !obj.Spec.TriggerWebhook {
+	if obj.Status.WebHookID != "" && !hasWebhookTrigger(obj) {
 		if err := l.deleteHook(obj); err != nil {
 			logrus.Warnf("fail to delete previous set webhook for pipeline '%s' - %v", obj.Spec.DisplayName, err)
 		}
 		obj.Status.WebHookID = ""
-	} else if obj.Spec.TriggerWebhook && obj.Status.WebHookID == "" {
+	} else if hasWebhookTrigger(obj) && obj.Status.WebHookID == "" {
 		id, err := l.createHook(obj)
 		if err != nil {
 			return obj, err
@@ -188,4 +188,11 @@ func (l *Lifecycle) deleteHook(obj *v3.Pipeline) error {
 	}
 
 	return remote.DeleteHook(obj, accessToken)
+}
+
+func hasWebhookTrigger(obj *v3.Pipeline) bool {
+	if obj != nil && (obj.Spec.TriggerWebhookPr || obj.Spec.TriggerWebhookPush) {
+		return true
+	}
+	return false
 }
