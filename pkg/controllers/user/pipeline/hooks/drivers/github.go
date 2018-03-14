@@ -68,7 +68,7 @@ func (g GithubDriver) Execute(req *http.Request) (int, error) {
 		return http.StatusInternalServerError, errors.New("Error invalid pipeline definition")
 	}
 
-	ref, branch := "", ""
+	ref, branch, commit := "", "", ""
 	if event == "push" {
 		payload := &github.PushEvent{}
 		if err := json.Unmarshal(body, payload); err != nil {
@@ -76,6 +76,7 @@ func (g GithubDriver) Execute(req *http.Request) (int, error) {
 		}
 		ref = payload.GetRef()
 		branch = strings.TrimLeft(payload.GetRef(), "refs/heads/")
+		commit = payload.HeadCommit.GetID()
 	} else if event == "pull_request" {
 		payload := &github.PullRequestEvent{}
 		if err := json.Unmarshal(body, payload); err != nil {
@@ -83,6 +84,7 @@ func (g GithubDriver) Execute(req *http.Request) (int, error) {
 		}
 		ref = fmt.Sprintf("refs/pull/%d/head", payload.PullRequest.GetNumber())
 		branch = payload.PullRequest.Base.GetRef()
+		commit = payload.PullRequest.Head.GetSHA()
 	}
 
 	if !VerifyBranch(pipeline.Spec.Stages[0].Steps[0].SourceCodeConfig, branch) {
@@ -90,7 +92,7 @@ func (g GithubDriver) Execute(req *http.Request) (int, error) {
 	}
 
 	logrus.Debugf("receieve github webhook, triggered '%s' on branch '%s'", pipeline.Spec.DisplayName, ref)
-	if _, err := utils.GenerateExecution(g.Pipelines, g.PipelineExecutions, pipeline, utils.TriggerTypeWebhook, "", ref); err != nil {
+	if _, err := utils.GenerateExecution(g.Pipelines, g.PipelineExecutions, pipeline, utils.TriggerTypeWebhook, "", ref, commit); err != nil {
 		return http.StatusInternalServerError, err
 	}
 	return http.StatusOK, nil

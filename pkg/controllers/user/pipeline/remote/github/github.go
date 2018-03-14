@@ -16,6 +16,8 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"os/exec"
+	"strings"
 )
 
 const (
@@ -285,6 +287,27 @@ func (c *client) GetDefaultBranch(repoURL string, accessToken string) (string, e
 	}
 	return "", nil
 
+}
+
+func (c *client) GetHeadCommit(repoURL string, branch string, credential *v3.SourceCodeCredential) (string, error) {
+
+	if credential != nil {
+		userName := credential.Spec.LoginName
+		token := credential.Spec.AccessToken
+		repoURL = strings.Replace(repoURL, "://", "://"+userName+":"+token+"@", 1)
+	}
+
+	return getBranchHeadCommit(repoURL, branch)
+}
+
+func getBranchHeadCommit(url, branch string) (string, error) {
+	cmd := exec.Command("git", "ls-remote", url, branch)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return "", errors.Wrap(err, string(output))
+	}
+	strs := strings.Split(string(output), "\t")
+	return strs[0], nil
 }
 
 func convertRepos(repos []github.Repository) []v3.SourceCodeRepository {
