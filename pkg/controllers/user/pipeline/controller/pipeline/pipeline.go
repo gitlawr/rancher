@@ -89,6 +89,7 @@ func (l *Lifecycle) sync(obj *v3.Pipeline) (*v3.Pipeline, error) {
 		if err != nil {
 			return obj, err
 		}
+		updatedCred = updatedCred.DeepCopy()
 		updatedCred.Spec.AccessToken = ""
 		obj.Status.SourceCodeCredential = updatedCred
 	}
