@@ -30,6 +30,7 @@ var transitioningMap = map[string]string{
 	"AddonDeploy":                 "provisioning",
 	"AgentDeployed":               "provisioning",
 	"BackingNamespaceCreated":     "configuring",
+	"Built":                       "building",
 	"CertsGenerated":              "provisioning",
 	"ConfigOK":                    "configuring",
 	"Created":                     "creating",
