@@ -5,7 +5,9 @@ import (
 	"github.com/rancher/norman/objectclient"
 	"github.com/rancher/norman/store/empty"
 	"github.com/rancher/norman/types"
+	"github.com/rancher/norman/types/convert"
 	"github.com/rancher/rancher/pkg/ref"
+	"github.com/rancher/types/client/project/v3"
 	"github.com/rancher/types/config"
 	"k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -31,7 +33,7 @@ func (s *sourceCodeProviderStore) ByID(apiContext *types.APIContext, schema *typ
 	}
 	u, _ := o.(runtime.Unstructured)
 	config := u.UnstructuredContent()
-	if t, ok := config["type"].(string); ok && t != "" && providersByType[t] != nil {
+	if t := convert.ToString(config[client.SourceCodeProviderFieldType]); t != "" && providersByType[t] != nil {
 		return providersByType[t].TransformToSourceCodeProvider(config), nil
 	}
 
@@ -43,8 +45,8 @@ func (s *sourceCodeProviderStore) List(apiContext *types.APIContext, schema *typ
 	var result []map[string]interface{}
 	list, _ := rrr.(*unstructured.UnstructuredList)
 	for _, i := range list.Items {
-		if t, ok := i.Object["type"].(string); ok && t != "" && providersByType[t] != nil {
-			if enabled, ok := i.Object["enabled"].(bool); ok && enabled {
+		if t := convert.ToString(i.Object[client.SourceCodeProviderFieldType]); t != "" && providersByType[t] != nil {
+			if enabled, ok := i.Object[client.SourceCodeProviderConfigFieldEnabled].(bool); ok && enabled {
 				result = append(result, providersByType[t].TransformToSourceCodeProvider(i.Object))
 			}
 		}

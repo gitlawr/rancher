@@ -85,6 +85,7 @@ func (g GithubDriver) Execute(req *http.Request) (int, error) {
 	if err != nil {
 		return http.StatusInternalServerError, err
 	}
+
 	if pipelineConfig == nil {
 		//no pipeline config to run
 		return http.StatusOK, nil
@@ -101,7 +102,6 @@ func (g GithubDriver) Execute(req *http.Request) (int, error) {
 }
 
 func verifyGithubWebhookSignature(secret []byte, signature string, body []byte) bool {
-
 	const signaturePrefix = "sha1="
 	const signatureLength = 45 // len(SignaturePrefix) + len(hex(sha1))
 
@@ -137,9 +137,8 @@ func parsePushPayload(raw []byte) (*model.BuildInfo, error) {
 	if strings.HasPrefix(ref, RefsTagPrefix) {
 		//git tag is triggered as a push event
 		info.Event = utils.WebhookEventTag
-		if payload.GetBaseRef() != "" {
-			info.Branch = strings.TrimPrefix(payload.GetBaseRef(), RefsBranchPrefix)
-		}
+		info.Branch = strings.TrimPrefix(ref, RefsTagPrefix)
+
 	} else {
 		info.Event = utils.WebhookEventPush
 		info.Branch = strings.TrimPrefix(payload.GetRef(), RefsBranchPrefix)

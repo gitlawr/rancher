@@ -12,18 +12,18 @@ import (
 	"github.com/rancher/types/apis/project.cattle.io/v3"
 )
 
-func ConvertPipelineExecutionToJenkinsPipeline(execution *v3.PipelineExecution) (PipelineJob, error) {
+func ConvertPipelineExecutionToJenkinsPipeline(execution *v3.PipelineExecution) (*PipelineJob, error) {
 	if execution == nil {
-		return PipelineJob{}, errors.New("nil pipeline execution")
+		return nil, errors.New("nil pipeline execution")
 	}
 
 	if err := utils.ValidPipelineConfig(execution.Spec.PipelineConfig); err != nil {
-		return PipelineJob{}, err
+		return nil, err
 	}
 
 	copyExecution := execution.DeepCopy()
 	parsePreservedEnvVar(copyExecution)
-	pipelineJob := PipelineJob{
+	pipelineJob := &PipelineJob{
 		Plugin: WorkflowJobPlugin,
 		Definition: Definition{
 			Class:   FlowDefinitionClass,
@@ -36,7 +36,6 @@ func ConvertPipelineExecutionToJenkinsPipeline(execution *v3.PipelineExecution) 
 }
 
 func convertStep(execution *v3.PipelineExecution, stageOrdinal int, stepOrdinal int) string {
-
 	stepName := fmt.Sprintf("step-%d-%d", stageOrdinal, stepOrdinal)
 
 	jStep := toJenkinsStep(execution, stageOrdinal, stepOrdinal)
@@ -82,7 +81,7 @@ func convertPipelineExecution(execution *v3.PipelineExecution) string {
 	if execution.Spec.PipelineConfig.Timeout > 0 {
 		timeout = execution.Spec.PipelineConfig.Timeout
 	}
-	return fmt.Sprintf(pipelineBlock, ns, containerbuffer.String(), images.Resolve(mv3.ToolsSystemImages.PipelineSystemImages.JenkinsJnlp), jenkinsURL, timeout, pipelinebuffer.String())
+	return fmt.Sprintf(pipelineBlock, ns, containerbuffer.String(), images.Resolve(mv3.ToolsSystemImages.PipelineSystemImages.JenkinsJnlp), jenkinsURL, execution.Name, timeout, pipelinebuffer.String())
 }
 
 func getStepContainerOptions(execution *v3.PipelineExecution, privileged bool, optional map[string]string, envFrom []v3.EnvFrom) string {
@@ -165,6 +164,7 @@ kind: Pod
 metadata:
   labels:
     app: jenkins
+    execution: %s
 spec:
   affinity:
     podAntiAffinity:

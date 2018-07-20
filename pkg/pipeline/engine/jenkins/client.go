@@ -433,7 +433,6 @@ func (c *Client) getWFNodeLog(jobname string, nodeID string) (*WFNodeLog, error)
 }
 
 func (c *Client) createCredential(content []byte) error {
-
 	setCredURL, err := url.Parse(c.API + JenkinsSetCredURI)
 	if err != nil {
 		return err
@@ -454,7 +453,6 @@ func (c *Client) createCredential(content []byte) error {
 }
 
 func (c *Client) getCredential(credentialID string) error {
-
 	getCredURI := fmt.Sprintf(JenkinsGetCredURI, credentialID)
 	getCredURL, err := url.Parse(c.API + getCredURI)
 	if err != nil {

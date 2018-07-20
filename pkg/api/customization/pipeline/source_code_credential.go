@@ -13,6 +13,12 @@ import (
 	"net/http"
 )
 
+const (
+	actionRefreshRepos = "refreshrepos"
+	actionLogout       = "logout"
+	linkRepos          = "repos"
+)
+
 type SourceCodeCredentialHandler struct {
 	SourceCodeCredentials      v3.SourceCodeCredentialInterface
 	SourceCodeCredentialLister v3.SourceCodeCredentialLister
@@ -21,9 +27,9 @@ type SourceCodeCredentialHandler struct {
 }
 
 func SourceCodeCredentialFormatter(apiContext *types.APIContext, resource *types.RawResource) {
-	resource.AddAction(apiContext, "refreshrepos")
-	resource.AddAction(apiContext, "logout")
-	resource.Links["repos"] = apiContext.URLBuilder.Link("repos", resource)
+	resource.AddAction(apiContext, actionRefreshRepos)
+	resource.AddAction(apiContext, actionLogout)
+	resource.Links[linkRepos] = apiContext.URLBuilder.Link(linkRepos, resource)
 }
 
 func (h SourceCodeCredentialHandler) ListHandler(request *types.APIContext, next types.RequestHandler) error {
@@ -32,8 +38,7 @@ func (h SourceCodeCredentialHandler) ListHandler(request *types.APIContext, next
 }
 
 func (h SourceCodeCredentialHandler) LinkHandler(apiContext *types.APIContext, next types.RequestHandler) error {
-
-	if apiContext.Link == "repos" {
+	if apiContext.Link == linkRepos {
 		repos, err := h.getReposByCredentialID(apiContext.ID)
 		if err != nil {
 			return err
@@ -61,11 +66,10 @@ func (h SourceCodeCredentialHandler) LinkHandler(apiContext *types.APIContext, n
 }
 
 func (h *SourceCodeCredentialHandler) ActionHandler(actionName string, action *types.Action, apiContext *types.APIContext) error {
-
 	switch actionName {
-	case "refreshrepos":
+	case actionRefreshRepos:
 		return h.refreshrepos(apiContext)
-	case "logout":
+	case actionLogout:
 		return h.logout(apiContext)
 	}
 
@@ -73,7 +77,6 @@ func (h *SourceCodeCredentialHandler) ActionHandler(actionName string, action *t
 }
 
 func (h *SourceCodeCredentialHandler) refreshrepos(apiContext *types.APIContext) error {
-
 	ns, name := ref.Parse(apiContext.ID)
 	credential, err := h.SourceCodeCredentialLister.Get(ns, name)
 	if err != nil {
@@ -105,7 +108,6 @@ func (h *SourceCodeCredentialHandler) refreshrepos(apiContext *types.APIContext)
 }
 
 func (h *SourceCodeCredentialHandler) logout(apiContext *types.APIContext) error {
-
 	ns, name := ref.Parse(apiContext.ID)
 	credential, err := h.SourceCodeCredentialLister.Get(ns, name)
 	if err != nil {

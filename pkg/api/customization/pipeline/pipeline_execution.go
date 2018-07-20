@@ -4,6 +4,7 @@ import (
 	"github.com/rancher/norman/api/access"
 	"github.com/rancher/norman/httperror"
 	"github.com/rancher/norman/types"
+	"github.com/rancher/norman/types/convert"
 	"github.com/rancher/rancher/pkg/clustermanager"
 	"github.com/rancher/rancher/pkg/pipeline/utils"
 	"github.com/rancher/rancher/pkg/ref"
@@ -11,6 +12,13 @@ import (
 	"github.com/rancher/types/client/project/v3"
 	"net/http"
 	"time"
+)
+
+const (
+	executionStateField = "executionState"
+	actionRerun         = "rerun"
+	actionStop          = "stop"
+	linkLog             = "log"
 )
 
 type ExecutionHandler struct {
@@ -22,17 +30,17 @@ type ExecutionHandler struct {
 }
 
 func (h *ExecutionHandler) ExecutionFormatter(apiContext *types.APIContext, resource *types.RawResource) {
-	if e, ok := resource.Values["executionState"].(string); ok && e != utils.StateBuilding && e != utils.StateWaiting {
-		resource.AddAction(apiContext, "rerun")
+	if e := convert.ToString(resource.Values[executionStateField]); utils.IsFinishState(e) {
+		resource.AddAction(apiContext, actionRerun)
 	}
-	if e, ok := resource.Values["executionState"].(string); ok && (e == utils.StateBuilding || e == utils.StateWaiting) {
-		resource.AddAction(apiContext, "stop")
+	if e := convert.ToString(resource.Values[executionStateField]); !utils.IsFinishState(e) {
+		resource.AddAction(apiContext, actionStop)
 	}
-	resource.Links["log"] = apiContext.URLBuilder.Link("log", resource)
+	resource.Links[linkLog] = apiContext.URLBuilder.Link(linkLog, resource)
 }
 
 func (h *ExecutionHandler) LinkHandler(apiContext *types.APIContext, next types.RequestHandler) error {
-	if apiContext.Link == "log" {
+	if apiContext.Link == linkLog {
 		return h.handleLog(apiContext)
 	}
 
@@ -41,11 +49,10 @@ func (h *ExecutionHandler) LinkHandler(apiContext *types.APIContext, next types.
 }
 
 func (h *ExecutionHandler) ActionHandler(actionName string, action *types.Action, apiContext *types.APIContext) error {
-
 	switch actionName {
-	case "rerun":
+	case actionRerun:
 		return h.rerun(apiContext)
-	case "stop":
+	case actionStop:
 		return h.stop(apiContext)
 	}
 
@@ -104,6 +111,10 @@ func (h *ExecutionHandler) stop(apiContext *types.APIContext) error {
 	execution, err := h.PipelineExecutionLister.Get(ns, name)
 	if err != nil {
 		return err
+	}
+
+	if utils.IsFinishState(execution.Status.ExecutionState) {
+		return httperror.NewAPIError(httperror.InvalidAction, "pipeline execution is already finished")
 	}
 
 	toUpdate := execution.DeepCopy()

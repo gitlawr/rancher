@@ -14,12 +14,14 @@ import (
 	"time"
 )
 
+// This controller is responsible for updating pipeline execution states
+// by syncing with the pipeline engine. It also detect executors' status
+// and do the actual run pipeline when they are ready
+
 const (
 	syncStateInterval = 5 * time.Second
 )
 
-//ExecutionStateSyncer is responsible for updating pipeline execution states
-//by syncing with the pipeline engine
 type ExecutionStateSyncer struct {
 	clusterName string
 
@@ -38,7 +40,6 @@ func (s *ExecutionStateSyncer) sync(ctx context.Context, syncInterval time.Durat
 }
 
 func (s *ExecutionStateSyncer) syncState() {
-
 	set := labels.Set(map[string]string{utils.PipelineFinishLabel: "false"})
 	allExecutions, err := s.pipelineExecutionLister.List("", set.AsSelector())
 	if err != nil {
@@ -55,37 +56,11 @@ func (s *ExecutionStateSyncer) syncState() {
 		return
 	}
 
-	for _, originE := range executions {
-		e := originE.DeepCopy()
-		if v3.PipelineExecutionConditionInitialized.IsUnknown(e) {
-			ready, err := s.pipelineEngine.PreCheck(e)
-			if err != nil {
-				v3.PipelineExecutionConditionBuilt.False(e)
-				v3.PipelineExecutionConditionBuilt.ReasonAndMessageFromError(e, err)
-				e.Status.ExecutionState = utils.StateFailed
-			}
-			v3.PipelineExecutionConditionInitialized.Message(e, "setting up jenkins")
-			if ready {
-
-				if err := s.pipelineEngine.RunPipelineExecution(e); err != nil {
-					v3.PipelineExecutionConditionProvisioned.False(e)
-					v3.PipelineExecutionConditionProvisioned.ReasonAndMessageFromError(e, err)
-					e.Status.ExecutionState = utils.StateFailed
-					if err := s.updateExecutionAndLastRunState(e); err != nil {
-						logrus.Error(err)
-					}
-					continue
-				}
-				v3.PipelineExecutionConditionInitialized.True(e)
-				v3.PipelineExecutionConditionProvisioned.CreateUnknownIfNotExists(e)
-				v3.PipelineExecutionConditionProvisioned.Message(e, "Assigning jobs to pipeline engine")
-			}
-
-			if err := s.updateExecutionAndLastRunState(e); err != nil {
-				logrus.Error(err)
-				continue
-			}
-		} else if v3.PipelineExecutionConditionInitialized.IsTrue(e) {
+	for _, execution := range executions {
+		if v3.PipelineExecutionConditionInitialized.IsUnknown(execution) {
+			s.checkAndRun(execution)
+		} else if v3.PipelineExecutionConditionInitialized.IsTrue(execution) {
+			e := execution.DeepCopy()
 			updated, err := s.pipelineEngine.SyncExecution(e)
 			if err != nil {
 				logrus.Errorf("got error in syncExecution: %v", err)
@@ -101,7 +76,7 @@ func (s *ExecutionStateSyncer) syncState() {
 				}
 			}
 		} else {
-			if err := s.updateExecutionAndLastRunState(e); err != nil {
+			if err := s.updateExecutionAndLastRunState(execution); err != nil {
 				logrus.Errorf("Error update pipeline execution - %v", err)
 			}
 		}
@@ -110,8 +85,46 @@ func (s *ExecutionStateSyncer) syncState() {
 	logrus.Debugf("Sync pipeline execution state complete")
 }
 
-func (s *ExecutionStateSyncer) updateExecutionAndLastRunState(execution *v3.PipelineExecution) error {
+func (s *ExecutionStateSyncer) checkAndRun(execution *v3.PipelineExecution) {
+	ready, err := s.pipelineEngine.PreCheck(execution)
+	if err != nil {
+		e := execution.DeepCopy()
+		v3.PipelineExecutionConditionBuilt.False(e)
+		v3.PipelineExecutionConditionBuilt.ReasonAndMessageFromError(e, err)
+		e.Status.ExecutionState = utils.StateFailed
+		if err := s.updateExecutionAndLastRunState(e); err != nil {
+			logrus.Error(err)
+		}
+	}
+	if ready {
+		e := execution.DeepCopy()
+		if err := s.pipelineEngine.RunPipelineExecution(e); err != nil {
+			v3.PipelineExecutionConditionProvisioned.False(e)
+			v3.PipelineExecutionConditionProvisioned.ReasonAndMessageFromError(e, err)
+			e.Status.ExecutionState = utils.StateFailed
+			if err := s.updateExecutionAndLastRunState(e); err != nil {
+				logrus.Error(err)
+			}
+			return
+		}
+		v3.PipelineExecutionConditionInitialized.True(e)
+		v3.PipelineExecutionConditionProvisioned.CreateUnknownIfNotExists(e)
+		v3.PipelineExecutionConditionProvisioned.Message(e, "Assigning jobs to pipeline engine")
+		if err := s.updateExecutionAndLastRunState(e); err != nil {
+			logrus.Error(err)
+		}
+	}
+	if v3.PipelineExecutionConditionInitialized.GetMessage(execution) == "" {
+		e := execution.DeepCopy()
+		v3.PipelineExecutionConditionInitialized.Message(e, "setting up jenkins")
+		if err := s.updateExecutionAndLastRunState(e); err != nil {
+			logrus.Error(err)
+		}
+	}
 
+}
+
+func (s *ExecutionStateSyncer) updateExecutionAndLastRunState(execution *v3.PipelineExecution) error {
 	if v3.PipelineExecutionConditionInitialized.IsFalse(execution) || v3.PipelineExecutionConditionProvisioned.IsFalse(execution) ||
 		v3.PipelineExecutionConditionBuilt.IsFalse(execution) {
 		execution.Labels[utils.PipelineFinishLabel] = "true"

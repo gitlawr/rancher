@@ -16,7 +16,6 @@ type PipelineEngine interface {
 }
 
 func New(cluster *config.UserContext) PipelineEngine {
-
 	serviceLister := cluster.Core.Services("").Controller().Lister()
 	podLister := cluster.Core.Pods("").Controller().Lister()
 	secrets := cluster.Core.Secrets("")

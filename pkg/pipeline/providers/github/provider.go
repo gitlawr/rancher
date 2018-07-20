@@ -5,6 +5,7 @@ import (
 	"github.com/mitchellh/mapstructure"
 	"github.com/rancher/norman/store/subtype"
 	"github.com/rancher/norman/types"
+	"github.com/rancher/norman/types/convert"
 	"github.com/rancher/rancher/pkg/pipeline/remote/model"
 	mv3 "github.com/rancher/types/apis/management.cattle.io/v3"
 	"github.com/rancher/types/apis/project.cattle.io/v3"
@@ -12,6 +13,7 @@ import (
 	"github.com/rancher/types/client/project/v3"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/tools/cache"
 )
 
 type GhProvider struct {
@@ -19,17 +21,18 @@ type GhProvider struct {
 	SourceCodeCredentials      v3.SourceCodeCredentialInterface
 	SourceCodeCredentialLister v3.SourceCodeCredentialLister
 	SourceCodeRepositories     v3.SourceCodeRepositoryInterface
-	SourceCodeRepositoryLister v3.SourceCodeRepositoryLister
 	Pipelines                  v3.PipelineInterface
-	PipelineLister             v3.PipelineLister
 	PipelineExecutions         v3.PipelineExecutionInterface
-	PipelineExecutionLister    v3.PipelineExecutionLister
+
+	PipelineIndexer             cache.Indexer
+	PipelineExecutionIndexer    cache.Indexer
+	SourceCodeCredentialIndexer cache.Indexer
+	SourceCodeRepositoryIndexer cache.Indexer
 
 	AuthConfigs mv3.AuthConfigInterface
 }
 
 func (g *GhProvider) CustomizeSchemas(schemas *types.Schemas) {
-
 	scpConfigBaseSchema := schemas.Schema(&schema.Version, client.SourceCodeProviderConfigType)
 	configSchema := schemas.Schema(&schema.Version, client.GithubPipelineConfigType)
 	configSchema.ActionHandler = g.ActionHandler
@@ -49,22 +52,22 @@ func (g *GhProvider) GetName() string {
 
 func (g *GhProvider) TransformToSourceCodeProvider(config map[string]interface{}) map[string]interface{} {
 	p := transformToSourceCodeProvider(config)
-	p["redirectUrl"] = formGithubRedirectURLFromMap(config)
+	p[client.GithubProviderFieldRedirectURL] = formGithubRedirectURLFromMap(config)
 	return p
 }
 
 func transformToSourceCodeProvider(config map[string]interface{}) map[string]interface{} {
 	result := map[string]interface{}{}
 	if m, ok := config["metadata"].(map[string]interface{}); ok {
-		result["id"] = fmt.Sprintf("%v:%v", m["namespace"], m["name"])
+		result["id"] = fmt.Sprintf("%v:%v", m[client.ObjectMetaFieldNamespace], m[client.ObjectMetaFieldName])
 	}
-	if t, ok := config["type"].(string); ok && t != "" {
-		result["type"] = "githubProvider"
+	if t := convert.ToString(config[client.SourceCodeProviderFieldType]); t != "" {
+		result[client.SourceCodeProviderFieldType] = client.GithubProviderType
 	}
-	if t, ok := config["projectName"].(string); ok && t != "" {
+	if t := convert.ToString(config[projectNameField]); t != "" {
 		result["projectId"] = t
 	}
-	result["redirectUrl"] = formGithubRedirectURLFromMap(config)
+	result[client.GithubProviderFieldRedirectURL] = formGithubRedirectURLFromMap(config)
 
 	return result
 }
@@ -82,7 +85,9 @@ func (g *GhProvider) GetProviderConfig(projectID string) (interface{}, error) {
 	storedGithubPipelineConfigMap := u.UnstructuredContent()
 
 	storedGithubPipelineConfig := &v3.GithubPipelineConfig{}
-	mapstructure.Decode(storedGithubPipelineConfigMap, storedGithubPipelineConfig)
+	if err := mapstructure.Decode(storedGithubPipelineConfigMap, storedGithubPipelineConfig); err != nil {
+		return nil, fmt.Errorf("failed to decode the config, error: %v", err)
+	}
 
 	metadataMap, ok := storedGithubPipelineConfigMap["metadata"].(map[string]interface{})
 	if !ok {
@@ -98,7 +103,11 @@ func (g *GhProvider) GetProviderConfig(projectID string) (interface{}, error) {
 	}
 
 	typemeta := &metav1.ObjectMeta{}
-	mapstructure.Decode(metadataMap, typemeta)
+	//time.Time cannot decode directly
+	delete(metadataMap, "creationTimestamp")
+	if err := mapstructure.Decode(metadataMap, typemeta); err != nil {
+		return nil, fmt.Errorf("failed to decode the config, error: %v", err)
+	}
 	storedGithubPipelineConfig.ObjectMeta = *typemeta
 	storedGithubPipelineConfig.APIVersion = "project.cattle.io/v3"
 	storedGithubPipelineConfig.Kind = v3.SourceCodeProviderConfigGroupVersionKind.Kind

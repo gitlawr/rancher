@@ -13,7 +13,6 @@ type Driver interface {
 }
 
 func RegisterDrivers(Management *config.ScaledContext) {
-
 	pipelineLister := Management.Project.Pipelines("").Controller().Lister()
 	pipelineExecutions := Management.Project.PipelineExecutions("")
 	sourceCodeCredentialLister := Management.Project.SourceCodeCredentials("").Controller().Lister()

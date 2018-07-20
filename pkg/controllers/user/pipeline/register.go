@@ -9,7 +9,6 @@ import (
 )
 
 func Register(ctx context.Context, cluster *config.UserContext) {
-
 	pipeline.Register(ctx, cluster)
 	pipelineexecution.Register(ctx, cluster)
 	project.Register(ctx, cluster)

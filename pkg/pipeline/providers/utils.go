@@ -13,12 +13,12 @@ import (
 )
 
 func GetPipelineConfigByBranch(sourceCodeCredentialLister v3.SourceCodeCredentialLister, pipeline *v3.Pipeline, branch string) (*v3.PipelineConfig, error) {
-
 	credentialName := pipeline.Spec.SourceCodeCredentialName
 	repoURL := pipeline.Spec.RepositoryURL
 	accessToken := ""
 	_, projID := ref.Parse(pipeline.Spec.ProjectName)
 	sourceCodeType := model.GithubType
+	var scpConfig interface{}
 	if credentialName != "" {
 		ns, name := ref.Parse(credentialName)
 		credential, err := sourceCodeCredentialLister.Get(ns, name)
@@ -27,11 +27,11 @@ func GetPipelineConfigByBranch(sourceCodeCredentialLister v3.SourceCodeCredentia
 		}
 		accessToken = credential.Spec.AccessToken
 		sourceCodeType = credential.Spec.SourceCodeType
-	}
 
-	scpConfig, err := GetSourceCodeProviderConfig(sourceCodeType, projID)
-	if err != nil {
-		return nil, err
+		scpConfig, err = GetSourceCodeProviderConfig(sourceCodeType, projID)
+		if err != nil {
+			return nil, err
+		}
 	}
 	remote, err := remote.New(scpConfig)
 	if err != nil {
@@ -53,7 +53,6 @@ func GetPipelineConfigByBranch(sourceCodeCredentialLister v3.SourceCodeCredentia
 }
 
 func RefreshReposByCredential(sourceCodeRepositories v3.SourceCodeRepositoryInterface, sourceCodeRepositoryLister v3.SourceCodeRepositoryLister, credential *v3.SourceCodeCredential, sourceCodeProviderConfig interface{}) ([]*v3.SourceCodeRepository, error) {
-
 	namespace := credential.Namespace
 	credentialID := ref.Ref(credential)
 

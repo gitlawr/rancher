@@ -21,6 +21,16 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 )
 
+const (
+	actionRun        = "run"
+	actionPushConfig = "pushconfig"
+	linkConfigs      = "configs"
+	linkYaml         = "yaml"
+	linkBranches     = "branches"
+	queryBranch      = "branch"
+	queryConfigs     = "configs"
+)
+
 type Handler struct {
 	PipelineLister             v3.PipelineLister
 	PipelineExecutions         v3.PipelineExecutionInterface
@@ -28,23 +38,22 @@ type Handler struct {
 }
 
 func Formatter(apiContext *types.APIContext, resource *types.RawResource) {
-	resource.AddAction(apiContext, "run")
-	resource.AddAction(apiContext, "pushconfig")
-	resource.Links["configs"] = apiContext.URLBuilder.Link("configs", resource)
-	resource.Links["yaml"] = apiContext.URLBuilder.Link("yaml", resource)
-	resource.Links["branches"] = apiContext.URLBuilder.Link("branches", resource)
+	resource.AddAction(apiContext, actionRun)
+	resource.AddAction(apiContext, actionPushConfig)
+	resource.Links[linkConfigs] = apiContext.URLBuilder.Link(linkConfigs, resource)
+	resource.Links[linkYaml] = apiContext.URLBuilder.Link(linkYaml, resource)
+	resource.Links[linkBranches] = apiContext.URLBuilder.Link(linkBranches, resource)
 }
 
 func (h *Handler) LinkHandler(apiContext *types.APIContext, next types.RequestHandler) error {
-
-	if apiContext.Link == "yaml" {
+	if apiContext.Link == linkYaml {
 		if apiContext.Method == http.MethodPut {
 			return h.updatePipelineConfigYaml(apiContext)
 		}
 		return h.getPipelineConfigYAML(apiContext)
-	} else if apiContext.Link == "configs" {
+	} else if apiContext.Link == linkConfigs {
 		return h.getPipelineConfigJSON(apiContext)
-	} else if apiContext.Link == "branches" {
+	} else if apiContext.Link == linkBranches {
 		return h.getValidBranches(apiContext)
 	}
 
@@ -52,18 +61,16 @@ func (h *Handler) LinkHandler(apiContext *types.APIContext, next types.RequestHa
 }
 
 func (h *Handler) ActionHandler(actionName string, action *types.Action, apiContext *types.APIContext) error {
-
 	switch actionName {
-	case "run":
+	case actionRun:
 		return h.run(apiContext)
-	case "pushconfig":
+	case actionPushConfig:
 		return h.pushConfig(apiContext)
 	}
 	return httperror.NewAPIError(httperror.InvalidAction, "unsupported action")
 }
 
 func (h *Handler) run(apiContext *types.APIContext) error {
-
 	ns, name := ref.Parse(apiContext.ID)
 	pipeline, err := h.PipelineLister.Get(ns, name)
 	if err != nil {
@@ -120,7 +127,6 @@ func (h *Handler) run(apiContext *types.APIContext) error {
 }
 
 func (h *Handler) pushConfig(apiContext *types.APIContext) error {
-
 	ns, name := ref.Parse(apiContext.ID)
 	pipeline, err := h.PipelineLister.Get(ns, name)
 	if err != nil {
@@ -187,12 +193,11 @@ func (h *Handler) pushConfig(apiContext *types.APIContext) error {
 }
 
 func (h *Handler) getBuildInfoByBranch(pipeline *v3.Pipeline, branch string) (*model.BuildInfo, error) {
-
 	credentialName := pipeline.Spec.SourceCodeCredentialName
 	repoURL := pipeline.Spec.RepositoryURL
 	accessToken := ""
 	sourceCodeType := model.GithubType
-
+	var scpConfig interface{}
 	if credentialName != "" {
 		ns, name := ref.Parse(credentialName)
 		credential, err := h.SourceCodeCredentialLister.Get(ns, name)
@@ -201,11 +206,11 @@ func (h *Handler) getBuildInfoByBranch(pipeline *v3.Pipeline, branch string) (*m
 		}
 		sourceCodeType = credential.Spec.SourceCodeType
 		accessToken = credential.Spec.AccessToken
-	}
-	_, projID := ref.Parse(pipeline.Spec.ProjectName)
-	scpConfig, err := providers.GetSourceCodeProviderConfig(sourceCodeType, projID)
-	if err != nil {
-		return nil, err
+		_, projID := ref.Parse(pipeline.Spec.ProjectName)
+		scpConfig, err = providers.GetSourceCodeProviderConfig(sourceCodeType, projID)
+		if err != nil {
+			return nil, err
+		}
 	}
 	remote, err := remote.New(scpConfig)
 	if err != nil {
@@ -228,6 +233,7 @@ func (h *Handler) getValidBranches(apiContext *types.APIContext) error {
 
 	accessKey := ""
 	sourceCodeType := model.GithubType
+	var scpConfig interface{}
 	if pipeline.Spec.SourceCodeCredentialName != "" {
 		ns, name = ref.Parse(pipeline.Spec.SourceCodeCredentialName)
 		cred, err := h.SourceCodeCredentialLister.Get(ns, name)
@@ -236,13 +242,13 @@ func (h *Handler) getValidBranches(apiContext *types.APIContext) error {
 		}
 		accessKey = cred.Spec.AccessToken
 		sourceCodeType = cred.Spec.SourceCodeType
+		_, projID := ref.Parse(pipeline.Spec.ProjectName)
+		scpConfig, err = providers.GetSourceCodeProviderConfig(sourceCodeType, projID)
+		if err != nil {
+			return err
+		}
 	}
 
-	_, projID := ref.Parse(pipeline.Spec.ProjectName)
-	scpConfig, err := providers.GetSourceCodeProviderConfig(sourceCodeType, projID)
-	if err != nil {
-		return err
-	}
 	remote, err := remote.New(scpConfig)
 	if err != nil {
 		return err
@@ -283,7 +289,7 @@ func (h *Handler) getPipelineConfigJSON(apiContext *types.APIContext) error {
 	if err != nil {
 		return err
 	}
-	branch := apiContext.Request.URL.Query().Get("branch")
+	branch := apiContext.Request.URL.Query().Get(queryBranch)
 
 	m, err := h.getPipelineConfigs(pipeline, branch)
 	if err != nil {
@@ -298,17 +304,39 @@ func (h *Handler) getPipelineConfigJSON(apiContext *types.APIContext) error {
 }
 
 func (h *Handler) getPipelineConfigYAML(apiContext *types.APIContext) error {
-	ns, name := ref.Parse(apiContext.ID)
-	pipeline, err := h.PipelineLister.Get(ns, name)
-	if err != nil {
-		return err
-	}
-	branch := apiContext.Request.URL.Query().Get("branch")
+	yamlMap := map[string]interface{}{}
+	m := map[string]*v3.PipelineConfig{}
 
-	m, err := h.getPipelineConfigs(pipeline, branch)
-	if err != nil {
-		return err
+	branch := apiContext.Request.URL.Query().Get(queryBranch)
+	configs := apiContext.Request.URL.Query().Get(queryConfigs)
+	if configs != "" {
+		err := json.Unmarshal([]byte(configs), &m)
+		if err != nil {
+			return err
+		}
+		for b, config := range m {
+			if config == nil {
+				yamlMap[b] = nil
+				continue
+			}
+			content, err := utils.PipelineConfigToYaml(config)
+			if err != nil {
+				return err
+			}
+			yamlMap[b] = string(content)
+		}
+	} else {
+		ns, name := ref.Parse(apiContext.ID)
+		pipeline, err := h.PipelineLister.Get(ns, name)
+		if err != nil {
+			return err
+		}
+		m, err = h.getPipelineConfigs(pipeline, branch)
+		if err != nil {
+			return err
+		}
 	}
+
 	if branch != "" {
 		config := m[branch]
 		if config == nil {
@@ -322,7 +350,6 @@ func (h *Handler) getPipelineConfigYAML(apiContext *types.APIContext) error {
 		return nil
 	}
 
-	yamlMap := map[string]interface{}{}
 	for b, config := range m {
 		if config == nil {
 			yamlMap[b] = nil
@@ -343,8 +370,7 @@ func (h *Handler) getPipelineConfigYAML(apiContext *types.APIContext) error {
 	return nil
 }
 func (h *Handler) updatePipelineConfigYaml(apiContext *types.APIContext) error {
-
-	branch := apiContext.Request.URL.Query().Get("branch")
+	branch := apiContext.Request.URL.Query().Get(queryBranch)
 	if branch == "" {
 		return httperror.NewAPIError(httperror.InvalidOption, "Branch is not specified")
 	}
@@ -402,9 +428,9 @@ func (h *Handler) updatePipelineConfigYaml(apiContext *types.APIContext) error {
 }
 
 func (h *Handler) getPipelineConfigs(pipeline *v3.Pipeline, branch string) (map[string]*v3.PipelineConfig, error) {
-
 	accessToken := ""
 	sourceCodeType := model.GithubType
+	var scpConfig interface{}
 	if pipeline.Spec.SourceCodeCredentialName != "" {
 		ns, name := ref.Parse(pipeline.Spec.SourceCodeCredentialName)
 		cred, err := h.SourceCodeCredentialLister.Get(ns, name)
@@ -413,13 +439,13 @@ func (h *Handler) getPipelineConfigs(pipeline *v3.Pipeline, branch string) (map[
 		}
 		sourceCodeType = cred.Spec.SourceCodeType
 		accessToken = cred.Spec.AccessToken
+		_, projID := ref.Parse(pipeline.Spec.ProjectName)
+		scpConfig, err = providers.GetSourceCodeProviderConfig(sourceCodeType, projID)
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	_, projID := ref.Parse(pipeline.Spec.ProjectName)
-	scpConfig, err := providers.GetSourceCodeProviderConfig(sourceCodeType, projID)
-	if err != nil {
-		return nil, err
-	}
 	remote, err := remote.New(scpConfig)
 	if err != nil {
 		return nil, err

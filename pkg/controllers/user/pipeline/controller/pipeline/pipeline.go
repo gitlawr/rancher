@@ -8,11 +8,11 @@ import (
 	"github.com/rancher/types/apis/project.cattle.io/v3"
 	"github.com/rancher/types/config"
 	"github.com/satori/go.uuid"
-	"github.com/sirupsen/logrus"
 )
 
-//Lifecycle is responsible for watching pipelines and handling webhook management
-//in source code repository. It also helps to maintain labels on pipelines.
+// This controller is responsible for watching pipelines and handling
+// webhook management in source code providers.
+
 type Lifecycle struct {
 	clusterName                string
 	sourceCodeCredentialLister v3.SourceCodeCredentialLister
@@ -32,28 +32,23 @@ func Register(ctx context.Context, cluster *config.UserContext) {
 }
 
 func (l *Lifecycle) Create(obj *v3.Pipeline) (*v3.Pipeline, error) {
-
 	return l.sync(obj)
 }
 
 func (l *Lifecycle) Updated(obj *v3.Pipeline) (*v3.Pipeline, error) {
-
 	return l.sync(obj)
 }
 
 func (l *Lifecycle) Remove(obj *v3.Pipeline) (*v3.Pipeline, error) {
-
 	if obj.Status.WebHookID != "" {
 		if err := l.deleteHook(obj); err != nil {
-			//merely log error to avoid deletion block
-			logrus.Warnf("fail to delete previous set webhook for pipeline '%s' - %v", obj.Name, err)
+			return obj, err
 		}
 	}
 	return obj, nil
 }
 
 func (l *Lifecycle) sync(obj *v3.Pipeline) (*v3.Pipeline, error) {
-
 	if obj.Status.Token == "" {
 		//random token for webhook validation
 		obj.Status.Token = uuid.NewV4().String()
@@ -78,7 +73,7 @@ func (l *Lifecycle) sync(obj *v3.Pipeline) (*v3.Pipeline, error) {
 	//handle webhook
 	if obj.Status.WebHookID != "" && !hasWebhookTrigger(obj) {
 		if err := l.deleteHook(obj); err != nil {
-			logrus.Warnf("fail to delete previous set webhook for pipeline '%s' - %v", obj.Spec.DisplayName, err)
+			return obj, err
 		}
 		obj.Status.WebHookID = ""
 	} else if hasWebhookTrigger(obj) && obj.Status.WebHookID == "" {

@@ -5,9 +5,11 @@ import (
 	"github.com/rancher/rancher/pkg/pipeline/providers/github"
 	"github.com/rancher/rancher/pkg/pipeline/providers/gitlab"
 	"github.com/rancher/rancher/pkg/pipeline/remote/model"
+	"github.com/rancher/rancher/pkg/pipeline/utils"
 	"github.com/rancher/types/apis/project.cattle.io/v3/schema"
 	"github.com/rancher/types/client/project/v3"
 	"github.com/rancher/types/config"
+	"k8s.io/client-go/tools/cache"
 )
 
 var (
@@ -33,16 +35,41 @@ func SetupSourceCodeProviderConfig(management *config.ScaledContext, schemas *ty
 
 func configure(management *config.ScaledContext) {
 
+	// Indexers for looking up resources by projectName, etc.
+	pipelineInformer := management.Project.Pipelines("").Controller().Informer()
+	pipelineIndexers := map[string]cache.IndexFunc{
+		utils.PipelineByProjectIndex: utils.PipelineByProjectName,
+	}
+	pipelineInformer.AddIndexers(pipelineIndexers)
+	executionInformer := management.Project.PipelineExecutions("").Controller().Informer()
+	executionIndexers := map[string]cache.IndexFunc{
+		utils.PipelineExecutionByProjectIndex: utils.PipelineExecutionByProjectName,
+	}
+	executionInformer.AddIndexers(executionIndexers)
+	sourceCodeCredentialInformer := management.Project.SourceCodeCredentials("").Controller().Informer()
+	sourceCodeCredentialIndexers := map[string]cache.IndexFunc{
+		utils.SourceCodeCredentialByProjectAndTypeIndex: utils.SourceCodeCredentialByProjectNameAndType,
+	}
+	sourceCodeCredentialInformer.AddIndexers(sourceCodeCredentialIndexers)
+	sourceCodeRepositoryInformer := management.Project.SourceCodeRepositories("").Controller().Informer()
+	sourceCodeRepositoryIndexers := map[string]cache.IndexFunc{
+		utils.SourceCodeRepositoryByCredentialIndex:     utils.SourceCodeRepositoryByCredentialName,
+		utils.SourceCodeRepositoryByProjectAndTypeIndex: utils.SourceCodeRepositoryByProjectNameAndType,
+	}
+	sourceCodeRepositoryInformer.AddIndexers(sourceCodeRepositoryIndexers)
+
 	ghProvider := &github.GhProvider{
 		SourceCodeProviderConfigs:  management.Project.SourceCodeProviderConfigs(""),
 		SourceCodeCredentialLister: management.Project.SourceCodeCredentials("").Controller().Lister(),
 		SourceCodeCredentials:      management.Project.SourceCodeCredentials(""),
 		SourceCodeRepositories:     management.Project.SourceCodeRepositories(""),
-		SourceCodeRepositoryLister: management.Project.SourceCodeRepositories("").Controller().Lister(),
 		Pipelines:                  management.Project.Pipelines(""),
-		PipelineLister:             management.Project.Pipelines("").Controller().Lister(),
 		PipelineExecutions:         management.Project.PipelineExecutions(""),
-		PipelineExecutionLister:    management.Project.PipelineExecutions("").Controller().Lister(),
+
+		PipelineIndexer:             pipelineInformer.GetIndexer(),
+		PipelineExecutionIndexer:    executionInformer.GetIndexer(),
+		SourceCodeCredentialIndexer: sourceCodeCredentialInformer.GetIndexer(),
+		SourceCodeRepositoryIndexer: sourceCodeRepositoryInformer.GetIndexer(),
 
 		AuthConfigs: management.Management.AuthConfigs(""),
 	}
@@ -54,11 +81,13 @@ func configure(management *config.ScaledContext) {
 		SourceCodeCredentialLister: management.Project.SourceCodeCredentials("").Controller().Lister(),
 		SourceCodeCredentials:      management.Project.SourceCodeCredentials(""),
 		SourceCodeRepositories:     management.Project.SourceCodeRepositories(""),
-		SourceCodeRepositoryLister: management.Project.SourceCodeRepositories("").Controller().Lister(),
 		Pipelines:                  management.Project.Pipelines(""),
-		PipelineLister:             management.Project.Pipelines("").Controller().Lister(),
 		PipelineExecutions:         management.Project.PipelineExecutions(""),
-		PipelineExecutionLister:    management.Project.PipelineExecutions("").Controller().Lister(),
+
+		PipelineIndexer:             pipelineInformer.GetIndexer(),
+		PipelineExecutionIndexer:    executionInformer.GetIndexer(),
+		SourceCodeCredentialIndexer: sourceCodeCredentialInformer.GetIndexer(),
+		SourceCodeRepositoryIndexer: sourceCodeRepositoryInformer.GetIndexer(),
 
 		AuthConfigs: management.Management.AuthConfigs(""),
 	}

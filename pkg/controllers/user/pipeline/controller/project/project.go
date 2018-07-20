@@ -13,6 +13,9 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+// This controller is responsible for initializing source code
+// provider configs & pipeline settings for projects.
+
 var settings = map[string]string{
 	utils.SettingExecutorQuota: utils.SettingExecutorQuotaDefault,
 }
@@ -27,8 +30,6 @@ func Register(ctx context.Context, cluster *config.UserContext) {
 	projects.AddClusterScopedHandler("pipeline-controller", cluster.ClusterName, projectSyncer.Sync)
 }
 
-//Syncer is responsible for watching projects and
-// maintaining initialized source code provider configs & pipeline settings
 type Syncer struct {
 	sourceCodeProviderConfigs pv3.SourceCodeProviderConfigInterface
 	pipelineSettings          pv3.PipelineSettingInterface
@@ -36,7 +37,7 @@ type Syncer struct {
 }
 
 func (l *Syncer) Sync(key string, obj *v3.Project) error {
-	if obj == nil {
+	if obj == nil || obj.DeletionTimestamp != nil {
 		return nil
 	}
 

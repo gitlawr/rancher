@@ -23,7 +23,7 @@ func toJenkinsStep(execution *v3.PipelineExecution, stageOrdinal int, stepOrdina
 	} else if step.PublishImageConfig != nil {
 		pStep = convertPublishImageconfig(execution, step)
 	} else if step.ApplyYamlConfig != nil {
-		pStep = convertApplyYamlconfig(execution, step)
+		pStep = convertApplyYamlconfig(execution, step, stageOrdinal)
 	}
 
 	if !utils.MatchAll(stage.When, execution) || !utils.MatchAll(step.When, execution) {
@@ -107,11 +107,14 @@ func convertPublishImageconfig(execution *v3.PipelineExecution, step *v3.Step) P
 	return pStep
 }
 
-func convertApplyYamlconfig(execution *v3.PipelineExecution, step *v3.Step) PipelineStep {
+func convertApplyYamlconfig(execution *v3.PipelineExecution, step *v3.Step, stageOrdinal int) PipelineStep {
 	config := step.ApplyYamlConfig
 	pStep := PipelineStep{}
 
-	pStep.image = images.Resolve(mv3.ToolsSystemImages.PipelineSystemImages.KubeApply)
+	//FIXME use updated image under rancher org.
+	//pStep.image = images.Resolve(mv3.ToolsSystemImages.PipelineSystemImages.KubeApply)
+	pStep.image = "lawr/kapply:8_3"
+
 	pStep.command = `sh ''' /kapply.sh '''`
 
 	applyEnv := map[string]string{
@@ -119,6 +122,28 @@ func convertApplyYamlconfig(execution *v3.PipelineExecution, step *v3.Step) Pipe
 		"YAML_CONTENT": config.Content,
 		"NAMESPACE":    config.Namespace,
 	}
+
+	//for deploy step, get registry & image variable from a previous publish step
+	var registry, imageRepo string
+StageLoop:
+	for i := stageOrdinal; i >= 0; i-- {
+		stage := execution.Spec.PipelineConfig.Stages[i]
+		for j := len(stage.Steps) - 1; j >= 0; j-- {
+			step := stage.Steps[j]
+			if step.PublishImageConfig != nil {
+				config := step.PublishImageConfig
+				if config.PushRemote {
+					registry = step.PublishImageConfig.Registry
+				}
+				_, imageRepo, _ = utils.SplitImageTag(step.PublishImageConfig.Tag)
+				break StageLoop
+			}
+		}
+	}
+
+	applyEnv[utils.EnvRegistry] = registry
+	applyEnv[utils.EnvImageRepo] = imageRepo
+
 	for k, v := range step.Env {
 		applyEnv[k] = v
 	}

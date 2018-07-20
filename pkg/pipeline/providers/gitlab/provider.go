@@ -5,6 +5,7 @@ import (
 	"github.com/mitchellh/mapstructure"
 	"github.com/rancher/norman/store/subtype"
 	"github.com/rancher/norman/types"
+	"github.com/rancher/norman/types/convert"
 	"github.com/rancher/rancher/pkg/pipeline/remote/model"
 	mv3 "github.com/rancher/types/apis/management.cattle.io/v3"
 	"github.com/rancher/types/apis/project.cattle.io/v3"
@@ -12,6 +13,7 @@ import (
 	"github.com/rancher/types/client/project/v3"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/tools/cache"
 )
 
 type GlProvider struct {
@@ -19,17 +21,18 @@ type GlProvider struct {
 	SourceCodeCredentials      v3.SourceCodeCredentialInterface
 	SourceCodeCredentialLister v3.SourceCodeCredentialLister
 	SourceCodeRepositories     v3.SourceCodeRepositoryInterface
-	SourceCodeRepositoryLister v3.SourceCodeRepositoryLister
 	Pipelines                  v3.PipelineInterface
-	PipelineLister             v3.PipelineLister
 	PipelineExecutions         v3.PipelineExecutionInterface
-	PipelineExecutionLister    v3.PipelineExecutionLister
+
+	PipelineIndexer             cache.Indexer
+	PipelineExecutionIndexer    cache.Indexer
+	SourceCodeCredentialIndexer cache.Indexer
+	SourceCodeRepositoryIndexer cache.Indexer
 
 	AuthConfigs mv3.AuthConfigInterface
 }
 
 func (g *GlProvider) CustomizeSchemas(schemas *types.Schemas) {
-
 	scpConfigBaseSchema := schemas.Schema(&schema.Version, client.SourceCodeProviderConfigType)
 	configSchema := schemas.Schema(&schema.Version, client.GitlabPipelineConfigType)
 	configSchema.ActionHandler = g.ActionHandler
@@ -56,15 +59,15 @@ func transformToSourceCodeProvider(config map[string]interface{}) map[string]int
 	result := map[string]interface{}{}
 
 	if m, ok := config["metadata"].(map[string]interface{}); ok {
-		result["id"] = fmt.Sprintf("%v:%v", m["namespace"], m["name"])
+		result["id"] = fmt.Sprintf("%v:%v", m[client.ObjectMetaFieldNamespace], m[client.ObjectMetaFieldName])
 	}
-	if t, ok := config["type"].(string); ok && t != "" {
-		result["type"] = "gitlabProvider"
+	if t := convert.ToString(config[client.SourceCodeProviderFieldType]); t != "" {
+		result[client.SourceCodeProviderFieldType] = client.GitlabProviderType
 	}
-	if t, ok := config["projectName"].(string); ok && t != "" {
+	if t := convert.ToString(config[projectNameField]); t != "" {
 		result["projectId"] = t
 	}
-	result["redirectUrl"] = formGitlabRedirectURLFromMap(config)
+	result[client.GitlabProviderFieldRedirectURL] = formGitlabRedirectURLFromMap(config)
 
 	return result
 }
@@ -82,15 +85,20 @@ func (g *GlProvider) GetProviderConfig(projectID string) (interface{}, error) {
 	storedGitlabPipelineConfigMap := u.UnstructuredContent()
 
 	storedGitlabPipelineConfig := &v3.GitlabPipelineConfig{}
-	mapstructure.Decode(storedGitlabPipelineConfigMap, storedGitlabPipelineConfig)
-
+	if err := mapstructure.Decode(storedGitlabPipelineConfigMap, storedGitlabPipelineConfig); err != nil {
+		return nil, fmt.Errorf("failed to decode the config, error: %v", err)
+	}
 	metadataMap, ok := storedGitlabPipelineConfigMap["metadata"].(map[string]interface{})
 	if !ok {
 		return nil, fmt.Errorf("failed to retrieve GitlabConfig metadata, cannot read k8s Unstructured data")
 	}
 
 	typemeta := &metav1.ObjectMeta{}
-	mapstructure.Decode(metadataMap, typemeta)
+	//time.Time cannot decode directly
+	delete(metadataMap, "creationTimestamp")
+	if err := mapstructure.Decode(metadataMap, typemeta); err != nil {
+		return nil, fmt.Errorf("failed to decode the config, error: %v", err)
+	}
 	storedGitlabPipelineConfig.ObjectMeta = *typemeta
 	storedGitlabPipelineConfig.APIVersion = "project.cattle.io/v3"
 	storedGitlabPipelineConfig.Kind = v3.SourceCodeProviderConfigGroupVersionKind.Kind

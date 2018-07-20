@@ -1,9 +1,7 @@
 package utils
 
 const (
-	PipelineNamespace          = "cattle-pipeline"
 	PipelineNamespaceSuffix    = "-pipeline"
-	JenkinsInstancePrefix      = "jenkins-"
 	JenkinsName                = "jenkins"
 	PipelineName               = "pipeline"
 	PipelineSecretName         = "pipeline-secret"
@@ -63,6 +61,8 @@ const (
 	EnvPipelineID        = "CICD_PIPELINE_ID"
 	EnvProjectID         = "CICD_PROJECT_ID"
 	EnvClusterID         = "CICD_CLUSTER_ID"
+	EnvRegistry          = "CICD_REGISTRY"
+	EnvImageRepo         = "CICD_IMAGE_REPO"
 	EnvLocalRegistry     = "CICD_LOCAL_REGISTRY"
 
 	SettingExecutorQuota        = "executor-quota"
