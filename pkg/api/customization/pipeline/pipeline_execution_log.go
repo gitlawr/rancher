@@ -6,8 +6,8 @@ import (
 	"github.com/rancher/norman/types"
 	"github.com/rancher/rancher/pkg/pipeline/engine"
 	"github.com/rancher/rancher/pkg/ref"
+	"github.com/rancher/rancher/pkg/ticker"
 	"github.com/sirupsen/logrus"
-	"golang.org/x/sync/errgroup"
 	"net/http"
 	"strconv"
 	"strings"
@@ -15,9 +15,10 @@ import (
 )
 
 const (
-	logSyncInterval = 2 * time.Second
-	writeWait       = time.Second
-	Threshold       = 100000
+	logSyncInterval  = 2 * time.Second
+	writeWait        = time.Second
+	longLogThreshold = 100000
+	checkTailLength  = 1000
 )
 
 var upgrader = websocket.Upgrader{
@@ -62,8 +63,7 @@ func (h *ExecutionHandler) handleLog(apiContext *types.APIContext) error {
 	defer c.Close()
 
 	cancelCtx, cancel := context.WithCancel(apiContext.Request.Context())
-	readerGroup, ctx := errgroup.WithContext(cancelCtx)
-	apiContext.Request = apiContext.Request.WithContext(ctx)
+	apiContext.Request = apiContext.Request.WithContext(cancelCtx)
 
 	go func() {
 		for {
@@ -75,49 +75,40 @@ func (h *ExecutionHandler) handleLog(apiContext *types.APIContext) error {
 		}
 	}()
 
-	go func() {
-		readerGroup.Wait()
-	}()
-
-	syncT := time.NewTicker(logSyncInterval)
-	defer syncT.Stop()
-
 	prevLog := ""
-	for {
-		select {
-		case <-syncT.C:
-			execution, err = h.PipelineExecutionLister.Get(ns, name)
-			if err != nil {
-				logrus.Debugf("error in execution get: %v", err)
-				if prevLog == "" {
-					writeData(c, []byte("Log is unavailable."))
-				}
-				c.WriteControl(websocket.CloseMessage, []byte{}, time.Now().Add(writeWait))
-				return nil
+	for range ticker.Context(cancelCtx, logSyncInterval) {
+		execution, err = h.PipelineExecutionLister.Get(ns, name)
+		if err != nil {
+			logrus.Debugf("error in execution get: %v", err)
+			if prevLog == "" {
+				writeData(c, []byte("Log is unavailable."))
 			}
-			log, err := pipelineEngine.GetStepLog(execution, stage, step)
-			if err != nil {
-				logrus.Debug(err)
-				if prevLog == "" {
-					writeData(c, []byte("Log is unavailable."))
-				}
-				c.WriteControl(websocket.CloseMessage, []byte{}, time.Now().Add(writeWait))
-				return nil
+			c.WriteControl(websocket.CloseMessage, []byte{}, time.Now().Add(writeWait))
+			return nil
+		}
+		log, err := pipelineEngine.GetStepLog(execution, stage, step)
+		if err != nil {
+			logrus.Debug(err)
+			if prevLog == "" {
+				writeData(c, []byte("Log is unavailable."))
 			}
-			newLog := getNewLog(prevLog, log)
-			prevLog = log
-			if newLog != "" {
-				if err := writeData(c, []byte(newLog)); err != nil {
-					logrus.Debugf("error in writeData: %v", err)
-					return nil
-				}
-			}
-			if execution.Status.Stages[stage].Steps[step].Ended != "" {
-				c.WriteControl(websocket.CloseMessage, []byte{}, time.Now().Add(writeWait))
+			c.WriteControl(websocket.CloseMessage, []byte{}, time.Now().Add(writeWait))
+			return nil
+		}
+		newLog := getNewLog(prevLog, log)
+		prevLog = log
+		if newLog != "" {
+			if err := writeData(c, []byte(newLog)); err != nil {
+				logrus.Debugf("error in writeData: %v", err)
 				return nil
 			}
 		}
+		if execution.Status.Stages[stage].Steps[step].Ended != "" {
+			c.WriteControl(websocket.CloseMessage, []byte{}, time.Now().Add(writeWait))
+			return nil
+		}
 	}
+	return nil
 }
 
 func writeData(c *websocket.Conn, buf []byte) error {
@@ -126,22 +117,24 @@ func writeData(c *websocket.Conn, buf []byte) error {
 		return err
 	}
 
+	defer messageWriter.Close()
+
 	if _, err := messageWriter.Write(buf); err != nil {
 		return err
 	}
 
-	return messageWriter.Close()
+	return nil
 }
 
 func getNewLog(prevLog string, currLog string) string {
-	if len(prevLog) < Threshold {
+	if len(prevLog) < longLogThreshold {
 		return strings.TrimPrefix(currLog, prevLog)
 	}
-	//long logs are trimmed so we use previous log tail to do comparison
-	prevLogTail := prevLog[len(prevLog)-Threshold:]
+	//long logs from Jenkins are trimmed so we use previous log tail to do comparison
+	prevLogTail := prevLog[len(prevLog)-checkTailLength:]
 	idx := strings.Index(currLog, prevLogTail)
 	if idx >= 0 {
-		return currLog[idx+Threshold:]
+		return currLog[idx+checkTailLength:]
 	}
 	return currLog
 }

@@ -20,22 +20,26 @@ import (
 	"strings"
 )
 
+//This controller is responsible for
+// a) setup necessary components when pipeline executions are triggered
+// b) maintain the execution queue
+// c) terminate an execution when it is aborted
+
 const (
 	projectIDLabel   = "field.cattle.io/projectId"
 	roleCreateNs     = "create-ns"
-	roleGetNs        = "get-ns"
 	roleEditNsSuffix = "-namespaces-edit"
 	roleAdmin        = "admin"
 )
 
-//Lifecycle is responsible for initializing logs for pipeline execution
-//and calling the run for the execution.
 type Lifecycle struct {
 	namespaceLister v1.NamespaceLister
 	namespaces      v1.NamespaceInterface
 	secrets         v1.SecretInterface
 	services        v1.ServiceInterface
 	serviceAccounts v1.ServiceAccountInterface
+	podLister       v1.PodLister
+	pods            v1.PodInterface
 	networkPolicies networkv1.NetworkPolicyInterface
 
 	clusterRoleBindings rbacv1.ClusterRoleBindingInterface
@@ -63,6 +67,8 @@ func Register(ctx context.Context, cluster *config.UserContext) {
 	clusterRoleBindings := cluster.RBAC.ClusterRoleBindings("")
 	roleBindings := cluster.RBAC.RoleBindings("")
 	deployments := cluster.Apps.Deployments("")
+	pods := cluster.Core.Pods("")
+	podLister := pods.Controller().Lister()
 
 	pipelines := cluster.Management.Project.Pipelines("")
 	pipelineLister := pipelines.Controller().Lister()
@@ -82,6 +88,8 @@ func Register(ctx context.Context, cluster *config.UserContext) {
 		clusterRoleBindings: clusterRoleBindings,
 		roleBindings:        roleBindings,
 		deployments:         deployments,
+		pods:                pods,
+		podLister:           podLister,
 
 		pipelineLister:             pipelineLister,
 		pipelines:                  pipelines,
@@ -116,8 +124,7 @@ func (l *Lifecycle) Updated(obj *v3.PipelineExecution) (*v3.PipelineExecution, e
 }
 
 func (l *Lifecycle) Sync(obj *v3.PipelineExecution) (*v3.PipelineExecution, error) {
-
-	if obj == nil {
+	if obj == nil || obj.DeletionTimestamp != nil {
 		return obj, nil
 	}
 
@@ -130,6 +137,9 @@ func (l *Lifecycle) Sync(obj *v3.PipelineExecution) (*v3.PipelineExecution, erro
 
 	//doIfFinish
 	if obj.Labels != nil && obj.Labels[utils.PipelineFinishLabel] == "true" {
+		if err := l.doCleanup(obj); err != nil {
+			return obj, err
+		}
 		//start a queueing execution if there is any
 		if err := l.startQueueingExecution(obj); err != nil {
 			return obj, err
@@ -176,7 +186,6 @@ func (l *Lifecycle) Sync(obj *v3.PipelineExecution) (*v3.PipelineExecution, erro
 }
 
 func (l *Lifecycle) newExecutionUpdateLastRunState(obj *v3.PipelineExecution) error {
-
 	ns, name := ref.Parse(obj.Spec.PipelineName)
 	pipeline, err := l.pipelineLister.Get(ns, name)
 	if err != nil {
@@ -245,9 +254,7 @@ func (l *Lifecycle) exceedQuota(obj *v3.PipelineExecution) (bool, error) {
 }
 
 func (l *Lifecycle) doStop(obj *v3.PipelineExecution) error {
-
-	if v3.PipelineExecutionConditionInitialized.IsTrue(obj) &&
-		v3.PipelineExecutionConditionBuilt.IsUnknown(obj) {
+	if v3.PipelineExecutionConditionInitialized.IsTrue(obj) {
 		if err := l.pipelineEngine.StopExecution(obj); err != nil {
 			return err
 		}
@@ -255,7 +262,6 @@ func (l *Lifecycle) doStop(obj *v3.PipelineExecution) error {
 			return err
 		}
 	}
-	v3.PipelineExecutionConditionBuilt.False(obj)
 	v3.PipelineExecutionConditionBuilt.Message(obj, "aborted by user")
 	for i := range obj.Status.Stages {
 		if obj.Status.Stages[i].State == utils.StateBuilding {
@@ -283,6 +289,29 @@ func (l *Lifecycle) doStop(obj *v3.PipelineExecution) error {
 		}
 	}
 
+	return nil
+}
+
+func (l *Lifecycle) doCleanup(obj *v3.PipelineExecution) error {
+	//Clean up on exception cases
+	if err := l.pipelineEngine.StopExecution(obj); err != nil {
+		return err
+	}
+	ns := utils.GetPipelineCommonName(obj)
+
+	labelSet := labels.Set{
+		utils.LabelKeyApp:       utils.JenkinsName,
+		utils.LabelKeyExecution: obj.Name,
+	}
+	slavePods, err := l.podLister.List(ns, labelSet.AsSelector())
+	if err != nil {
+		return err
+	}
+	for _, pod := range slavePods {
+		if err := l.pods.DeleteNamespaced(ns, pod.Name, &metav1.DeleteOptions{}); err != nil && !apierrors.IsNotFound(err) && !apierrors.IsGone(err) {
+			return err
+		}
+	}
 	return nil
 }
 

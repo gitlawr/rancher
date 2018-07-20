@@ -1,9 +1,7 @@
 package utils
 
 const (
-	PipelineNamespace          = "cattle-pipeline"
 	PipelineNamespaceSuffix    = "-pipeline"
-	JenkinsInstancePrefix      = "jenkins-"
 	JenkinsName                = "jenkins"
 	PipelineName               = "pipeline"
 	PipelineSecretName         = "pipeline-secret"

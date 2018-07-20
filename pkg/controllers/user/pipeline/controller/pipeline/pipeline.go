@@ -11,8 +11,9 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-//Lifecycle is responsible for watching pipelines and handling webhook management
-//in source code repository. It also helps to maintain labels on pipelines.
+// This controller is responsible for watching pipelines and handling
+// webhook management in source code providers.
+
 type Lifecycle struct {
 	clusterName                string
 	sourceCodeCredentialLister v3.SourceCodeCredentialLister
@@ -32,17 +33,14 @@ func Register(ctx context.Context, cluster *config.UserContext) {
 }
 
 func (l *Lifecycle) Create(obj *v3.Pipeline) (*v3.Pipeline, error) {
-
 	return l.sync(obj)
 }
 
 func (l *Lifecycle) Updated(obj *v3.Pipeline) (*v3.Pipeline, error) {
-
 	return l.sync(obj)
 }
 
 func (l *Lifecycle) Remove(obj *v3.Pipeline) (*v3.Pipeline, error) {
-
 	if obj.Status.WebHookID != "" {
 		if err := l.deleteHook(obj); err != nil {
 			//merely log error to avoid deletion block
@@ -53,7 +51,6 @@ func (l *Lifecycle) Remove(obj *v3.Pipeline) (*v3.Pipeline, error) {
 }
 
 func (l *Lifecycle) sync(obj *v3.Pipeline) (*v3.Pipeline, error) {
-
 	if obj.Status.Token == "" {
 		//random token for webhook validation
 		obj.Status.Token = uuid.NewV4().String()

@@ -64,7 +64,6 @@ func (j *Engine) getMinioClient(ns string) (*minio.Client, error) {
 }
 
 func (j Engine) getStepLogFromMinioStore(execution *v3.PipelineExecution, stage int, step int) (string, error) {
-
 	bucketName := utils.MinioLogBucket
 	logName := fmt.Sprintf("%s-%d-%d", execution.Name, stage, step)
 	ns := utils.GetPipelineCommonName(execution)

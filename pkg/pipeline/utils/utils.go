@@ -85,6 +85,16 @@ func IsStageSuccess(stage v3.StageStatus) bool {
 	return successSteps == len(stage.Steps)
 }
 
+func IsFinishState(state string) bool {
+	if state == StateBuilding ||
+		state == StateWaiting ||
+		state == StateQueueing ||
+		state == StatePending {
+		return false
+	}
+	return true
+}
+
 func GenerateExecution(executions v3.PipelineExecutionInterface, pipeline *v3.Pipeline, pipelineConfig *v3.PipelineConfig, info *model.BuildInfo) (*v3.PipelineExecution, error) {
 
 	//Generate a new pipeline execution

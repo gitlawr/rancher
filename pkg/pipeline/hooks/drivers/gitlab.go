@@ -156,7 +156,6 @@ func gitlabParseMergeRequestPayload(raw []byte) (*model.BuildInfo, error) {
 }
 
 func gitlabParseTagPayload(raw []byte) (*model.BuildInfo, error) {
-
 	info := &model.BuildInfo{}
 	payload := &gitlab.TagEvent{}
 	if err := json.Unmarshal(raw, payload); err != nil {
@@ -168,6 +167,7 @@ func gitlabParseTagPayload(raw []byte) (*model.BuildInfo, error) {
 	info.Ref = payload.Ref
 	tag := strings.TrimPrefix(payload.Ref, RefsTagPrefix)
 	info.Message = "tag " + tag
+	info.Branch = tag
 	info.Commit = payload.After
 	info.Author = payload.UserName
 	info.AvatarURL = payload.UserAvatar

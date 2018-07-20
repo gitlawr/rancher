@@ -13,7 +13,6 @@ import (
 )
 
 func GetPipelineConfigByBranch(sourceCodeCredentialLister v3.SourceCodeCredentialLister, pipeline *v3.Pipeline, branch string) (*v3.PipelineConfig, error) {
-
 	credentialName := pipeline.Spec.SourceCodeCredentialName
 	repoURL := pipeline.Spec.RepositoryURL
 	accessToken := ""
@@ -53,7 +52,6 @@ func GetPipelineConfigByBranch(sourceCodeCredentialLister v3.SourceCodeCredentia
 }
 
 func RefreshReposByCredential(sourceCodeRepositories v3.SourceCodeRepositoryInterface, sourceCodeRepositoryLister v3.SourceCodeRepositoryLister, credential *v3.SourceCodeCredential, sourceCodeProviderConfig interface{}) ([]*v3.SourceCodeRepository, error) {
-
 	namespace := credential.Namespace
 	credentialID := ref.Ref(credential)
 

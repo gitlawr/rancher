@@ -164,7 +164,6 @@ func (j *Engine) preparePipeline(execution *v3.PipelineExecution) error {
 }
 
 func (j *Engine) prepareRegistryCredential(execution *v3.PipelineExecution, registry string) error {
-
 	secrets, err := j.ManagementSecretLister.List(execution.Namespace, labels.Everything())
 	if err != nil {
 		return err
@@ -243,12 +242,10 @@ func (j *Engine) updatePipelineJob(client *Client, execution *v3.PipelineExecuti
 }
 
 func (j *Engine) RerunExecution(execution *v3.PipelineExecution) error {
-
 	return j.RunPipelineExecution(execution)
 }
 
 func (j *Engine) StopExecution(execution *v3.PipelineExecution) error {
-
 	jobName := getJobName(execution)
 	client, err := j.getJenkinsClient(execution)
 	if err != nil {
@@ -288,7 +285,6 @@ func (j *Engine) StopExecution(execution *v3.PipelineExecution) error {
 }
 
 func (j *Engine) SyncExecution(execution *v3.PipelineExecution) (bool, error) {
-
 	updated := false
 
 	jobName := getJobName(execution)
@@ -439,7 +435,6 @@ func (j *Engine) successStep(execution *v3.PipelineExecution, stage int, step in
 }
 
 func (j *Engine) failStep(execution *v3.PipelineExecution, stage int, step int, jenkinsStage Stage) error {
-
 	startTime := time.Unix(jenkinsStage.StartTimeMillis/1000, 0).Format(time.RFC3339)
 	endTime := time.Unix((jenkinsStage.StartTimeMillis+jenkinsStage.DurationMillis)/1000, 0).Format(time.RFC3339)
 	execution.Status.Stages[stage].Steps[step].State = utils.StateFailed
@@ -522,7 +517,6 @@ func buildingStep(execution *v3.PipelineExecution, stage int, step int, jenkinsS
 }
 
 func skipStep(execution *v3.PipelineExecution, stage int, step int, jenkinsStage Stage) {
-
 	endTime := time.Unix((jenkinsStage.StartTimeMillis+jenkinsStage.DurationMillis)/1000, 0).Format(time.RFC3339)
 	execution.Status.Stages[stage].Steps[step].State = utils.StateSkipped
 

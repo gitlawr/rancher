@@ -9,8 +9,10 @@ import (
 	"github.com/rancher/norman/api/access"
 	"github.com/rancher/norman/httperror"
 	"github.com/rancher/norman/types"
+	"github.com/rancher/norman/types/convert"
 	"github.com/rancher/rancher/pkg/pipeline/remote"
 	"github.com/rancher/rancher/pkg/pipeline/remote/model"
+	"github.com/rancher/rancher/pkg/pipeline/utils"
 	"github.com/rancher/rancher/pkg/ref"
 	"github.com/rancher/types/apis/project.cattle.io/v3"
 	"github.com/rancher/types/client/project/v3"
@@ -18,7 +20,6 @@ import (
 	"io/ioutil"
 	apierror "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"net/url"
 	"strings"
@@ -26,21 +27,24 @@ import (
 
 const (
 	gitlabDefaultHostName = "https://gitlab.com"
+	actionDisable         = "disable"
+	actionTestAndApply    = "testAndApply"
+	actionLogin           = "login"
+	projectNameField      = "projectName"
 )
 
 func (g *GlProvider) Formatter(apiContext *types.APIContext, resource *types.RawResource) {
-	if e, ok := resource.Values["enabled"].(bool); ok && e {
-		resource.AddAction(apiContext, "disable")
+	if convert.ToBool(resource.Values["enabled"]) {
+		resource.AddAction(apiContext, actionDisable)
 	}
 
-	resource.AddAction(apiContext, "testAndApply")
+	resource.AddAction(apiContext, actionTestAndApply)
 }
 
 func (g *GlProvider) ActionHandler(actionName string, action *types.Action, request *types.APIContext) error {
-
-	if actionName == "testAndApply" {
+	if actionName == actionTestAndApply {
 		return g.testAndApply(actionName, action, request)
-	} else if actionName == "disable" {
+	} else if actionName == actionDisable {
 		return g.disableAction(request)
 	}
 
@@ -48,12 +52,11 @@ func (g *GlProvider) ActionHandler(actionName string, action *types.Action, requ
 }
 
 func (g *GlProvider) providerFormatter(apiContext *types.APIContext, resource *types.RawResource) {
-	resource.AddAction(apiContext, "login")
+	resource.AddAction(apiContext, actionLogin)
 }
 
 func (g *GlProvider) providerActionHandler(actionName string, action *types.Action, request *types.APIContext) error {
-
-	if actionName == "login" {
+	if actionName == actionLogin {
 		return g.authuser(request)
 	}
 
@@ -61,7 +64,6 @@ func (g *GlProvider) providerActionHandler(actionName string, action *types.Acti
 }
 
 func (g *GlProvider) testAndApply(actionName string, action *types.Action, apiContext *types.APIContext) error {
-
 	applyInput := &v3.GitlabPipelineConfigApplyInput{}
 
 	if err := json.NewDecoder(apiContext.Request.Body).Decode(applyInput); err != nil {
@@ -96,7 +98,7 @@ func (g *GlProvider) testAndApply(actionName string, action *types.Action, apiCo
 	if err != nil {
 		return err
 	}
-	if _, err = g.refreshReposByCredential(sourceCodeCredential); err != nil {
+	if _, err = g.refreshReposByCredentialAndConfig(sourceCodeCredential, toUpdate); err != nil {
 		return err
 	}
 	toUpdate.Enabled = true
@@ -110,7 +112,6 @@ func (g *GlProvider) testAndApply(actionName string, action *types.Action, apiCo
 }
 
 func (g *GlProvider) authuser(apiContext *types.APIContext) error {
-
 	authUserInput := v3.AuthUserInput{}
 	requestBytes, err := ioutil.ReadAll(apiContext.Request.Body)
 	if err != nil {
@@ -144,7 +145,7 @@ func (g *GlProvider) authuser(apiContext *types.APIContext) error {
 		return err
 	}
 
-	if _, err := g.refreshReposByCredential(account); err != nil {
+	if _, err := g.refreshReposByCredentialAndConfig(account, config); err != nil {
 		return err
 	}
 
@@ -152,17 +153,11 @@ func (g *GlProvider) authuser(apiContext *types.APIContext) error {
 	return nil
 }
 
-func (g *GlProvider) refreshReposByCredential(credential *v3.SourceCodeCredential) ([]*v3.SourceCodeRepository, error) {
-
+func (g *GlProvider) refreshReposByCredentialAndConfig(credential *v3.SourceCodeCredential, config *v3.GitlabPipelineConfig) ([]v3.SourceCodeRepository, error) {
 	namespace := credential.Namespace
 	credentialID := ref.Ref(credential)
-	_, projID := ref.Parse(credential.Spec.ProjectName)
 
-	sourceCodeProviderConfig, err := g.GetProviderConfig(projID)
-	if err != nil {
-		return nil, err
-	}
-	remote, err := remote.New(sourceCodeProviderConfig)
+	remote, err := remote.New(config)
 	if err != nil {
 		return nil, err
 	}
@@ -172,15 +167,14 @@ func (g *GlProvider) refreshReposByCredential(credential *v3.SourceCodeCredentia
 	}
 
 	//remove old repos
-	repositories, err := g.SourceCodeRepositoryLister.List(namespace, labels.Everything())
+	repositories, err := g.SourceCodeRepositoryIndexer.ByIndex(utils.SourceCodeRepositoryByCredentialIndex, credentialID)
 	if err != nil {
 		return nil, err
 	}
-	for _, repo := range repositories {
-		if repo.Spec.SourceCodeCredentialName == credentialID {
-			if err := g.SourceCodeRepositories.DeleteNamespaced(namespace, repo.Name, &metav1.DeleteOptions{}); err != nil {
-				return nil, err
-			}
+	for _, r := range repositories {
+		repo, _ := r.(*v3.SourceCodeRepository)
+		if err := g.SourceCodeRepositories.DeleteNamespaced(namespace, repo.Name, &metav1.DeleteOptions{}); err != nil {
+			return nil, err
 		}
 	}
 
@@ -201,11 +195,10 @@ func (g *GlProvider) refreshReposByCredential(credential *v3.SourceCodeCredentia
 		}
 	}
 
-	return repositories, nil
+	return repos, nil
 }
 
 func (g *GlProvider) authAddAccount(userID string, code string, config *v3.GitlabPipelineConfig) (*v3.SourceCodeCredential, error) {
-
 	if userID == "" {
 		return nil, errors.New("unauth")
 	}
@@ -237,7 +230,6 @@ func (g *GlProvider) authAddAccount(userID string, code string, config *v3.Gitla
 }
 
 func (g *GlProvider) disableAction(request *types.APIContext) error {
-
 	ns, _ := ref.Parse(request.ID)
 	o, err := g.SourceCodeProviderConfigs.ObjectClient().UnstructuredClient().GetNamespaced(ns, model.GitlabType, metav1.GetOptions{})
 	if err != nil {
@@ -245,13 +237,13 @@ func (g *GlProvider) disableAction(request *types.APIContext) error {
 	}
 	u, _ := o.(runtime.Unstructured)
 	config := u.UnstructuredContent()
-	if e, ok := config[client.SourceCodeProviderConfigFieldEnabled].(bool); ok && e {
+	if convert.ToBool(config[client.SourceCodeProviderConfigFieldEnabled]) {
 		config[client.SourceCodeProviderConfigFieldEnabled] = false
 		if _, err := g.SourceCodeProviderConfigs.ObjectClient().Update(model.GitlabType, o); err != nil {
 			return err
 		}
-		if t, ok := config["projectName"].(string); ok && t != "" {
-			return g.cleanup(config["projectName"].(string))
+		if t := convert.ToString(config[projectNameField]); t != "" {
+			return g.cleanup(t)
 		}
 	}
 
@@ -259,58 +251,47 @@ func (g *GlProvider) disableAction(request *types.APIContext) error {
 }
 
 func (g *GlProvider) cleanup(projectID string) error {
-
-	pipelines, err := g.PipelineLister.List("", labels.Everything())
+	pipelines, err := g.PipelineIndexer.ByIndex(utils.PipelineByProjectIndex, projectID)
 	if err != nil {
 		return err
 	}
-
 	for _, p := range pipelines {
-		if p.Spec.ProjectName != projectID {
-			continue
-		}
-		if err := g.Pipelines.DeleteNamespaced(p.Namespace, p.Name, &metav1.DeleteOptions{}); err != nil {
+		pipeline, _ := p.(*v3.Pipeline)
+		if err := g.Pipelines.DeleteNamespaced(pipeline.Namespace, pipeline.Name, &metav1.DeleteOptions{}); err != nil {
 			return err
 		}
 	}
 
-	pipelineExecutions, err := g.PipelineExecutionLister.List("", labels.Everything())
+	pipelineExecutions, err := g.PipelineExecutionIndexer.ByIndex(utils.PipelineExecutionByProjectIndex, projectID)
 	if err != nil {
 		return err
 	}
-
 	for _, e := range pipelineExecutions {
-		if e.Spec.ProjectName != projectID {
-			continue
-		}
-		if err := g.PipelineExecutions.DeleteNamespaced(e.Namespace, e.Name, &metav1.DeleteOptions{}); err != nil {
+		execution, _ := e.(*v3.PipelineExecution)
+		if err := g.PipelineExecutions.DeleteNamespaced(execution.Namespace, execution.Name, &metav1.DeleteOptions{}); err != nil {
 			return err
 		}
 	}
 
-	credentials, err := g.SourceCodeCredentialLister.List("", labels.Everything())
+	crdKey := utils.ProjectNameAndSourceCodeTypeKey(projectID, model.GitlabType)
+	credentials, err := g.SourceCodeCredentialIndexer.ByIndex(utils.SourceCodeCredentialByProjectAndTypeIndex, crdKey)
 	if err != nil {
 		return err
 	}
-
-	for _, credential := range credentials {
-		if credential.Spec.SourceCodeType != model.GitlabType || credential.Spec.ProjectName != projectID {
-			continue
-		}
+	for _, c := range credentials {
+		credential, _ := c.(*v3.SourceCodeCredential)
 		if err := g.SourceCodeCredentials.DeleteNamespaced(credential.Namespace, credential.Name, &metav1.DeleteOptions{}); err != nil {
 			return err
 		}
 	}
 
-	repositories, err := g.SourceCodeRepositoryLister.List("", labels.Everything())
+	repoKey := utils.ProjectNameAndSourceCodeTypeKey(projectID, model.GitlabType)
+	repositories, err := g.SourceCodeRepositoryIndexer.ByIndex(utils.SourceCodeRepositoryByProjectAndTypeIndex, repoKey)
 	if err != nil {
 		return err
 	}
-
-	for _, repo := range repositories {
-		if repo.Spec.SourceCodeType != model.GitlabType || repo.Spec.ProjectName != projectID {
-			continue
-		}
+	for _, r := range repositories {
+		repo, _ := r.(*v3.SourceCodeRepository)
 		if err := g.SourceCodeRepositories.DeleteNamespaced(repo.Namespace, repo.Name, &metav1.DeleteOptions{}); err != nil {
 			return err
 		}
@@ -320,9 +301,9 @@ func (g *GlProvider) cleanup(projectID string) error {
 }
 
 func formGitlabRedirectURLFromMap(config map[string]interface{}) string {
-	hostname, _ := config[client.GitlabPipelineConfigFieldHostname].(string)
-	clientID, _ := config[client.GitlabPipelineConfigFieldClientID].(string)
-	tls, _ := config[client.GitlabPipelineConfigFieldTLS].(bool)
+	hostname := convert.ToString(config[client.GitlabPipelineConfigFieldHostname])
+	clientID := convert.ToString(config[client.GitlabPipelineConfigFieldClientID])
+	tls := convert.ToBool(config[client.GitlabPipelineConfigFieldTLS])
 	return gitlabRedirectURL(hostname, clientID, tls)
 }
 
