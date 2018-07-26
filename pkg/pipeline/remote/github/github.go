@@ -25,10 +25,14 @@ import (
 )
 
 const (
-	defaultGithubAPI  = "https://api.github.com"
-	defaultGithubHost = "github.com"
-	maxPerPage        = "100"
-	gheAPI            = "/api/v3"
+	defaultGithubAPI      = "https://api.github.com"
+	defaultGithubHost     = "github.com"
+	maxPerPage            = "100"
+	gheAPI                = "/api/v3"
+	hookConfigURL         = "url"
+	hookConfigContentType = "content_type"
+	hookConfigSecret      = "secret"
+	hookConfigInsecureSSL = "insecure_ssl"
 )
 
 type client struct {
@@ -86,7 +90,6 @@ func (c *client) CanHook() bool {
 
 func (c *client) Login(code string) (*v3.SourceCodeCredential, error) {
 	githubOauthConfig := &oauth2.Config{
-		//RedirectURL:  redirectURL,
 		ClientID:     c.ClientID,
 		ClientSecret: c.ClientSecret,
 		Scopes: []string{"repo",
@@ -111,40 +114,55 @@ func (c *client) CreateHook(pipeline *v3.Pipeline, accessToken string) (string, 
 	if err != nil {
 		return "", err
 	}
+	hook, err := c.getHook(pipeline, accessToken)
+	if err != nil {
+		return "", err
+	}
+	if hook != nil {
+		hook.Config[hookConfigSecret] = pipeline.Status.Token
+		b := new(bytes.Buffer)
+		json.NewEncoder(b).Encode(hook)
+		resp, err := doRequestToGithub(http.MethodPatch, hook.GetURL(), accessToken, b)
+		if err != nil {
+			return "", err
+		}
+		defer resp.Body.Close()
+	} else {
+		hookURL := fmt.Sprintf("%s/hooks?pipelineId=%s:%s", settings.ServerURL.Get(), pipeline.Namespace, pipeline.Name)
+		events := []string{utils.WebhookEventPush, utils.WebhookEventPullRequest}
+		name := "web"
+		active := true
+		hook = &github.Hook{
+			Name:   &name,
+			Active: &active,
+			Config: map[string]interface{}{
+				hookConfigURL:         hookURL,
+				hookConfigContentType: "json",
+				hookConfigSecret:      pipeline.Status.Token,
+				hookConfigInsecureSSL: "1",
+			},
+			Events: events,
+		}
+		url := fmt.Sprintf("%s/repos/%s/%s/hooks", c.API, user, repo)
+		logrus.Debugf("hook to create:%v", hook)
+		b := new(bytes.Buffer)
+		json.NewEncoder(b).Encode(hook)
 
-	hookURL := fmt.Sprintf("%s/hooks?pipelineId=%s:%s", settings.ServerURL.Get(), pipeline.Namespace, pipeline.Name)
-	events := []string{utils.WebhookEventPush, utils.WebhookEventPullRequest}
-	name := "web"
-	active := true
-	hook := github.Hook{
-		Name:   &name,
-		Active: &active,
-		Config: map[string]interface{}{
-			"url":          hookURL,
-			"content_type": "json",
-			"secret":       pipeline.Status.Token,
-			"insecure_ssl": "1",
-		},
-		Events: events,
+		resp, err := doRequestToGithub(http.MethodPost, url, accessToken, b)
+		if err != nil {
+			return "", err
+		}
+		defer resp.Body.Close()
+		respData, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return "", err
+		}
+		err = json.Unmarshal(respData, hook)
+		if err != nil {
+			return "", err
+		}
 	}
-	url := fmt.Sprintf("%s/repos/%s/%s/hooks", c.API, user, repo)
-	logrus.Debugf("hook to create:%v", hook)
-	b := new(bytes.Buffer)
-	json.NewEncoder(b).Encode(hook)
 
-	resp, err := doRequestToGithub(http.MethodPost, url, accessToken, b)
-	if err != nil {
-		return "", err
-	}
-	defer resp.Body.Close()
-	respData, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return "", err
-	}
-	err = json.Unmarshal(respData, &hook)
-	if err != nil {
-		return "", err
-	}
 	return strconv.Itoa(hook.GetID()), err
 }
 
@@ -154,33 +172,51 @@ func (c *client) DeleteHook(pipeline *v3.Pipeline, accessToken string) error {
 		return err
 	}
 
+	hook, err := c.getHook(pipeline, accessToken)
+	if err != nil {
+		return err
+	}
+	if hook != nil {
+		url := fmt.Sprintf("%s/repos/%s/%s/hooks/%v", c.API, user, repo, hook.GetID())
+		resp, err := doRequestToGithub(http.MethodDelete, url, accessToken, nil)
+		if err != nil {
+			return err
+		}
+		defer resp.Body.Close()
+	}
+	return nil
+}
+
+func (c *client) getHook(pipeline *v3.Pipeline, accessToken string) (*github.Hook, error) {
+	user, repo, err := getUserRepoFromURL(pipeline.Spec.RepositoryURL)
+	if err != nil {
+		return nil, err
+	}
+
 	var hooks []github.Hook
+	var result *github.Hook
 	url := fmt.Sprintf("%s/repos/%s/%s/hooks", c.API, user, repo)
 
 	resp, err := getFromGithub(url, accessToken)
 	if err != nil {
-		return err
+		return nil, err
 	}
+	defer resp.Body.Close()
 	b, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	if err := json.Unmarshal(b, &hooks); err != nil {
-		return err
+		return nil, err
 	}
 	for _, hook := range hooks {
 		payloadURL, ok := hook.Config["url"].(string)
 		if ok && strings.HasSuffix(payloadURL, fmt.Sprintf("hooks?pipelineId=%s", ref.Ref(pipeline))) {
-			hookURL := fmt.Sprintf("%s/%v", url, hook.GetID())
-			resp, err := doRequestToGithub(http.MethodDelete, hookURL, accessToken, nil)
-			if err != nil {
-				return err
-			}
-			resp.Body.Close()
+			result = &hook
 		}
 	}
-	return nil
+	return result, nil
 }
 
 func (c *client) GetAccount(accessToken string) (*v3.SourceCodeCredential, error) {

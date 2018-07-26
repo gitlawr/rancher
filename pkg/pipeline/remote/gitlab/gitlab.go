@@ -118,15 +118,12 @@ func (c *client) Repos(account *v3.SourceCodeCredential) ([]v3.SourceCodeReposit
 }
 
 func (c *client) CreateHook(pipeline *v3.Pipeline, accessToken string) (string, error) {
-
 	user, repo, err := getUserRepoFromURL(pipeline.Spec.RepositoryURL)
 	if err != nil {
 		return "", err
 	}
-
-	hookURL := fmt.Sprintf("%s/hooks?pipelineId=%s", settings.ServerURL.Get(), ref.Ref(pipeline))
 	project := url.QueryEscape(user + "/" + repo)
-	APIURL := fmt.Sprintf(c.API+"/projects/%s/hooks", project)
+	hookURL := fmt.Sprintf("%s/hooks?pipelineId=%s", settings.ServerURL.Get(), ref.Ref(pipeline))
 	opt := &gitlab.AddProjectHookOptions{
 		PushEvents:          gitlab.Bool(true),
 		MergeRequestsEvents: gitlab.Bool(true),
@@ -135,62 +132,93 @@ func (c *client) CreateHook(pipeline *v3.Pipeline, accessToken string) (string, 
 		EnableSSLVerification: gitlab.Bool(false),
 		Token: gitlab.String(pipeline.Status.Token),
 	}
+	hook, err := c.getHook(pipeline, accessToken)
+	if err != nil {
+		return "", err
+	}
+	if hook != nil {
+		url := fmt.Sprintf("%s/projects/%s/hooks/%v", c.API, project, hook.ID)
+		resp, err := doRequsetToGitlab(http.MethodPut, url, accessToken, opt)
+		if err != nil {
+			return "", err
+		}
+		defer resp.Body.Close()
+	} else {
+		url := fmt.Sprintf("%s/projects/%s/hooks", c.API, project)
 
-	resp, err := doRequsetToGitlab(http.MethodPost, APIURL, accessToken, opt)
-	if err != nil {
-		return "", err
+		resp, err := doRequsetToGitlab(http.MethodPost, url, accessToken, opt)
+		if err != nil {
+			return "", err
+		}
+		defer resp.Body.Close()
+		respData, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return "", err
+		}
+		hook = &gitlab.ProjectHook{}
+		err = json.Unmarshal(respData, hook)
+		if err != nil {
+			return "", err
+		}
 	}
-	defer resp.Body.Close()
-	respData, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return "", err
-	}
-	hook := gitlab.ProjectHook{}
-	err = json.Unmarshal(respData, &hook)
-	if err != nil {
-		return "", err
-	}
+
 	return strconv.Itoa(hook.ID), nil
 }
 
 func (c *client) DeleteHook(pipeline *v3.Pipeline, accessToken string) error {
-
 	user, repo, err := getUserRepoFromURL(pipeline.Spec.RepositoryURL)
 	if err != nil {
 		return err
 	}
 	project := url.QueryEscape(user + "/" + repo)
 
-	var hooks []gitlab.ProjectHook
-	url := fmt.Sprintf(c.API+"/projects/%s/hooks", project)
-	resp, err := getFromGitlab(accessToken, url)
+	hook, err := c.getHook(pipeline, accessToken)
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
-	b, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return err
-	}
-	err = json.Unmarshal(b, &hooks)
-	if err != nil {
-		return err
-	}
-	for _, hook := range hooks {
-		if strings.HasSuffix(hook.URL, fmt.Sprintf("hooks?pipelineId=%s", ref.Ref(pipeline))) {
-			hookURL := fmt.Sprintf("%s/%v", url, hook.ID)
-			resp, err := doRequsetToGitlab(http.MethodDelete, hookURL, accessToken, nil)
-			if err != nil {
-				return err
-			}
-			resp.Body.Close()
+	if hook != nil {
+		url := fmt.Sprintf("%s/projects/%s/hooks/%v", c.API, project, hook.ID)
+		resp, err := doRequsetToGitlab(http.MethodDelete, url, accessToken, nil)
+		if err != nil {
+			return err
 		}
+		defer resp.Body.Close()
 	}
 	return nil
 }
 
-func (c *client) getFileFromRepo(filename string, owner string, repo string, ref string, accessToken string) (*gitlab.File, error) {
+func (c *client) getHook(pipeline *v3.Pipeline, accessToken string) (*gitlab.ProjectHook, error) {
+	user, repo, err := getUserRepoFromURL(pipeline.Spec.RepositoryURL)
+	if err != nil {
+		return nil, err
+	}
+	project := url.QueryEscape(user + "/" + repo)
 
+	var hooks []gitlab.ProjectHook
+	var result *gitlab.ProjectHook
+	url := fmt.Sprintf(c.API+"/projects/%s/hooks", project)
+	resp, err := getFromGitlab(accessToken, url)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	b, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := json.Unmarshal(b, &hooks); err != nil {
+		return nil, err
+	}
+	for _, hook := range hooks {
+		if strings.HasSuffix(hook.URL, fmt.Sprintf("hooks?pipelineId=%s", ref.Ref(pipeline))) {
+			result = &hook
+		}
+	}
+	return result, nil
+}
+
+func (c *client) getFileFromRepo(filename string, owner string, repo string, ref string, accessToken string) (*gitlab.File, error) {
 	project := url.QueryEscape(owner + "/" + repo)
 	url := fmt.Sprintf("%s/projects/%s/repository/files/%s?ref=%s", c.API, project, filename, ref)
 	resp, err := getFromGitlab(accessToken, url)
@@ -244,7 +272,6 @@ func (c *client) GetPipelineFileInRepo(repoURL string, ref string, accessToken s
 }
 
 func (c *client) SetPipelineFileInRepo(repoURL string, branch string, accessToken string, content []byte) error {
-
 	owner, repo, err := getUserRepoFromURL(repoURL)
 	if err != nil {
 		return err
@@ -285,7 +312,8 @@ func (c *client) SetPipelineFileInRepo(repoURL string, branch string, accessToke
 		option.CommitMessage = &message
 	}
 
-	_, err = doRequsetToGitlab(method, url, accessToken, option)
+	resp, err := doRequsetToGitlab(method, url, accessToken, option)
+	defer resp.Body.Close()
 
 	return nil
 }
