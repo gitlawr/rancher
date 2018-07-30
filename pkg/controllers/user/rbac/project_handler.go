@@ -22,7 +22,7 @@ type pLifecycle struct {
 }
 
 func (p *pLifecycle) Create(project *v3.Project) (*v3.Project, error) {
-	for verb, suffix := range projectNSVerbToSuffix {
+	for suffix, verb := range projectNSSuffixToVerb {
 		roleName := fmt.Sprintf(projectNSGetClusterRoleNameFmt, project.Name, suffix)
 		_, err := p.m.crLister.Get("", roleName)
 		if err == nil || !apierrors.IsNotFound(err) {
@@ -45,7 +45,7 @@ func (p *pLifecycle) Updated(project *v3.Project) (*v3.Project, error) {
 }
 
 func (p *pLifecycle) Remove(project *v3.Project) (*v3.Project, error) {
-	for _, suffix := range projectNSVerbToSuffix {
+	for suffix := range projectNSSuffixToVerb {
 		roleName := fmt.Sprintf(projectNSGetClusterRoleNameFmt, project.Name, suffix)
 
 		err := p.m.workload.RBAC.ClusterRoles("").Delete(roleName, &v1.DeleteOptions{})

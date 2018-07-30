@@ -29,6 +29,13 @@ var projectNSVerbToSuffix = map[string]string{
 	"get": "readonly",
 	"*":   "edit",
 }
+
+var projectNSSuffixToVerb = map[string]string{
+	"readonly": "get",
+	"edit":     "*",
+	"admin":    "*",
+}
+
 var defaultProjectLabels = labels.Set(map[string]string{"authz.management.cattle.io/default-project": "true"})
 var systemProjectLabels = labels.Set(map[string]string{"authz.management.cattle.io/system-project": "true"})
 var initialProjectToLabels = map[string]labels.Set{
@@ -184,8 +191,10 @@ func (n *nsLifecycle) ensurePRTBAddToNamespace(ns *v1.Namespace) (bool, error) {
 			return false, errors.Wrap(err, "couldn't ensure roles")
 		}
 
-		if err := n.m.ensureProjectRoleBindings(ns.Name, roles, prtb); err != nil {
-			return false, errors.Wrapf(err, "couldn't ensure binding %v in %v", prtb.Name, ns.Name)
+		if prtb.RoleTemplateName == "project-owner" || ns.Annotations == nil || ns.Annotations["test"] != "true" {
+			if err := n.m.ensureProjectRoleBindings(ns.Name, roles, prtb); err != nil {
+				return false, errors.Wrapf(err, "couldn't ensure binding %v in %v", prtb.Name, ns.Name)
+			}
 		}
 	}
 
@@ -233,7 +242,7 @@ func (n *nsLifecycle) ensurePRTBAddToNamespace(ns *v1.Namespace) (bool, error) {
 // namespaces in the project. A corresponding PRTB handler will ensure that a binding to this
 // ClusterRole exists for every project member
 func (n *nsLifecycle) reconcileNamespaceProjectClusterRole(ns *v1.Namespace) error {
-	for verb, name := range projectNSVerbToSuffix {
+	for name, verb := range projectNSSuffixToVerb {
 		var desiredRole string
 		if ns.DeletionTimestamp == nil {
 			if parts := strings.SplitN(ns.Annotations[projectIDAnnotation], ":", 2); len(parts) == 2 && len(parts[1]) > 0 {
@@ -255,8 +264,16 @@ func (n *nsLifecycle) reconcileNamespaceProjectClusterRole(ns *v1.Namespace) err
 			}
 
 			if cr.Name == desiredRole {
-				nsInDesiredRole = true
-				continue
+				if ns.Annotations != nil && ns.Annotations["test"] == "true" && name == "admin" {
+					nsInDesiredRole = true
+					continue
+				}
+				if name != "admin" && (ns.Annotations == nil || ns.Annotations["test"] != "true") {
+					nsInDesiredRole = true
+					continue
+				}
+				//nsInDesiredRole = true
+				//continue
 			}
 
 			// This ClusterRole has a reference to the namespace, but is not the desired role. Namespace has been moved; remove it from this ClusterRole
@@ -264,7 +281,8 @@ func (n *nsLifecycle) reconcileNamespaceProjectClusterRole(ns *v1.Namespace) err
 			modified := false
 			for i := range undesiredRole.Rules {
 				r := &undesiredRole.Rules[i]
-				if slice.ContainsString(r.Verbs, verb) && slice.ContainsString(r.Resources, "namespaces") && slice.ContainsString(r.ResourceNames, ns.Name) {
+				if strings.HasSuffix(cr.Name, name) && slice.ContainsString(r.Resources, "namespaces") && slice.ContainsString(r.ResourceNames, ns.Name) {
+					logrus.Infof("desire %s,removing ns:%s, in clusterrole:%s", name, ns.Name, cr.Name)
 					modified = true
 					resNames := r.ResourceNames
 					for i := len(resNames) - 1; i >= 0; i-- {
@@ -305,6 +323,12 @@ func (n *nsLifecycle) reconcileNamespaceProjectClusterRole(ns *v1.Namespace) err
 		}
 
 		if !nsInDesiredRole && desiredRole != "" {
+			if ns.Annotations != nil && ns.Annotations["test"] == "true" && name != "admin" {
+				continue
+			}
+			if name == "admin" && (ns.Annotations == nil || ns.Annotations["test"] != "true") {
+				continue
+			}
 			mustUpdate := true
 			cr, err := n.m.crLister.Get("", desiredRole)
 			if err != nil && !apierrors.IsNotFound(err) {
@@ -316,9 +340,10 @@ func (n *nsLifecycle) reconcileNamespaceProjectClusterRole(ns *v1.Namespace) err
 				return n.m.createProjectNSRole(desiredRole, verb, ns.Name)
 			}
 
+			logrus.Infof("desire: %s,adding ns:%s, in clusterrole:%s", name, ns.Name, cr.Name)
 			// Check to see if retrieved role has the namespace (small chance cache could have been updated)
 			for _, r := range cr.Rules {
-				if slice.ContainsString(r.Verbs, verb) && slice.ContainsString(r.Resources, "namespaces") && slice.ContainsString(r.ResourceNames, ns.Name) {
+				if strings.HasSuffix(cr.Name, name) && slice.ContainsString(r.Resources, "namespaces") && slice.ContainsString(r.ResourceNames, ns.Name) {
 					// ns already in the role, nothing to do
 					mustUpdate = false
 				}
