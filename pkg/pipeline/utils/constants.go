@@ -1,30 +1,33 @@
 package utils
 
 const (
-	PipelineNamespaceSuffix    = "-pipeline"
-	JenkinsName                = "jenkins"
-	PipelineName               = "pipeline"
-	PipelineSecretName         = "pipeline-secret"
-	PipelineSecretUserKey      = "admin-user"
-	PipelineSecretTokenKey     = "admin-token"
-	PipelineSecretDefaultUser  = "admin"
-	PipelineSecretDefaultToken = "admin123"
-	RegistryName               = "docker-registry"
-	MinioName                  = "minio"
-	MinioBucketLocation        = "local"
-	MinioLogBucket             = "pipeline-logs"
-	NetWorkPolicyName          = "pipeline-np"
-	LabelKeyApp                = "app"
-	LabelKeyJenkins            = "jenkins"
-	JenkinsMaster              = "master"
-	LabelKeyExecution          = "execution"
-	DefaultRegistry            = "index.docker.io"
-	LocalRegistry              = "docker-registry:5000"
-	DefaultTag                 = "latest"
-	JenkinsPort                = 8080
-	JenkinsJNLPPort            = 50000
-	RegistryPort               = 5000
-	MinioPort                  = 9000
+	PipelineNamespaceSuffix         = "-pipeline"
+	JenkinsName                     = "jenkins"
+	PipelineName                    = "pipeline"
+	PipelineSecretName              = "pipeline-secret"
+	PipelineSecretUserKey           = "admin-user"
+	PipelineSecretTokenKey          = "admin-token"
+	PipelineSecretRegistryTokenKey  = "registry-token"
+	PipelineSecretRegistryTokenPath = "/auth"
+	PipelineSecretDefaultUser       = "admin"
+	PipelineSecretDefaultToken      = "admin123"
+	RegistryName                    = "docker-registry"
+	DockerCredentialName            = "pipeline-docker-registry"
+	MinioName                       = "minio"
+	MinioBucketLocation             = "local"
+	MinioLogBucket                  = "pipeline-logs"
+	NetWorkPolicyName               = "pipeline-np"
+	LabelKeyApp                     = "app"
+	LabelKeyJenkins                 = "jenkins"
+	JenkinsMaster                   = "master"
+	LabelKeyExecution               = "execution"
+	DefaultRegistry                 = "index.docker.io"
+	LocalRegistry                   = "docker-registry:5000"
+	DefaultTag                      = "latest"
+	JenkinsPort                     = 8080
+	JenkinsJNLPPort                 = 50000
+	RegistryPort                    = 5000
+	MinioPort                       = 9000
 
 	WebhookEventPush        = "push"
 	WebhookEventPullRequest = "pull_request"

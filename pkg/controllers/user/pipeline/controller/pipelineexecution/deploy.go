@@ -3,6 +3,8 @@ package pipelineexecution
 import (
 	"github.com/rancher/rancher/pkg/pipeline/utils"
 
+	"encoding/json"
+	"fmt"
 	"github.com/pkg/errors"
 	"github.com/rancher/rancher/pkg/controllers/user/nslabels"
 	images "github.com/rancher/rancher/pkg/image"
@@ -19,7 +21,10 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/kubernetes/pkg/credentialprovider"
 )
+
+const projectIDFieldLabel = "field.cattle.io/projectId"
 
 func (l *Lifecycle) deploy(obj *v3.PipelineExecution) error {
 	logrus.Debug("deploy pipeline workloads and services")
@@ -32,11 +37,18 @@ func (l *Lifecycle) deploy(obj *v3.PipelineExecution) error {
 			Annotations: map[string]string{nslabels.ProjectIDFieldLabel: obj.Spec.ProjectName},
 		},
 	}
+
+	token, err := randomtoken.Generate()
+	if err != nil {
+		logrus.Warningf("warning generate random token got - %v, use default instead", err)
+		token = utils.PipelineSecretDefaultToken
+	}
+
 	if _, err := l.namespaces.Create(ns); err != nil && !apierrors.IsAlreadyExists(err) {
 		return errors.Wrapf(err, "Error create ns")
 	}
 
-	secret := getSecret(nsName)
+	secret := getSecret(nsName, token)
 	if _, err := l.secrets.Create(secret); err != nil && !apierrors.IsAlreadyExists(err) {
 		return errors.Wrapf(err, "Error create secret")
 	}
@@ -78,25 +90,62 @@ func (l *Lifecycle) deploy(obj *v3.PipelineExecution) error {
 		return errors.Wrapf(err, "Error create minio deployment")
 	}
 
+	//docker credential for local registry
+	if l.reconcileRegistryCredential(obj, token); err != nil {
+		return err
+	}
+
 	return l.reconcileRb(obj)
 }
 
-func getSecret(ns string) *corev1.Secret {
-	token, err := randomtoken.Generate()
+func getSecret(ns string, token string) *corev1.Secret {
+	hashed, err := utils.BCryptHash(token)
 	if err != nil {
-		logrus.Warningf("warning generate random token got - %v, use default instead", err)
-		token = utils.PipelineSecretDefaultToken
+		logrus.Warningf("warning hash registry token got - %v", err)
 	}
+	registryToken := fmt.Sprintf("%s:%s", utils.PipelineSecretDefaultUser, hashed)
+
 	return &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: ns,
 			Name:      utils.PipelineSecretName,
 		},
 		Data: map[string][]byte{
-			utils.PipelineSecretTokenKey: []byte(token),
-			utils.PipelineSecretUserKey:  []byte(utils.PipelineSecretDefaultUser),
+			utils.PipelineSecretTokenKey:         []byte(token),
+			utils.PipelineSecretUserKey:          []byte(utils.PipelineSecretDefaultUser),
+			utils.PipelineSecretRegistryTokenKey: []byte(registryToken),
 		},
 	}
+}
+
+func getRegistryCredential(projectID string, token string, hostname string) (*corev1.Secret, error) {
+	_, ns := ref.Parse(projectID)
+	config := credentialprovider.DockerConfigJson{
+		Auths: credentialprovider.DockerConfig{
+			hostname: credentialprovider.DockerConfigEntry{
+				Username: utils.PipelineSecretDefaultUser,
+				Password: token,
+			},
+		},
+	}
+	configJson, err := json.Marshal(config)
+	if err != nil {
+		return nil, err
+	}
+	return &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      utils.DockerCredentialName,
+			Namespace: ns,
+			Annotations: map[string]string{
+				projectIDFieldLabel: projectID,
+			},
+		},
+
+		Data: map[string][]byte{
+			corev1.DockerConfigJsonKey: configJson,
+		},
+		Type: corev1.SecretTypeDockerConfigJson,
+	}, nil
 }
 
 func getServiceAccount(ns string) *corev1.ServiceAccount {
@@ -327,6 +376,43 @@ func getRegistryDeployment(ns string) *appsv1beta2.Deployment {
 									ContainerPort: utils.RegistryPort,
 								},
 							},
+							Env: []corev1.EnvVar{
+								{
+									Name:  "REGISTRY_AUTH",
+									Value: "htpasswd",
+								},
+								{
+									Name:  "REGISTRY_AUTH_HTPASSWD_REALM",
+									Value: "Registry Realm",
+								},
+								{
+									Name:  "REGISTRY_AUTH_HTPASSWD_PATH",
+									Value: utils.PipelineSecretRegistryTokenPath + "/" + utils.PipelineSecretRegistryTokenKey,
+								},
+							},
+							VolumeMounts: []corev1.VolumeMount{
+								{
+									Name:      utils.PipelineSecretRegistryTokenKey,
+									MountPath: utils.PipelineSecretRegistryTokenPath,
+									ReadOnly:  true,
+								},
+							},
+						},
+					},
+					Volumes: []corev1.Volume{
+						{
+							Name: utils.PipelineSecretRegistryTokenKey,
+							VolumeSource: corev1.VolumeSource{
+								Secret: &corev1.SecretVolumeSource{
+									SecretName: utils.PipelineSecretName,
+									Items: []corev1.KeyToPath{
+										{
+											Key:  utils.PipelineSecretRegistryTokenKey,
+											Path: utils.PipelineSecretRegistryTokenKey,
+										},
+									},
+								},
+							},
 						},
 					},
 				},
@@ -412,4 +498,26 @@ func getMinioDeployment(ns string) *appsv1beta2.Deployment {
 			},
 		},
 	}
+}
+
+func (l *Lifecycle) reconcileRegistryCredential(obj *v3.PipelineExecution, token string) error {
+	nsName := utils.GetPipelineCommonName(obj)
+	registryService, err := l.serviceLister.Get(nsName, utils.RegistryName)
+	if err != nil {
+		return err
+	}
+	regHostname := ""
+	if len(registryService.Spec.Ports) > 0 {
+		regHostname = fmt.Sprintf("localhost:%v", registryService.Spec.Ports[0].NodePort)
+	} else {
+		return errors.New("Found no port for registry service")
+	}
+	dockerCredential, err := getRegistryCredential(obj.Spec.ProjectName, token, regHostname)
+	if err != nil {
+		return err
+	}
+	if _, err := l.secrets.Create(dockerCredential); err != nil && !apierrors.IsAlreadyExists(err) {
+		return errors.Wrapf(err, "Error create credential for local registry")
+	}
+	return nil
 }

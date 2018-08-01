@@ -36,6 +36,7 @@ type Lifecycle struct {
 	namespaceLister v1.NamespaceLister
 	namespaces      v1.NamespaceInterface
 	secrets         v1.SecretInterface
+	serviceLister   v1.ServiceLister
 	services        v1.ServiceInterface
 	serviceAccounts v1.ServiceAccountInterface
 	podLister       v1.PodLister
@@ -45,6 +46,7 @@ type Lifecycle struct {
 	clusterRoleBindings rbacv1.ClusterRoleBindingInterface
 	roleBindings        rbacv1.RoleBindingInterface
 	deployments         v1beta2.DeploymentInterface
+	dockerCredentials   v3.DockerCredentialInterface
 
 	pipelineLister             v3.PipelineLister
 	pipelines                  v3.PipelineInterface
@@ -62,6 +64,7 @@ func Register(ctx context.Context, cluster *config.UserContext) {
 	namespaceLister := cluster.Core.Namespaces("").Controller().Lister()
 	secrets := cluster.Core.Secrets("")
 	services := cluster.Core.Services("")
+	serviceLister := services.Controller().Lister()
 	serviceAccounts := cluster.Core.ServiceAccounts("")
 	networkPolicies := cluster.Networking.NetworkPolicies("")
 	clusterRoleBindings := cluster.RBAC.ClusterRoleBindings("")
@@ -69,6 +72,8 @@ func Register(ctx context.Context, cluster *config.UserContext) {
 	deployments := cluster.Apps.Deployments("")
 	pods := cluster.Core.Pods("")
 	podLister := pods.Controller().Lister()
+
+	dockerCredentials := cluster.Project.DockerCredentials("")
 
 	pipelines := cluster.Management.Project.Pipelines("")
 	pipelineLister := pipelines.Controller().Lister()
@@ -83,6 +88,7 @@ func Register(ctx context.Context, cluster *config.UserContext) {
 		namespaceLister:     namespaceLister,
 		secrets:             secrets,
 		services:            services,
+		serviceLister:       serviceLister,
 		serviceAccounts:     serviceAccounts,
 		networkPolicies:     networkPolicies,
 		clusterRoleBindings: clusterRoleBindings,
@@ -90,6 +96,7 @@ func Register(ctx context.Context, cluster *config.UserContext) {
 		deployments:         deployments,
 		pods:                pods,
 		podLister:           podLister,
+		dockerCredentials:   dockerCredentials,
 
 		pipelineLister:             pipelineLister,
 		pipelines:                  pipelines,

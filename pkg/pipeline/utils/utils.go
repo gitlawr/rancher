@@ -7,6 +7,7 @@ import (
 	"github.com/rancher/rancher/pkg/ref"
 	"github.com/rancher/types/apis/project.cattle.io/v3"
 	"github.com/sirupsen/logrus"
+	"golang.org/x/crypto/bcrypt"
 	"gopkg.in/yaml.v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"strconv"
@@ -216,4 +217,12 @@ func PipelineConfigFromYaml(content []byte) (*v3.PipelineConfig, error) {
 	}
 
 	return out, nil
+}
+
+func BCryptHash(password string) (string, error) {
+	passwordBytes, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		return "", err
+	}
+	return string(passwordBytes), nil
 }
