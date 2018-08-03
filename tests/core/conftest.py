@@ -4,6 +4,7 @@ import requests
 import time
 import urllib3
 from .common import random_str
+from .mockserver import MockGithub, MockGitlab
 from kubernetes.client import ApiClient, Configuration
 from kubernetes.config.kube_config import KubeConfigLoader
 from rancher import ApiError
@@ -265,3 +266,35 @@ def protect_response(r):
     if r.status_code >= 300:
         message = f'Server responded with {r.status_code}\nbody:\n{r.text}'
         raise ValueError(message)
+
+
+@pytest.fixture(scope="module")
+def mock_github():
+    server = MockGithub()
+    server.start()
+    yield server
+    server.shutdown_server()
+
+
+@pytest.fixture(scope="module")
+def mock_gitlab():
+    server = MockGitlab()
+    server.start()
+    yield server
+    server.shutdown_server()
+
+
+@pytest.fixture
+def remove_pipeline_namespace(admin_cc, request):
+    def fin(project_id):
+        client = admin_cc.client
+        splits = project_id.split(':')
+        print(splits)
+        ns = client.by_id_namespace(splits[1] + '-pipeline')
+        client.delete(ns)
+
+    def _cleanup(project_id):
+        request.addfinalizer(lambda: fin(project_id))
+
+    return _cleanup
+
