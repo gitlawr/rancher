@@ -68,6 +68,7 @@ func Setup(ctx context.Context, apiContext *config.ScaledContext, clusterManager
 		client.GlobalRoleType,
 		client.GroupMemberType,
 		client.GroupType,
+		client.KontainerDriverType,
 		client.ListenConfigType,
 		client.NodeDriverType,
 		client.NodePoolType,
@@ -185,8 +186,9 @@ func Clusters(schemas *types.Schemas, managementContext *config.ScaledContext, c
 	schema.Formatter = ccluster.Formatter
 	schema.ActionHandler = handler.ClusterActionHandler
 	schema.Store = &cluster.Store{
-		Store:        schema.Store,
-		ShellHandler: linkHandler.LinkHandler,
+		Store:                 schema.Store,
+		ShellHandler:          linkHandler.LinkHandler,
+		KontainerDriverLister: managementContext.Management.KontainerDrivers("").Controller().Lister(),
 	}
 }
 

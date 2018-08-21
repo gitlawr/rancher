@@ -27,21 +27,23 @@ func (cd *clusterAnnotations) sync(key string, cluster *v3.Cluster) error {
 		return nil
 	}
 
-	if eksConfig := cluster.Spec.AmazonElasticContainerServiceConfig; eksConfig != nil {
-		newValue := strconv.FormatBool(eksConfig.SessionToken != "")
+	if genericConfig := cluster.Spec.GenericEngineConfig; genericConfig != nil {
+		if eksConfig, ok := (*genericConfig)["amazonElasticContainerServiceConfig"].(map[string]string); ok {
+			newValue := strconv.FormatBool(eksConfig["sessionToken"] != "")
 
-		if newValue != cluster.Annotations[temporaryCredentialsAnnotationKey] {
-			original := cluster
-			cluster = original.DeepCopy()
+			if newValue != cluster.Annotations[temporaryCredentialsAnnotationKey] {
+				original := cluster
+				cluster = original.DeepCopy()
 
-			if cluster.Annotations == nil {
-				cluster.Annotations = make(map[string]string)
-			}
+				if cluster.Annotations == nil {
+					cluster.Annotations = make(map[string]string)
+				}
 
-			cluster.Annotations[temporaryCredentialsAnnotationKey] = newValue
-			_, err := cd.clusters.Update(cluster)
-			if err != nil {
-				return fmt.Errorf("error updating temporary credentials annotation: %v", err)
+				cluster.Annotations[temporaryCredentialsAnnotationKey] = newValue
+				_, err := cd.clusters.Update(cluster)
+				if err != nil {
+					return fmt.Errorf("error updating temporary credentials annotation: %v", err)
+				}
 			}
 		}
 	}

@@ -2,23 +2,26 @@ package cluster
 
 import (
 	"fmt"
-	"sync"
-
 	"strings"
+	"sync"
 
 	"github.com/rancher/norman/api/access"
 	"github.com/rancher/norman/httperror"
 	"github.com/rancher/norman/types"
 	"github.com/rancher/norman/types/convert"
 	"github.com/rancher/norman/types/values"
+	"github.com/rancher/rancher/pkg/controllers/management/clusterprovisioner"
 	"github.com/rancher/rancher/pkg/settings"
+	"github.com/rancher/types/apis/management.cattle.io/v3"
 	managementv3 "github.com/rancher/types/client/management/v3"
+	"k8s.io/apimachinery/pkg/labels"
 )
 
 type Store struct {
 	types.Store
-	ShellHandler types.RequestHandler
-	mu           sync.Mutex
+	ShellHandler          types.RequestHandler
+	mu                    sync.Mutex
+	KontainerDriverLister v3.KontainerDriverLister
 }
 
 func (r *Store) ByID(apiContext *types.APIContext, schema *types.Schema, id string) (map[string]interface{}, error) {
@@ -27,11 +30,34 @@ func (r *Store) ByID(apiContext *types.APIContext, schema *types.Schema, id stri
 	if apiContext.Query.Get("shell") == "true" {
 		return nil, r.ShellHandler(apiContext, nil)
 	}
-	return r.Store.ByID(apiContext, schema, id)
+	cluster, err := r.Store.ByID(apiContext, schema, id)
+	if err != nil {
+		return nil, err
+	}
+
+	return r.transposeGenericConfigToDynamicField(cluster)
+}
+
+func (r *Store) List(apiContext *types.APIContext, schema *types.Schema, opt *types.QueryOptions) ([]map[string]interface{}, error) {
+	clusters, err := r.Store.List(apiContext, schema, opt)
+	if err != nil {
+		return nil, err
+	}
+
+	var transposedClusters []map[string]interface{}
+	for _, cluster := range clusters {
+		transposedCluster, err := r.transposeGenericConfigToDynamicField(cluster)
+		if err != nil {
+			return nil, err
+		}
+
+		transposedClusters = append(transposedClusters, transposedCluster)
+	}
+
+	return transposedClusters, nil
 }
 
 func (r *Store) Create(apiContext *types.APIContext, schema *types.Schema, data map[string]interface{}) (map[string]interface{}, error) {
-
 	name := convert.ToString(data["name"])
 	if name == "" {
 		return nil, httperror.NewFieldAPIError(httperror.MissingRequired, "Cluster name", "")
@@ -46,15 +72,24 @@ func (r *Store) Create(apiContext *types.APIContext, schema *types.Schema, data 
 
 	setKubernetesVersion(data)
 
+	data, err := r.transposeDynamicFieldToGenericConfig(data)
+	if err != nil {
+		return nil, err
+	}
+
 	if err := validateNetworkFlag(data, true); err != nil {
 		return nil, httperror.NewFieldAPIError(httperror.InvalidOption, "enableNetworkPolicy", err.Error())
 	}
 
-	return r.Store.Create(apiContext, schema, data)
+	cluster, err := r.Store.Create(apiContext, schema, data)
+	if err != nil {
+		return nil, err
+	}
+
+	return r.transposeGenericConfigToDynamicField(cluster)
 }
 
 func (r *Store) Update(apiContext *types.APIContext, schema *types.Schema, data map[string]interface{}, id string) (map[string]interface{}, error) {
-
 	updatedName := convert.ToString(data["name"])
 	if updatedName == "" {
 		return nil, httperror.NewFieldAPIError(httperror.MissingRequired, "Cluster name", "")
@@ -81,11 +116,85 @@ func (r *Store) Update(apiContext *types.APIContext, schema *types.Schema, data 
 
 	setKubernetesVersion(data)
 
+	data, err = r.transposeDynamicFieldToGenericConfig(data)
+	if err != nil {
+		return nil, err
+	}
+
 	if err := validateNetworkFlag(data, false); err != nil {
 		return nil, httperror.NewFieldAPIError(httperror.InvalidOption, "enableNetworkPolicy", err.Error())
 	}
 
-	return r.Store.Update(apiContext, schema, data, id)
+	cluster, err := r.Store.Update(apiContext, schema, data, id)
+	if err != nil {
+		return nil, err
+	}
+
+	return r.transposeGenericConfigToDynamicField(cluster)
+}
+
+// this method moves the cluster config to and from the genericEngineConfig field so that
+// the kontainer drivers behave similarly to the existing machine drivers
+func (r *Store) transposeDynamicFieldToGenericConfig(data map[string]interface{}) (map[string]interface{}, error) {
+	dynamicField, err := r.getDynamicField(data)
+	if err != nil {
+		return nil, fmt.Errorf("error getting kontainer drivers: %v", err)
+	}
+
+	// No dynamic schema field exists on this cluster so return immediately
+	if dynamicField == "" {
+		return data, nil
+	}
+
+	// overwrite generic engine config so it gets saved
+	data[managementv3.ClusterFieldGenericEngineConfig] = data[dynamicField]
+	delete(data, dynamicField)
+
+	return data, nil
+}
+
+func (r *Store) transposeGenericConfigToDynamicField(data map[string]interface{}) (map[string]interface{}, error) {
+	if data[managementv3.ClusterFieldGenericEngineConfig] != nil {
+		drivers, err := r.KontainerDriverLister.List("", labels.Everything())
+		if err != nil {
+			return nil, err
+		}
+
+		var driver *v3.KontainerDriver
+		driverName := data[managementv3.ClusterFieldGenericEngineConfig].(map[string]interface{})[clusterprovisioner.DriverNameField].(string)
+		for _, candidate := range drivers {
+			if driverName == candidate.Name {
+				driver = candidate
+				break
+			}
+		}
+
+		if driver == nil {
+			return nil, fmt.Errorf("got unknown driver from kontainer-engine: %v", data[clusterprovisioner.DriverNameField])
+		}
+
+		data[driver.Spec.DisplayName+"Config"] = data[managementv3.ClusterFieldGenericEngineConfig]
+		delete(data, managementv3.ClusterFieldGenericEngineConfig)
+	}
+
+	return data, nil
+}
+
+func (r *Store) getDynamicField(data map[string]interface{}) (string, error) {
+	drivers, err := r.KontainerDriverLister.List("", labels.Everything())
+	if err != nil {
+		return "", err
+	}
+
+	for _, driver := range drivers {
+		if data[driver.Spec.DisplayName+"Config"] != nil {
+			if driver.Spec.DynamicSchema {
+				return driver.Spec.DisplayName + "Config", nil
+			}
+		}
+	}
+
+	return "", nil
 }
 
 func canUseClusterName(apiContext *types.APIContext, requestedName string) error {

@@ -173,8 +173,18 @@ func (c *Controller) needNodePort() bool {
 	if err != nil || cluster.DeletionTimestamp != nil {
 		return false
 	}
-	if cluster.Spec.GoogleKubernetesEngineConfig != nil {
+	if hasGKEConfig(cluster) {
 		return true
 	}
+	return false
+}
+
+func hasGKEConfig(cluster *v3.Cluster) bool {
+	if cluster.Spec.GenericEngineConfig != nil {
+		if _, ok := (*cluster.Spec.GenericEngineConfig)["googleKubernetesEngineConfig"]; ok {
+			return true
+		}
+	}
+
 	return false
 }

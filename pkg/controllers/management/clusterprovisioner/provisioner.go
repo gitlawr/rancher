@@ -32,20 +32,24 @@ const (
 )
 
 type Provisioner struct {
-	ClusterController v3.ClusterController
-	Clusters          v3.ClusterInterface
-	NodeLister        v3.NodeLister
-	Driver            service.EngineService
-	backoff           *flowcontrol.Backoff
+	ClusterController     v3.ClusterController
+	Clusters              v3.ClusterInterface
+	NodeLister            v3.NodeLister
+	Driver                service.EngineService
+	backoff               *flowcontrol.Backoff
+	KontainerDriverLister v3.KontainerDriverLister
 }
 
 func Register(management *config.ManagementContext) {
+	management.Management.KontainerDrivers("").Controller().Lister()
+
 	p := &Provisioner{
-		Driver:            service.NewEngineService(NewPersistentStore(management.Core.Namespaces(""), management.Core)),
-		Clusters:          management.Management.Clusters(""),
-		ClusterController: management.Management.Clusters("").Controller(),
-		NodeLister:        management.Management.Nodes("").Controller().Lister(),
-		backoff:           flowcontrol.NewBackOff(30*time.Second, 10*time.Minute),
+		Driver:                service.NewEngineService(NewPersistentStore(management.Core.Namespaces(""), management.Core)),
+		Clusters:              management.Management.Clusters(""),
+		ClusterController:     management.Management.Clusters("").Controller(),
+		NodeLister:            management.Management.Nodes("").Controller().Lister(),
+		backoff:               flowcontrol.NewBackOff(30*time.Second, 10*time.Minute),
+		KontainerDriverLister: management.Management.KontainerDrivers("").Controller().Lister(),
 	}
 
 	// Add handlers
@@ -60,7 +64,7 @@ func Register(management *config.ManagementContext) {
 		Docker:  true,
 	}
 
-	driver := service.Drivers["rke"]
+	driver := service.Drivers[service.RancherKubernetesEngineDriverName]
 	rkeDriver := driver.(*rke.Driver)
 	rkeDriver.DockerDialer = docker.Build
 	rkeDriver.LocalDialer = local.Build

@@ -69,6 +69,8 @@ func (c *Controller) add(dynamicSchema *v3.DynamicSchema) error {
 			field.Default = defMap["stringSliceValue"]
 		}
 
+		field.DynamicField = true
+
 		schema.ResourceFields[name] = field
 	}
 

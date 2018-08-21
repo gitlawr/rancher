@@ -15,7 +15,7 @@ import (
 )
 
 var (
-	schemaLock = sync.Mutex{}
+	SchemaLock = sync.Mutex{}
 	driverLock = sync.Mutex{}
 )
 
@@ -108,7 +108,7 @@ func (m *Lifecycle) download(obj *v3.NodeDriver) (*v3.NodeDriver, error) {
 	}
 	resourceFields := map[string]v3.Field{}
 	for _, flag := range flags {
-		name, field, err := flagToField(flag)
+		name, field, err := FlagToField(flag)
 		if err != nil {
 			return nil, err
 		}
@@ -176,8 +176,8 @@ func (m *Lifecycle) Remove(obj *v3.NodeDriver) (*v3.NodeDriver, error) {
 }
 
 func (m *Lifecycle) createOrUpdateNodeForEmbeddedType(embeddedType, fieldName string, embedded bool) error {
-	schemaLock.Lock()
-	defer schemaLock.Unlock()
+	SchemaLock.Lock()
+	defer SchemaLock.Unlock()
 
 	if err := m.createOrUpdateNodeForEmbeddedTypeWithParents(embeddedType, fieldName, "nodeconfig", "node", embedded, false); err != nil {
 		return err

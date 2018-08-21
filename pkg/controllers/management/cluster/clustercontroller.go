@@ -1,14 +1,19 @@
 package cluster
 
 import (
-	"reflect"
-
+	"context"
+	"fmt"
+	"github.com/rancher/kontainer-engine/service"
+	"github.com/rancher/kontainer-engine/types"
+	"github.com/rancher/rancher/pkg/controllers/management/clusterprovisioner"
 	"github.com/rancher/rke/cloudprovider/aws"
 	"github.com/rancher/rke/cloudprovider/azure"
+	"github.com/rancher/types/apis/core/v1"
 	"github.com/rancher/types/apis/management.cattle.io/v3"
 	"github.com/rancher/types/config"
-
+	"github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/labels"
+	"reflect"
 )
 
 const (
@@ -20,16 +25,22 @@ const (
 )
 
 type controller struct {
-	clusterClient v3.ClusterInterface
-	clusterLister v3.ClusterLister
-	nodeLister    v3.NodeLister
+	clusterClient         v3.ClusterInterface
+	clusterLister         v3.ClusterLister
+	nodeLister            v3.NodeLister
+	kontainerDriverLister v3.KontainerDriverLister
+	namespaces            v1.NamespaceInterface
+	coreV1                v1.Interface
 }
 
 func Register(management *config.ManagementContext) {
 	c := controller{
-		clusterClient: management.Management.Clusters(""),
-		clusterLister: management.Management.Clusters("").Controller().Lister(),
-		nodeLister:    management.Management.Nodes("").Controller().Lister(),
+		clusterClient:         management.Management.Clusters(""),
+		clusterLister:         management.Management.Clusters("").Controller().Lister(),
+		nodeLister:            management.Management.Nodes("").Controller().Lister(),
+		kontainerDriverLister: management.Management.KontainerDrivers("").Controller().Lister(),
+		namespaces:            management.Core.Namespaces(""),
+		coreV1:                management.Core,
 	}
 
 	c.clusterClient.AddHandler("clusterCreateUpdate", c.capsSync)
@@ -46,17 +57,33 @@ func (c *controller) capsSync(key string, cluster *v3.Cluster) error {
 	}
 	capabilities := v3.Capabilities{}
 	capabilities.NodePortRange = DefaultNodePortRange
-
-	if cluster.Spec.GoogleKubernetesEngineConfig != nil {
-		capabilities = c.GKECapabilities(capabilities, *cluster.Spec.GoogleKubernetesEngineConfig)
-	} else if cluster.Spec.AmazonElasticContainerServiceConfig != nil {
-		capabilities = c.EKSCapabilities(capabilities, *cluster.Spec.AmazonElasticContainerServiceConfig)
-	} else if cluster.Spec.AzureKubernetesServiceConfig != nil {
-		capabilities = c.AKSCapabilities(capabilities, *cluster.Spec.AzureKubernetesServiceConfig)
-	} else if cluster.Spec.RancherKubernetesEngineConfig != nil {
+	if cluster.Spec.RancherKubernetesEngineConfig != nil {
 		if capabilities, err = c.RKECapabilities(capabilities, *cluster.Spec.RancherKubernetesEngineConfig, cluster.Name); err != nil {
 			return err
 		}
+	} else if cluster.Spec.GenericEngineConfig != nil {
+		driverName, ok := (*cluster.Spec.GenericEngineConfig)["driverName"].(string)
+		if !ok {
+			logrus.Warnf("cluster %v had generic engine config but no driver name, k8s capabilities will "+
+				"not be populated correctly", key)
+			return nil
+		}
+
+		kontainerDriver, err := c.kontainerDriverLister.Get("", driverName)
+		if err != nil {
+			return fmt.Errorf("error getting kontainer driver: %v", err)
+		}
+
+		driver := service.NewEngineService(
+			clusterprovisioner.NewPersistentStore(c.namespaces, c.coreV1),
+		)
+		k8sCapabilities, err := driver.GetK8sCapabilities(context.Background(), kontainerDriver.Name, kontainerDriver,
+			cluster.Spec)
+		if err != nil {
+			return fmt.Errorf("error getting k8s capabilities: %v", err)
+		}
+
+		capabilities = toCapabilities(k8sCapabilities)
 	} else {
 		return nil
 	}
@@ -70,26 +97,6 @@ func (c *controller) capsSync(key string, cluster *v3.Cluster) error {
 	}
 
 	return nil
-}
-
-func (c *controller) GKECapabilities(capabilities v3.Capabilities, gkeConfig v3.GoogleKubernetesEngineConfig) v3.Capabilities {
-	capabilities.L4LoadBalancer = c.L4Capability(true, GoogleCloudLoadBalancer, []string{"TCP", "UDP"}, true)
-	if *gkeConfig.EnableHTTPLoadBalancing {
-		ingressController := c.IngressCapability(true, GoogleCloudLoadBalancer, true)
-		capabilities.IngressControllers = []v3.IngressController{ingressController}
-	}
-	return capabilities
-}
-
-func (c *controller) EKSCapabilities(capabilities v3.Capabilities, eksConfig v3.AmazonElasticContainerServiceConfig) v3.Capabilities {
-	capabilities.L4LoadBalancer = c.L4Capability(true, ElasticLoadBalancer, []string{"TCP"}, true)
-	return capabilities
-}
-
-func (c *controller) AKSCapabilities(capabilities v3.Capabilities, aksConfig v3.AzureKubernetesServiceConfig) v3.Capabilities {
-	capabilities.L4LoadBalancer = c.L4Capability(true, AzureL4LB, []string{"TCP", "UDP"}, true)
-	// on AKS portal you can enable Azure HTTP Application routing but Rancher doesn't have that option yet
-	return capabilities
 }
 
 func (c *controller) RKECapabilities(capabilities v3.Capabilities, rkeConfig v3.RancherKubernetesEngineConfig, clusterName string) (v3.Capabilities, error) {
@@ -137,4 +144,28 @@ func (c *controller) IngressCapability(httpLBEnabled bool, providerName string, 
 		CustomDefaultBackend:     customDefaultBackend,
 	}
 	return ing
+}
+
+func toCapabilities(k8sCapabilities *types.K8SCapabilities) v3.Capabilities {
+	var controllers []v3.IngressController
+
+	for _, controller := range k8sCapabilities.IngressControllers {
+		controllers = append(controllers, v3.IngressController{
+			CustomDefaultBackend:     controller.CustomDefaultBackend,
+			HTTPLoadBalancingEnabled: controller.HTTPLoadBalancingEnabled,
+			IngressProvider:          controller.IngressProvider,
+		})
+	}
+
+	return v3.Capabilities{
+		IngressControllers: controllers,
+		L4LoadBalancer: v3.L4LoadBalancer{
+			Enabled:              k8sCapabilities.L4LoadBalancer.Enabled,
+			HealthCheckSupported: k8sCapabilities.L4LoadBalancer.HealthCheckSupported,
+			ProtocolsSupported:   k8sCapabilities.L4LoadBalancer.ProtocolsSupported,
+			Provider:             k8sCapabilities.L4LoadBalancer.Provider,
+		},
+		NodePoolScalingSupported: k8sCapabilities.NodePoolScalingSupported,
+		NodePortRange:            k8sCapabilities.NodePortRange,
+	}
 }
