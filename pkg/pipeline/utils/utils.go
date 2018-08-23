@@ -7,6 +7,7 @@ import (
 	"github.com/rancher/rancher/pkg/ref"
 	"github.com/rancher/types/apis/project.cattle.io/v3"
 	"github.com/sirupsen/logrus"
+	"golang.org/x/crypto/bcrypt"
 	"gopkg.in/yaml.v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"strconv"
@@ -177,6 +178,11 @@ func GetEnvVarMap(execution *v3.PipelineExecution) map[string]string {
 	_, pipelineID := ref.Parse(execution.Spec.PipelineName)
 	clusterID, projectID := ref.Parse(execution.Spec.ProjectName)
 
+	localRegistry := ""
+	if execution.Annotations != nil && execution.Annotations[LocalRegistryPortLabel] != "" {
+		localRegistry = "127.0.0.1:" + execution.Annotations[LocalRegistryPortLabel]
+	}
+
 	m[EnvGitCommit] = commit
 	m[EnvGitRepoName] = repoName
 	m[EnvGitRef] = execution.Spec.Ref
@@ -189,6 +195,7 @@ func GetEnvVarMap(execution *v3.PipelineExecution) map[string]string {
 	m[EnvExecutionSequence] = strconv.Itoa(execution.Spec.Run)
 	m[EnvProjectID] = projectID
 	m[EnvClusterID] = clusterID
+	m[EnvLocalRegistry] = localRegistry
 
 	if execution.Spec.Event == WebhookEventTag {
 		m[EnvGitTag] = strings.TrimPrefix(execution.Spec.Ref, "refs/tags/")
@@ -216,4 +223,12 @@ func PipelineConfigFromYaml(content []byte) (*v3.PipelineConfig, error) {
 	}
 
 	return out, nil
+}
+
+func BCryptHash(password string) (string, error) {
+	passwordBytes, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		return "", err
+	}
+	return string(passwordBytes), nil
 }

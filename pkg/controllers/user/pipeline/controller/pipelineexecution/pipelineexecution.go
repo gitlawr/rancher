@@ -36,8 +36,11 @@ type Lifecycle struct {
 	namespaceLister v1.NamespaceLister
 	namespaces      v1.NamespaceInterface
 	secrets         v1.SecretInterface
+	serviceLister   v1.ServiceLister
 	services        v1.ServiceInterface
 	serviceAccounts v1.ServiceAccountInterface
+	configMapLister v1.ConfigMapLister
+	configMaps      v1.ConfigMapInterface
 	podLister       v1.PodLister
 	pods            v1.PodInterface
 	networkPolicies networkv1.NetworkPolicyInterface
@@ -45,6 +48,7 @@ type Lifecycle struct {
 	clusterRoleBindings rbacv1.ClusterRoleBindingInterface
 	roleBindings        rbacv1.RoleBindingInterface
 	deployments         v1beta2.DeploymentInterface
+	dockerCredentials   v3.DockerCredentialInterface
 
 	pipelineLister             v3.PipelineLister
 	pipelines                  v3.PipelineInterface
@@ -62,6 +66,7 @@ func Register(ctx context.Context, cluster *config.UserContext) {
 	namespaceLister := cluster.Core.Namespaces("").Controller().Lister()
 	secrets := cluster.Core.Secrets("")
 	services := cluster.Core.Services("")
+	serviceLister := services.Controller().Lister()
 	serviceAccounts := cluster.Core.ServiceAccounts("")
 	networkPolicies := cluster.Networking.NetworkPolicies("")
 	clusterRoleBindings := cluster.RBAC.ClusterRoleBindings("")
@@ -69,6 +74,10 @@ func Register(ctx context.Context, cluster *config.UserContext) {
 	deployments := cluster.Apps.Deployments("")
 	pods := cluster.Core.Pods("")
 	podLister := pods.Controller().Lister()
+	configMaps := cluster.Core.ConfigMaps("")
+	configMapLister := configMaps.Controller().Lister()
+
+	dockerCredentials := cluster.Project.DockerCredentials("")
 
 	pipelines := cluster.Management.Project.Pipelines("")
 	pipelineLister := pipelines.Controller().Lister()
@@ -83,6 +92,7 @@ func Register(ctx context.Context, cluster *config.UserContext) {
 		namespaceLister:     namespaceLister,
 		secrets:             secrets,
 		services:            services,
+		serviceLister:       serviceLister,
 		serviceAccounts:     serviceAccounts,
 		networkPolicies:     networkPolicies,
 		clusterRoleBindings: clusterRoleBindings,
@@ -90,6 +100,9 @@ func Register(ctx context.Context, cluster *config.UserContext) {
 		deployments:         deployments,
 		pods:                pods,
 		podLister:           podLister,
+		configMaps:          configMaps,
+		configMapLister:     configMapLister,
+		dockerCredentials:   dockerCredentials,
 
 		pipelineLister:             pipelineLister,
 		pipelines:                  pipelines,
@@ -182,7 +195,35 @@ func (l *Lifecycle) Sync(obj *v3.PipelineExecution) (*v3.PipelineExecution, erro
 		v3.PipelineExecutionConditionInitialized.ReasonAndMessageFromError(obj, err)
 	}
 
+	if err := l.markLocalRegistryPort(obj); err != nil {
+		return obj, err
+	}
+
 	return obj, nil
+}
+
+func (l *Lifecycle) markLocalRegistryPort(obj *v3.PipelineExecution) error {
+	cm, err := l.configMapLister.Get(utils.PipelineNamespace, utils.ProxyConfigMapName)
+	if err != nil {
+		return err
+	}
+	curPort := ""
+	if obj.Annotations != nil && obj.Annotations[utils.LocalRegistryPortLabel] != "" {
+		curPort = obj.Annotations[utils.LocalRegistryPortLabel]
+	}
+	_, projectID := ref.Parse(obj.Spec.ProjectName)
+	port := cm.Data[projectID]
+	if port != curPort {
+		toUpdate := obj.DeepCopy()
+		if toUpdate.Annotations == nil {
+			toUpdate.Annotations = map[string]string{}
+		}
+		toUpdate.Annotations[utils.LocalRegistryPortLabel] = port
+		if _, err := l.pipelineExecutions.Update(toUpdate); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (l *Lifecycle) newExecutionUpdateLastRunState(obj *v3.PipelineExecution) error {
