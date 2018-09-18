@@ -2,12 +2,16 @@ package pipelineexecution
 
 import (
 	"context"
+	"fmt"
 	"github.com/pkg/errors"
+	"github.com/rancher/norman/types/slice"
+	"github.com/rancher/rancher/pkg/notifiers"
 	"github.com/rancher/rancher/pkg/pipeline/engine"
 	"github.com/rancher/rancher/pkg/pipeline/utils"
 	"github.com/rancher/rancher/pkg/ref"
 	"github.com/rancher/types/apis/apps/v1beta2"
 	"github.com/rancher/types/apis/core/v1"
+	mv3 "github.com/rancher/types/apis/management.cattle.io/v3"
 	networkv1 "github.com/rancher/types/apis/networking.k8s.io/v1"
 	"github.com/rancher/types/apis/project.cattle.io/v3"
 	rbacv1 "github.com/rancher/types/apis/rbac.authorization.k8s.io/v1"
@@ -16,6 +20,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/runtime"
 	"strconv"
 	"strings"
 )
@@ -51,6 +56,7 @@ type Lifecycle struct {
 	deployments         v1beta2.DeploymentInterface
 	daemonsets          v1beta2.DaemonSetInterface
 
+	notifierLister             mv3.NotifierLister
 	pipelineLister             v3.PipelineLister
 	pipelines                  v3.PipelineInterface
 	pipelineExecutionLister    v3.PipelineExecutionLister
@@ -88,6 +94,7 @@ func Register(ctx context.Context, cluster *config.UserContext) {
 	pipelineExecutionLister := pipelineExecutions.Controller().Lister()
 	pipelineSettingLister := cluster.Management.Project.PipelineSettings("").Controller().Lister()
 	sourceCodeCredentialLister := cluster.Management.Project.SourceCodeCredentials("").Controller().Lister()
+	notifierLister := cluster.Management.Management.Notifiers("").Controller().Lister()
 
 	pipelineEngine := engine.New(cluster)
 	pipelineExecutionLifecycle := &Lifecycle{
@@ -115,6 +122,7 @@ func Register(ctx context.Context, cluster *config.UserContext) {
 		pipelineSettingLister:      pipelineSettingLister,
 		pipelineEngine:             pipelineEngine,
 		sourceCodeCredentialLister: sourceCodeCredentialLister,
+		notifierLister:             notifierLister,
 	}
 	stateSyncer := &ExecutionStateSyncer{
 		clusterName: clusterName,
@@ -170,10 +178,22 @@ func (l *Lifecycle) Sync(obj *v3.PipelineExecution) (*v3.PipelineExecution, erro
 		if err := l.doCleanup(obj); err != nil {
 			return obj, err
 		}
+
+		shouldNotify, err := l.shouldNotify(obj)
+		if err != nil {
+			return obj, err
+		}
+		if shouldNotify {
+			newObj, err := v3.PipelineExecutionConditionNotified.Once(obj, func() (runtime.Object, error) {
+				return l.doNotify(obj)
+			})
+			return newObj.(*v3.PipelineExecution), err
+		}
 		//start a queueing execution if there is any
 		if err := l.startQueueingExecution(obj); err != nil {
 			return obj, err
 		}
+
 		return obj, nil
 	}
 
@@ -375,6 +395,67 @@ func (l *Lifecycle) doCleanup(obj *v3.PipelineExecution) error {
 		}
 	}
 	return nil
+}
+
+func (l *Lifecycle) shouldNotify(obj *v3.PipelineExecution) (bool, error) {
+	if obj.Spec.PipelineConfig.Notification != nil {
+		if len(obj.Spec.PipelineConfig.Notification.Recipients) <= 0 {
+			return false, nil
+		}
+		condition := obj.Spec.PipelineConfig.Notification.Condition
+		if slice.ContainsString(condition, obj.Status.ExecutionState) {
+			return true, nil
+		} else if slice.ContainsString(condition, utils.ConditionChanged) {
+			_, pipelineName := ref.Parse(obj.Spec.PipelineName)
+			lastExecutionName := fmt.Sprintf("%s-%d", pipelineName, obj.Spec.Run-1)
+			lastExecution, err := l.pipelineExecutionLister.Get(obj.Namespace, lastExecutionName)
+			if apierrors.IsNotFound(err) {
+				return false, nil
+			} else if err != nil {
+				return false, err
+			}
+			if utils.IsFinishState(lastExecution.Status.ExecutionState) &&
+				lastExecution.Status.ExecutionState != obj.Status.ExecutionState {
+				return true, nil
+			}
+		}
+	}
+	return false, nil
+}
+
+func (l *Lifecycle) doNotify(obj *v3.PipelineExecution) (runtime.Object, error) {
+	message := utils.DefaultNotificationMessage(obj)
+	if obj.Spec.PipelineConfig.Notification.Message != "" {
+		message = obj.Spec.PipelineConfig.Notification.Message
+	}
+	clusterName, _ := ref.Parse(obj.Spec.ProjectName)
+	existingNotifiers, err := l.notifierLister.List(clusterName, labels.NewSelector())
+	if err != nil {
+		return obj, err
+	}
+	var toSendRecipients []struct {
+		Notifier  *mv3.Notifier
+		Recipient string
+	}
+	for _, recipient := range obj.Spec.PipelineConfig.Notification.Recipients {
+		notifierName := recipient.Notifier
+
+		for _, notifier := range existingNotifiers {
+			_, name := ref.Parse(notifierName)
+			if name == notifier.Spec.DisplayName || name == notifier.Name {
+				toSendRecipients = append(toSendRecipients, struct {
+					Notifier  *mv3.Notifier
+					Recipient string
+				}{Notifier: notifier, Recipient: recipient.Recipient})
+			}
+		}
+	}
+	for _, toSendRecipient := range toSendRecipients {
+		if err := notifiers.SendMessage(toSendRecipient.Notifier, toSendRecipient.Recipient, message); err != nil {
+			return obj, err
+		}
+	}
+	return obj, nil
 }
 
 func (l *Lifecycle) Remove(obj *v3.PipelineExecution) (*v3.PipelineExecution, error) {

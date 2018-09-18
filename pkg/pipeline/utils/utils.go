@@ -12,6 +12,7 @@ import (
 	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -265,6 +266,45 @@ func SetRegistryPortMapping(configmap *corev1.ConfigMap, portMap map[string]stri
 	}
 	configmap.Data[RegistryPortMappingFile] = string(b)
 	return nil
+}
+
+func DefaultNotificationMessage(execution *v3.PipelineExecution) string {
+	if execution == nil {
+		return ""
+	}
+	template := `
+Pipeline execution #%d for %s repo ended in '%s' state
+Commit message: %s
+Author: %s
+Url: %s
+Event: %s
+Duration: %s
+Message: %s
+`
+	user, repo, err := getUserRepoFromURL(execution.Spec.RepositoryURL)
+	repoName := ""
+	if err == nil {
+		repoName = user + "/" + repo
+	}
+	duration := ""
+	endTime, err1 := time.Parse(time.RFC3339, execution.Status.Ended)
+	startTime, err2 := time.Parse(time.RFC3339, execution.Status.Started)
+	if err1 == nil && err2 == nil {
+		duration = endTime.Sub(startTime).String()
+	}
+
+	return fmt.Sprintf(template, execution.Spec.Run, repoName, execution.Status.ExecutionState, execution.Spec.Message,
+		execution.Spec.Author, execution.Spec.HTMLLink, execution.Spec.Event,
+		duration, v3.PipelineExecutionConditionBuilt.GetMessage(execution))
+}
+
+func getUserRepoFromURL(repoURL string) (string, string, error) {
+	reg := regexp.MustCompile(".*/([^/]*?)/([^/]*?).git")
+	match := reg.FindStringSubmatch(repoURL)
+	if len(match) != 3 {
+		return "", "", fmt.Errorf("error getting user/repo from gitrepoUrl:%v", repoURL)
+	}
+	return match[1], match[2], nil
 }
 
 func DoTokenRefresh(credentialInterface v3.SourceCodeCredentialInterface, credential *v3.SourceCodeCredential, refresher model.Refresher) error {
