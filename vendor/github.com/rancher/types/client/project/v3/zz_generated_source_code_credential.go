@@ -12,6 +12,7 @@ const (
 	SourceCodeCredentialFieldCreated              = "created"
 	SourceCodeCredentialFieldCreatorID            = "creatorId"
 	SourceCodeCredentialFieldDisplayName          = "displayName"
+	SourceCodeCredentialFieldExpiry               = "expiry"
 	SourceCodeCredentialFieldGitLoginName         = "gitLoginName"
 	SourceCodeCredentialFieldHTMLURL              = "htmlUrl"
 	SourceCodeCredentialFieldLabels               = "labels"
@@ -20,6 +21,7 @@ const (
 	SourceCodeCredentialFieldName                 = "name"
 	SourceCodeCredentialFieldOwnerReferences      = "ownerReferences"
 	SourceCodeCredentialFieldProjectID            = "projectId"
+	SourceCodeCredentialFieldRefreshToken         = "refreshToken"
 	SourceCodeCredentialFieldRemoved              = "removed"
 	SourceCodeCredentialFieldSourceCodeType       = "sourceCodeType"
 	SourceCodeCredentialFieldState                = "state"
@@ -37,6 +39,7 @@ type SourceCodeCredential struct {
 	Created              string            `json:"created,omitempty" yaml:"created,omitempty"`
 	CreatorID            string            `json:"creatorId,omitempty" yaml:"creatorId,omitempty"`
 	DisplayName          string            `json:"displayName,omitempty" yaml:"displayName,omitempty"`
+	Expiry               string            `json:"expiry,omitempty" yaml:"expiry,omitempty"`
 	GitLoginName         string            `json:"gitLoginName,omitempty" yaml:"gitLoginName,omitempty"`
 	HTMLURL              string            `json:"htmlUrl,omitempty" yaml:"htmlUrl,omitempty"`
 	Labels               map[string]string `json:"labels,omitempty" yaml:"labels,omitempty"`
@@ -45,6 +48,7 @@ type SourceCodeCredential struct {
 	Name                 string            `json:"name,omitempty" yaml:"name,omitempty"`
 	OwnerReferences      []OwnerReference  `json:"ownerReferences,omitempty" yaml:"ownerReferences,omitempty"`
 	ProjectID            string            `json:"projectId,omitempty" yaml:"projectId,omitempty"`
+	RefreshToken         string            `json:"refreshToken,omitempty" yaml:"refreshToken,omitempty"`
 	Removed              string            `json:"removed,omitempty" yaml:"removed,omitempty"`
 	SourceCodeType       string            `json:"sourceCodeType,omitempty" yaml:"sourceCodeType,omitempty"`
 	State                string            `json:"state,omitempty" yaml:"state,omitempty"`
