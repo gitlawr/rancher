@@ -5,6 +5,15 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io"
+	"io/ioutil"
+	"net/http"
+	"net/url"
+	"regexp"
+	"strconv"
+	"strings"
+	"time"
+
 	"github.com/google/go-querystring/query"
 	"github.com/pkg/errors"
 	"github.com/rancher/norman/httperror"
@@ -17,14 +26,6 @@ import (
 	"github.com/tomnomnom/linkheader"
 	"github.com/xanzy/go-gitlab"
 	"golang.org/x/oauth2"
-	"io"
-	"io/ioutil"
-	"net/http"
-	"net/url"
-	"regexp"
-	"strconv"
-	"strings"
-	"time"
 )
 
 const (
@@ -76,18 +77,6 @@ func (c *client) Type() string {
 	return model.GitlabType
 }
 
-func (c *client) CanLogin() bool {
-	return true
-}
-
-func (c *client) CanRepos() bool {
-	return true
-}
-
-func (c *client) CanHook() bool {
-	return true
-}
-
 func (c *client) Login(code string) (*v3.SourceCodeCredential, error) {
 	gitlabOauthConfig := &oauth2.Config{
 		RedirectURL:  c.RedirectURL,
@@ -107,6 +96,10 @@ func (c *client) Login(code string) (*v3.SourceCodeCredential, error) {
 		return nil, fmt.Errorf("Fail to get accesstoken with oauth config")
 	}
 	return c.GetAccount(token.AccessToken)
+}
+
+func (c *client) GetCloneCredential(account *v3.SourceCodeCredential) (username, password string) {
+	return gitlabLoginName, account.Spec.AccessToken
 }
 
 func (c *client) Repos(account *v3.SourceCodeCredential) ([]v3.SourceCodeRepository, error) {

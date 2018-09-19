@@ -5,6 +5,14 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io"
+	"io/ioutil"
+	"net/http"
+	"regexp"
+	"strconv"
+	"strings"
+	"time"
+
 	"github.com/google/go-github/github"
 	"github.com/rancher/norman/httperror"
 	"github.com/rancher/rancher/pkg/pipeline/remote/model"
@@ -15,13 +23,6 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/tomnomnom/linkheader"
 	"golang.org/x/oauth2"
-	"io"
-	"io/ioutil"
-	"net/http"
-	"regexp"
-	"strconv"
-	"strings"
-	"time"
 )
 
 const (
@@ -77,17 +78,6 @@ func (c *client) Type() string {
 	return model.GithubType
 }
 
-func (c *client) CanLogin() bool {
-	return true
-}
-
-func (c *client) CanRepos() bool {
-	return true
-}
-func (c *client) CanHook() bool {
-	return true
-}
-
 func (c *client) Login(code string) (*v3.SourceCodeCredential, error) {
 	githubOauthConfig := &oauth2.Config{
 		ClientID:     c.ClientID,
@@ -107,6 +97,10 @@ func (c *client) Login(code string) (*v3.SourceCodeCredential, error) {
 		return nil, fmt.Errorf("Fail to get accesstoken with oauth config")
 	}
 	return c.GetAccount(token.AccessToken)
+}
+
+func (c *client) GetCloneCredential(account *v3.SourceCodeCredential) (username, password string) {
+	return account.Spec.LoginName, account.Spec.AccessToken
 }
 
 func (c *client) CreateHook(pipeline *v3.Pipeline, accessToken string) (string, error) {

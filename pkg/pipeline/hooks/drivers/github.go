@@ -6,6 +6,10 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"net/http"
+	"strings"
+
 	"github.com/google/go-github/github"
 	"github.com/pkg/errors"
 	"github.com/rancher/rancher/pkg/pipeline/providers"
@@ -13,9 +17,6 @@ import (
 	"github.com/rancher/rancher/pkg/pipeline/utils"
 	"github.com/rancher/rancher/pkg/ref"
 	"github.com/rancher/types/apis/project.cattle.io/v3"
-	"io/ioutil"
-	"net/http"
-	"strings"
 )
 
 const (
@@ -34,6 +35,7 @@ const (
 type GithubDriver struct {
 	PipelineLister             v3.PipelineLister
 	PipelineExecutions         v3.PipelineExecutionInterface
+	SourceCodeCredentials      v3.SourceCodeCredentialInterface
 	SourceCodeCredentialLister v3.SourceCodeCredentialLister
 }
 
@@ -86,7 +88,7 @@ func (g GithubDriver) Execute(req *http.Request) (int, error) {
 		return http.StatusUnavailableForLegalReasons, fmt.Errorf("trigger for event '%s' is disabled", info.Event)
 	}
 
-	pipelineConfig, err := providers.GetPipelineConfigByBranch(g.SourceCodeCredentialLister, pipeline, info.Branch)
+	pipelineConfig, err := providers.GetPipelineConfigByBranch(g.SourceCodeCredentials, g.SourceCodeCredentialLister, pipeline, info.Branch)
 	if err != nil {
 		return http.StatusInternalServerError, err
 	}

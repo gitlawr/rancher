@@ -3,6 +3,10 @@ package drivers
 import (
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"net/http"
+	"strings"
+
 	"github.com/pkg/errors"
 	"github.com/rancher/rancher/pkg/pipeline/providers"
 	"github.com/rancher/rancher/pkg/pipeline/remote/model"
@@ -10,9 +14,6 @@ import (
 	"github.com/rancher/rancher/pkg/ref"
 	"github.com/rancher/types/apis/project.cattle.io/v3"
 	"github.com/xanzy/go-gitlab"
-	"io/ioutil"
-	"net/http"
-	"strings"
 )
 
 const (
@@ -31,6 +32,7 @@ const (
 type GitlabDriver struct {
 	PipelineLister             v3.PipelineLister
 	PipelineExecutions         v3.PipelineExecutionInterface
+	SourceCodeCredentials      v3.SourceCodeCredentialInterface
 	SourceCodeCredentialLister v3.SourceCodeCredentialLister
 }
 
@@ -87,7 +89,7 @@ func (g GitlabDriver) Execute(req *http.Request) (int, error) {
 		}
 	}
 
-	pipelineConfig, err := providers.GetPipelineConfigByBranch(g.SourceCodeCredentialLister, pipeline, info.Branch)
+	pipelineConfig, err := providers.GetPipelineConfigByBranch(g.SourceCodeCredentials, g.SourceCodeCredentialLister, pipeline, info.Branch)
 	if err != nil {
 		return http.StatusInternalServerError, err
 	}

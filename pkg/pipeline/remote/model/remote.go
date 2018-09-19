@@ -7,12 +7,6 @@ import (
 type Remote interface {
 	Type() string
 
-	CanLogin() bool
-
-	CanRepos() bool
-
-	CanHook() bool
-
 	//Login handle oauth login
 	Login(code string) (*v3.SourceCodeCredential, error)
 
@@ -26,9 +20,13 @@ type Remote interface {
 
 	SetPipelineFileInRepo(repoURL string, ref string, accessToken string, content []byte) error
 
-	GetDefaultBranch(repoURL string, accessToken string) (string, error)
-
 	GetBranches(repoURL string, accessToken string) ([]string, error)
 
 	GetHeadInfo(repoURL string, branch string, accessToken string) (*BuildInfo, error)
+
+	GetCloneCredential(account *v3.SourceCodeCredential) (username, password string)
+}
+
+type Refresher interface {
+	Refresh(cred *v3.SourceCodeCredential) (bool, error)
 }
