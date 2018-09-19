@@ -798,9 +798,8 @@ func pipelineTypes(schema *types.Schemas) *types.Schemas {
 		MustImport(&Version, v3.RunPipelineInput{}).
 		MustImport(&Version, v3.PushPipelineConfigInput{}).
 		MustImport(&Version, v3.GithubPipelineConfigApplyInput{}).
-		MustImport(&Version, v3.GithubLoginInput{}).
 		MustImport(&Version, v3.GitlabPipelineConfigApplyInput{}).
-		MustImport(&Version, v3.GitlabLoginInput{}).
+		MustImport(&Version, v3.BitbucketPipelineConfigApplyInput{}).
 		MustImportAndCustomize(&Version, v3.SourceCodeProvider{}, func(schema *types.Schema) {
 			schema.CollectionMethods = []string{http.MethodGet}
 		}).
@@ -808,7 +807,7 @@ func pipelineTypes(schema *types.Schemas) *types.Schemas {
 			schema.BaseType = "sourceCodeProvider"
 			schema.ResourceActions = map[string]types.Action{
 				"login": {
-					Input:  "githubLoginInput",
+					Input:  "authUserInput",
 					Output: "sourceCodeCredential",
 				},
 			}
@@ -819,7 +818,18 @@ func pipelineTypes(schema *types.Schemas) *types.Schemas {
 			schema.BaseType = "sourceCodeProvider"
 			schema.ResourceActions = map[string]types.Action{
 				"login": {
-					Input:  "gitlabLoginInput",
+					Input:  "authUserInput",
+					Output: "sourceCodeCredential",
+				},
+			}
+			schema.CollectionMethods = []string{}
+			schema.ResourceMethods = []string{http.MethodGet}
+		}).
+		MustImportAndCustomize(&Version, v3.BitbucketProvider{}, func(schema *types.Schema) {
+			schema.BaseType = "sourceCodeProvider"
+			schema.ResourceActions = map[string]types.Action{
+				"login": {
+					Input:  "authUserInput",
 					Output: "sourceCodeCredential",
 				},
 			}
@@ -847,6 +857,17 @@ func pipelineTypes(schema *types.Schemas) *types.Schemas {
 				"disable": {},
 				"testAndApply": {
 					Input: "gitlabPipelineConfigApplyInput",
+				},
+			}
+			schema.CollectionMethods = []string{}
+			schema.ResourceMethods = []string{http.MethodGet, http.MethodPut}
+		}).
+		MustImportAndCustomize(&Version, v3.BitbucketPipelineConfig{}, func(schema *types.Schema) {
+			schema.BaseType = "sourceCodeProviderConfig"
+			schema.ResourceActions = map[string]types.Action{
+				"disable": {},
+				"testAndApply": {
+					Input: "bitbucketPipelineConfigApplyInput",
 				},
 			}
 			schema.CollectionMethods = []string{}
