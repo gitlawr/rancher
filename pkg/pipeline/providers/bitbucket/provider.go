@@ -1,4 +1,4 @@
-package github
+package bitbucket
 
 import (
 	"fmt"
@@ -7,7 +7,6 @@ import (
 	"github.com/rancher/norman/types"
 	"github.com/rancher/norman/types/convert"
 	"github.com/rancher/rancher/pkg/pipeline/remote/model"
-	mv3 "github.com/rancher/types/apis/management.cattle.io/v3"
 	"github.com/rancher/types/apis/project.cattle.io/v3"
 	"github.com/rancher/types/apis/project.cattle.io/v3/schema"
 	"github.com/rancher/types/client/project/v3"
@@ -16,7 +15,7 @@ import (
 	"k8s.io/client-go/tools/cache"
 )
 
-type GhProvider struct {
+type BitbucketProvider struct {
 	SourceCodeProviderConfigs  v3.SourceCodeProviderConfigInterface
 	SourceCodeCredentials      v3.SourceCodeCredentialInterface
 	SourceCodeCredentialLister v3.SourceCodeCredentialLister
@@ -28,31 +27,29 @@ type GhProvider struct {
 	PipelineExecutionIndexer    cache.Indexer
 	SourceCodeCredentialIndexer cache.Indexer
 	SourceCodeRepositoryIndexer cache.Indexer
-
-	AuthConfigs mv3.AuthConfigInterface
 }
 
-func (g *GhProvider) CustomizeSchemas(schemas *types.Schemas) {
+func (b *BitbucketProvider) CustomizeSchemas(schemas *types.Schemas) {
 	scpConfigBaseSchema := schemas.Schema(&schema.Version, client.SourceCodeProviderConfigType)
-	configSchema := schemas.Schema(&schema.Version, client.GithubPipelineConfigType)
-	configSchema.ActionHandler = g.ActionHandler
-	configSchema.Formatter = g.Formatter
-	configSchema.Store = subtype.NewSubTypeStore(client.GithubPipelineConfigType, scpConfigBaseSchema.Store)
+	configSchema := schemas.Schema(&schema.Version, client.BitbucketPipelineConfigType)
+	configSchema.ActionHandler = b.ActionHandler
+	configSchema.Formatter = b.Formatter
+	configSchema.Store = subtype.NewSubTypeStore(client.BitbucketPipelineConfigType, scpConfigBaseSchema.Store)
 
 	providerBaseSchema := schemas.Schema(&schema.Version, client.SourceCodeProviderType)
-	providerSchema := schemas.Schema(&schema.Version, client.GithubProviderType)
-	providerSchema.Formatter = g.providerFormatter
-	providerSchema.ActionHandler = g.providerActionHandler
-	providerSchema.Store = subtype.NewSubTypeStore(client.GithubProviderType, providerBaseSchema.Store)
+	providerSchema := schemas.Schema(&schema.Version, client.BitbucketProviderType)
+	providerSchema.Formatter = b.providerFormatter
+	providerSchema.ActionHandler = b.providerActionHandler
+	providerSchema.Store = subtype.NewSubTypeStore(client.BitbucketProviderType, providerBaseSchema.Store)
 }
 
-func (g *GhProvider) GetName() string {
-	return model.GithubType
+func (b *BitbucketProvider) GetName() string {
+	return model.BitbucketType
 }
 
-func (g *GhProvider) TransformToSourceCodeProvider(config map[string]interface{}) map[string]interface{} {
+func (b *BitbucketProvider) TransformToSourceCodeProvider(config map[string]interface{}) map[string]interface{} {
 	p := transformToSourceCodeProvider(config)
-	p[client.GithubProviderFieldRedirectURL] = formGithubRedirectURLFromMap(config)
+	p[client.BitbucketProviderFieldRedirectURL] = formBitbucketRedirectURLFromMap(config)
 	return p
 }
 
@@ -62,44 +59,36 @@ func transformToSourceCodeProvider(config map[string]interface{}) map[string]int
 		result["id"] = fmt.Sprintf("%v:%v", m[client.ObjectMetaFieldNamespace], m[client.ObjectMetaFieldName])
 	}
 	if t := convert.ToString(config[client.SourceCodeProviderFieldType]); t != "" {
-		result[client.SourceCodeProviderFieldType] = client.GithubProviderType
+		result[client.SourceCodeProviderFieldType] = client.BitbucketProviderType
 	}
 	if t := convert.ToString(config[projectNameField]); t != "" {
 		result["projectId"] = t
 	}
-	result[client.GithubProviderFieldRedirectURL] = formGithubRedirectURLFromMap(config)
+	result[client.BitbucketProviderFieldRedirectURL] = formBitbucketRedirectURLFromMap(config)
 
 	return result
 }
 
-func (g *GhProvider) GetProviderConfig(projectID string) (interface{}, error) {
-	scpConfigObj, err := g.SourceCodeProviderConfigs.ObjectClient().UnstructuredClient().GetNamespaced(projectID, model.GithubType, metav1.GetOptions{})
+func (b *BitbucketProvider) GetProviderConfig(projectID string) (interface{}, error) {
+	scpConfigObj, err := b.SourceCodeProviderConfigs.ObjectClient().UnstructuredClient().GetNamespaced(projectID, model.BitbucketType, metav1.GetOptions{})
 	if err != nil {
-		return nil, fmt.Errorf("failed to retrieve GithubConfig, error: %v", err)
+		return nil, fmt.Errorf("failed to retrieve BitbucketConfig, error: %v", err)
 	}
 
 	u, ok := scpConfigObj.(runtime.Unstructured)
 	if !ok {
-		return nil, fmt.Errorf("failed to retrieve GithubConfig, cannot read k8s Unstructured data")
+		return nil, fmt.Errorf("failed to retrieve BitbucketConfig, cannot read k8s Unstructured data")
 	}
-	storedGithubPipelineConfigMap := u.UnstructuredContent()
+	storedBitbucketPipelineConfigMap := u.UnstructuredContent()
 
-	storedGithubPipelineConfig := &v3.GithubPipelineConfig{}
-	if err := mapstructure.Decode(storedGithubPipelineConfigMap, storedGithubPipelineConfig); err != nil {
+	storedBitbucketPipelineConfig := &v3.BitbucketPipelineConfig{}
+	if err := mapstructure.Decode(storedBitbucketPipelineConfigMap, storedBitbucketPipelineConfig); err != nil {
 		return nil, fmt.Errorf("failed to decode the config, error: %v", err)
 	}
 
-	metadataMap, ok := storedGithubPipelineConfigMap["metadata"].(map[string]interface{})
+	metadataMap, ok := storedBitbucketPipelineConfigMap["metadata"].(map[string]interface{})
 	if !ok {
-		return nil, fmt.Errorf("failed to retrieve GithubConfig metadata, cannot read k8s Unstructured data")
-	}
-
-	if storedGithubPipelineConfig.Inherit {
-		globalConfig, err := g.getGithubConfigCR()
-		if err != nil {
-			return nil, err
-		}
-		storedGithubPipelineConfig.ClientSecret = globalConfig.ClientSecret
+		return nil, fmt.Errorf("failed to retrieve BitbucketConfig metadata, cannot read k8s Unstructured data")
 	}
 
 	typemeta := &metav1.ObjectMeta{}
@@ -108,8 +97,8 @@ func (g *GhProvider) GetProviderConfig(projectID string) (interface{}, error) {
 	if err := mapstructure.Decode(metadataMap, typemeta); err != nil {
 		return nil, fmt.Errorf("failed to decode the config, error: %v", err)
 	}
-	storedGithubPipelineConfig.ObjectMeta = *typemeta
-	storedGithubPipelineConfig.APIVersion = "project.cattle.io/v3"
-	storedGithubPipelineConfig.Kind = v3.SourceCodeProviderConfigGroupVersionKind.Kind
-	return storedGithubPipelineConfig, nil
+	storedBitbucketPipelineConfig.ObjectMeta = *typemeta
+	storedBitbucketPipelineConfig.APIVersion = "project.cattle.io/v3"
+	storedBitbucketPipelineConfig.Kind = v3.SourceCodeProviderConfigGroupVersionKind.Kind
+	return storedBitbucketPipelineConfig, nil
 }

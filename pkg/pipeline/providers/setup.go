@@ -2,6 +2,7 @@ package providers
 
 import (
 	"github.com/rancher/norman/types"
+	"github.com/rancher/rancher/pkg/pipeline/providers/bitbucket"
 	"github.com/rancher/rancher/pkg/pipeline/providers/github"
 	"github.com/rancher/rancher/pkg/pipeline/providers/gitlab"
 	"github.com/rancher/rancher/pkg/pipeline/remote/model"
@@ -93,5 +94,21 @@ func configure(management *config.ScaledContext) {
 	}
 	providers[model.GitlabType] = glProvider
 	providersByType[client.GitlabPipelineConfigType] = glProvider
+
+	bbProvider := &bitbucket.BitbucketProvider{
+		SourceCodeProviderConfigs:  management.Project.SourceCodeProviderConfigs(""),
+		SourceCodeCredentialLister: management.Project.SourceCodeCredentials("").Controller().Lister(),
+		SourceCodeCredentials:      management.Project.SourceCodeCredentials(""),
+		SourceCodeRepositories:     management.Project.SourceCodeRepositories(""),
+		Pipelines:                  management.Project.Pipelines(""),
+		PipelineExecutions:         management.Project.PipelineExecutions(""),
+
+		PipelineIndexer:             pipelineInformer.GetIndexer(),
+		PipelineExecutionIndexer:    executionInformer.GetIndexer(),
+		SourceCodeCredentialIndexer: sourceCodeCredentialInformer.GetIndexer(),
+		SourceCodeRepositoryIndexer: sourceCodeRepositoryInformer.GetIndexer(),
+	}
+	providers[model.GitlabType] = bbProvider
+	providersByType[client.GitlabPipelineConfigType] = bbProvider
 
 }

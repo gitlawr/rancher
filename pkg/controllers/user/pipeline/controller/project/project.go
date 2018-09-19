@@ -61,11 +61,17 @@ func (l *Syncer) Sync(key string, obj *v3.Project) error {
 }
 
 func (l *Syncer) addSourceCodeProviderConfigs(obj *v3.Project) error {
-	if err := l.addSourceCodeProviderConfig(model.GithubType, pclient.GithubPipelineConfigType, false, obj); err != nil {
-		return err
+	supportedProviders := map[string]string{
+		model.GithubType:    pclient.GithubPipelineConfigType,
+		model.GitlabType:    pclient.GitlabPipelineConfigType,
+		model.BitbucketType: pclient.BitbucketPipelineConfigType,
 	}
-
-	return l.addSourceCodeProviderConfig(model.GitlabType, pclient.GitlabPipelineConfigType, false, obj)
+	for name, pType := range supportedProviders {
+		if err := l.addSourceCodeProviderConfig(name, pType, false, obj); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (l *Syncer) addSourceCodeProviderConfig(name, pType string, enabled bool, obj *v3.Project) error {
