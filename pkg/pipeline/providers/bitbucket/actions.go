@@ -107,6 +107,7 @@ func (b *BitbucketProvider) testAndApply(actionName string, action *types.Action
 	toUpdate.ClientSecret = applyInput.BitbucketConfig.ClientSecret
 	toUpdate.Hostname = applyInput.BitbucketConfig.Hostname
 	toUpdate.TLS = applyInput.BitbucketConfig.TLS
+	toUpdate.RedirectURL = applyInput.BitbucketConfig.RedirectURL
 
 	//oauth and add user
 	userName := apiContext.Request.Header.Get("Impersonate-User")

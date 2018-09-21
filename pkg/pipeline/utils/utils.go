@@ -115,6 +115,10 @@ func GenerateExecution(executions v3.PipelineExecutionInterface, pipeline *v3.Pi
 	execution.Spec.Commit = info.Commit
 	execution.Spec.Event = info.Event
 
+	if info.RepositoryURL != "" {
+		execution.Spec.RepositoryURL = info.RepositoryURL
+	}
+
 	if !Match(execution.Spec.PipelineConfig.Branch, info.Branch) {
 		logrus.Debug("conditions do not match")
 		return nil, nil

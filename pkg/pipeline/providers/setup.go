@@ -21,6 +21,7 @@ var (
 var sourceCodeProviderConfigTypes = []string{
 	client.GithubPipelineConfigType,
 	client.GitlabPipelineConfigType,
+	client.BitbucketPipelineConfigType,
 }
 
 func SetupSourceCodeProviderConfig(management *config.ScaledContext, schemas *types.Schemas) {
@@ -108,7 +109,7 @@ func configure(management *config.ScaledContext) {
 		SourceCodeCredentialIndexer: sourceCodeCredentialInformer.GetIndexer(),
 		SourceCodeRepositoryIndexer: sourceCodeRepositoryInformer.GetIndexer(),
 	}
-	providers[model.GitlabType] = bbProvider
-	providersByType[client.GitlabPipelineConfigType] = bbProvider
+	providers[model.BitbucketType] = bbProvider
+	providersByType[client.BitbucketPipelineConfigType] = bbProvider
 
 }

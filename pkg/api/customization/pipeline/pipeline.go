@@ -3,6 +3,7 @@ package pipeline
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/sirupsen/logrus"
 	"io/ioutil"
 	"net/http"
 
@@ -248,7 +249,7 @@ func (h *Handler) getValidBranches(apiContext *types.APIContext) error {
 			return err
 		}
 	}
-
+	logrus.Infof("get scpConfig:%v", scpConfig)
 	remote, err := remote.New(scpConfig)
 	if err != nil {
 		return err
@@ -260,11 +261,13 @@ func (h *Handler) getValidBranches(apiContext *types.APIContext) error {
 	if err != nil {
 		return err
 	}
+	logrus.Infof("get branches:%v", branches)
 	for _, b := range branches {
 		content, err := remote.GetPipelineFileInRepo(pipeline.Spec.RepositoryURL, b, accessKey)
 		if err != nil {
 			return err
 		}
+		logrus.Infof("get content in branch %s:%v", b, string(content))
 		if content != nil {
 			validBranches[b] = true
 		}

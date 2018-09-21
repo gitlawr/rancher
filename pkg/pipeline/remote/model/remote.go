@@ -26,8 +26,6 @@ type Remote interface {
 
 	SetPipelineFileInRepo(repoURL string, ref string, accessToken string, content []byte) error
 
-	GetDefaultBranch(repoURL string, accessToken string) (string, error)
-
 	GetBranches(repoURL string, accessToken string) ([]string, error)
 
 	GetHeadInfo(repoURL string, branch string, accessToken string) (*BuildInfo, error)

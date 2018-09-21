@@ -97,7 +97,6 @@ func Run(ctx context.Context, kubeConfig rest.Config, cfg *Config) error {
 	}
 
 	go leader.RunOrDie(ctx, "cattle-controllers", scaledContext.K8sClient, func(ctx context.Context) {
-		scaledContext.Leader = true
 
 		if err := telemetry.Start(ctx, cfg.HTTPSListenPort, scaledContext); err != nil {
 			panic(err)
