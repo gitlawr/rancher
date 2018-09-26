@@ -294,7 +294,7 @@ type SourceCodeCredentialSpec struct {
 	LoginName      string `json:"loginName,omitempty"`
 	GitLoginName   string `json:"gitLoginName,omitempty"`
 	AccessToken    string `json:"accessToken,omitempty" norman:"writeOnly"`
-	RefreshToken   string `json:"accessToken,omitempty" norman:"writeOnly"`
+	RefreshToken   string `json:"refreshToken,omitempty" norman:"writeOnly"`
 	Expiry         string `json:"expiry,omitempty"`
 }
 

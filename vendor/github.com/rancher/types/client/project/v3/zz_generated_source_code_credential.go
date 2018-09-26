@@ -6,6 +6,7 @@ import (
 
 const (
 	SourceCodeCredentialType                      = "sourceCodeCredential"
+	SourceCodeCredentialFieldAccessToken          = "accessToken"
 	SourceCodeCredentialFieldAnnotations          = "annotations"
 	SourceCodeCredentialFieldAvatarURL            = "avatarUrl"
 	SourceCodeCredentialFieldCreated              = "created"
@@ -20,7 +21,7 @@ const (
 	SourceCodeCredentialFieldName                 = "name"
 	SourceCodeCredentialFieldOwnerReferences      = "ownerReferences"
 	SourceCodeCredentialFieldProjectID            = "projectId"
-	SourceCodeCredentialFieldRefreshToken         = "accessToken"
+	SourceCodeCredentialFieldRefreshToken         = "refreshToken"
 	SourceCodeCredentialFieldRemoved              = "removed"
 	SourceCodeCredentialFieldSourceCodeType       = "sourceCodeType"
 	SourceCodeCredentialFieldState                = "state"
@@ -32,6 +33,7 @@ const (
 
 type SourceCodeCredential struct {
 	types.Resource
+	AccessToken          string            `json:"accessToken,omitempty" yaml:"accessToken,omitempty"`
 	Annotations          map[string]string `json:"annotations,omitempty" yaml:"annotations,omitempty"`
 	AvatarURL            string            `json:"avatarUrl,omitempty" yaml:"avatarUrl,omitempty"`
 	Created              string            `json:"created,omitempty" yaml:"created,omitempty"`
@@ -46,7 +48,7 @@ type SourceCodeCredential struct {
 	Name                 string            `json:"name,omitempty" yaml:"name,omitempty"`
 	OwnerReferences      []OwnerReference  `json:"ownerReferences,omitempty" yaml:"ownerReferences,omitempty"`
 	ProjectID            string            `json:"projectId,omitempty" yaml:"projectId,omitempty"`
-	RefreshToken         string            `json:"accessToken,omitempty" yaml:"accessToken,omitempty"`
+	RefreshToken         string            `json:"refreshToken,omitempty" yaml:"refreshToken,omitempty"`
 	Removed              string            `json:"removed,omitempty" yaml:"removed,omitempty"`
 	SourceCodeType       string            `json:"sourceCodeType,omitempty" yaml:"sourceCodeType,omitempty"`
 	State                string            `json:"state,omitempty" yaml:"state,omitempty"`
