@@ -293,7 +293,9 @@ type SourceCodeCredentialSpec struct {
 	HTMLURL        string `json:"htmlUrl,omitempty"`
 	LoginName      string `json:"loginName,omitempty"`
 	GitLoginName   string `json:"gitLoginName,omitempty"`
-	AccessToken    string `json:"accessToken,omitempty" norman:"writeOnly,noupdate"`
+	AccessToken    string `json:"accessToken,omitempty" norman:"writeOnly"`
+	RefreshToken   string `json:"accessToken,omitempty" norman:"writeOnly"`
+	Expiry         string `json:"expiry,omitempty"`
 }
 
 type SourceCodeCredentialStatus struct {
