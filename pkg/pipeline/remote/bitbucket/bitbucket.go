@@ -88,6 +88,8 @@ func (c *client) Login(code string) (*v3.SourceCodeCredential, error) {
 	}
 	cred := convertUser(user)
 	cred.Spec.AccessToken = token.AccessToken
+	cred.Spec.RefreshToken = token.RefreshToken
+	cred.Spec.Expiry = token.Expiry.Format(time.RFC3339)
 	return cred, nil
 }
 
