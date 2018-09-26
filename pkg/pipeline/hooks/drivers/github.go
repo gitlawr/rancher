@@ -34,6 +34,7 @@ const (
 type GithubDriver struct {
 	PipelineLister             v3.PipelineLister
 	PipelineExecutions         v3.PipelineExecutionInterface
+	SourceCodeCredentials      v3.SourceCodeCredentialInterface
 	SourceCodeCredentialLister v3.SourceCodeCredentialLister
 }
 
@@ -86,7 +87,7 @@ func (g GithubDriver) Execute(req *http.Request) (int, error) {
 		return http.StatusUnavailableForLegalReasons, fmt.Errorf("trigger for event '%s' is disabled", info.Event)
 	}
 
-	pipelineConfig, err := providers.GetPipelineConfigByBranch(g.SourceCodeCredentialLister, pipeline, info.Branch)
+	pipelineConfig, err := providers.GetPipelineConfigByBranch(g.SourceCodeCredentials, g.SourceCodeCredentialLister, pipeline, info.Branch)
 	if err != nil {
 		return http.StatusInternalServerError, err
 	}

@@ -266,3 +266,22 @@ func SetRegistryPortMapping(configmap *corev1.ConfigMap, portMap map[string]stri
 	configmap.Data[RegistryPortMappingFile] = string(b)
 	return nil
 }
+
+func DoTokenRefresh(credentialInterface v3.SourceCodeCredentialInterface, credential *v3.SourceCodeCredential, refresher model.Refresher) error {
+	t, err := time.Parse(time.RFC3339, credential.Spec.Expiry)
+	if err != nil {
+		return err
+	}
+	if t.Before(time.Now().Add(time.Minute)) {
+		ok, err := refresher.Refresh(credential)
+		if err != nil {
+			return err
+		}
+		if ok {
+			if _, err := credentialInterface.Update(credential); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}

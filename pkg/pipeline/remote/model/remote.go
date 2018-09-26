@@ -30,3 +30,7 @@ type Remote interface {
 
 	GetHeadInfo(repoURL string, branch string, accessToken string) (*BuildInfo, error)
 }
+
+type Refresher interface {
+	Refresh(cred *v3.SourceCodeCredential) (bool, error)
+}

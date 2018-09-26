@@ -367,6 +367,35 @@ func convertRepos(repos []Repository) []v3.SourceCodeRepository {
 	return result
 }
 
+func (c *client) Refresh(cred *v3.SourceCodeCredential) (bool, error) {
+	if cred == nil {
+		return false, errors.New("cannot refresh empty credentials")
+	}
+	config := &oauth2.Config{
+		ClientID:     c.ClientID,
+		ClientSecret: c.ClientSecret,
+		RedirectURL:  c.RedirectURL,
+		Endpoint: oauth2.Endpoint{
+			AuthURL:  authURL,
+			TokenURL: tokenURL,
+		},
+	}
+	source := config.TokenSource(
+		oauth2.NoContext, &oauth2.Token{RefreshToken: cred.Spec.RefreshToken})
+
+	token, err := source.Token()
+	if err != nil || len(token.AccessToken) == 0 {
+		return false, err
+	}
+
+	cred.Spec.AccessToken = token.AccessToken
+	cred.Spec.RefreshToken = token.RefreshToken
+	cred.Spec.Expiry = token.Expiry.Format(time.RFC3339)
+
+	return true, nil
+
+}
+
 func getFromBitbucket(url string, accessToken string) ([]byte, error) {
 	return doRequestToBitbucket(http.MethodGet, url, accessToken, nil, nil)
 }

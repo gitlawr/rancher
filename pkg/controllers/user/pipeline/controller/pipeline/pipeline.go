@@ -4,6 +4,8 @@ import (
 	"context"
 	"github.com/rancher/rancher/pkg/pipeline/providers"
 	"github.com/rancher/rancher/pkg/pipeline/remote"
+	"github.com/rancher/rancher/pkg/pipeline/remote/model"
+	"github.com/rancher/rancher/pkg/pipeline/utils"
 	"github.com/rancher/rancher/pkg/ref"
 	"github.com/rancher/types/apis/project.cattle.io/v3"
 	"github.com/rancher/types/config"
@@ -16,16 +18,19 @@ import (
 type Lifecycle struct {
 	clusterName                string
 	sourceCodeCredentialLister v3.SourceCodeCredentialLister
+	sourceCodeCredentials      v3.SourceCodeCredentialInterface
 }
 
 func Register(ctx context.Context, cluster *config.UserContext) {
 	clusterName := cluster.ClusterName
 	pipelines := cluster.Management.Project.Pipelines("")
-	sourceCodeCredentialLister := cluster.Management.Project.SourceCodeCredentials("").Controller().Lister()
+	sourceCodeCredentials := cluster.Management.Project.SourceCodeCredentials("")
+	sourceCodeCredentialLister := sourceCodeCredentials.Controller().Lister()
 
 	pipelineLifecycle := &Lifecycle{
 		clusterName:                clusterName,
 		sourceCodeCredentialLister: sourceCodeCredentialLister,
+		sourceCodeCredentials:      sourceCodeCredentials,
 	}
 
 	pipelines.AddClusterScopedLifecycle("pipeline-controller", cluster.ClusterName, pipelineLifecycle)
@@ -105,7 +110,13 @@ func (l *Lifecycle) createHook(obj *v3.Pipeline) (string, error) {
 	if err != nil {
 		return "", err
 	}
-
+	if refresher, ok := remote.(model.Refresher); ok {
+		toRefresh := credential.DeepCopy()
+		if err := utils.DoTokenRefresh(l.sourceCodeCredentials, toRefresh, refresher); err != nil {
+			return "", err
+		}
+		accessToken = toRefresh.Spec.AccessToken
+	}
 	id, err := remote.CreateHook(obj, accessToken)
 	if err != nil {
 		return "", err
@@ -131,7 +142,13 @@ func (l *Lifecycle) deleteHook(obj *v3.Pipeline) error {
 	if err != nil {
 		return err
 	}
-
+	if refresher, ok := remote.(model.Refresher); ok {
+		toRefresh := credential.DeepCopy()
+		if err := utils.DoTokenRefresh(l.sourceCodeCredentials, toRefresh, refresher); err != nil {
+			return err
+		}
+		accessToken = toRefresh.Spec.AccessToken
+	}
 	return remote.DeleteHook(obj, accessToken)
 }
 

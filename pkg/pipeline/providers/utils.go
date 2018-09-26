@@ -12,16 +12,18 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 )
 
-func GetPipelineConfigByBranch(sourceCodeCredentialLister v3.SourceCodeCredentialLister, pipeline *v3.Pipeline, branch string) (*v3.PipelineConfig, error) {
+func GetPipelineConfigByBranch(sourceCodeCredentials v3.SourceCodeCredentialInterface, sourceCodeCredentialLister v3.SourceCodeCredentialLister, pipeline *v3.Pipeline, branch string) (*v3.PipelineConfig, error) {
 	credentialName := pipeline.Spec.SourceCodeCredentialName
 	repoURL := pipeline.Spec.RepositoryURL
 	accessToken := ""
 	_, projID := ref.Parse(pipeline.Spec.ProjectName)
 	sourceCodeType := model.GithubType
 	var scpConfig interface{}
+	var credential *v3.SourceCodeCredential
+	var err error
 	if credentialName != "" {
 		ns, name := ref.Parse(credentialName)
-		credential, err := sourceCodeCredentialLister.Get(ns, name)
+		credential, err = sourceCodeCredentialLister.Get(ns, name)
 		if err != nil {
 			return nil, err
 		}
@@ -36,6 +38,13 @@ func GetPipelineConfigByBranch(sourceCodeCredentialLister v3.SourceCodeCredentia
 	remote, err := remote.New(scpConfig)
 	if err != nil {
 		return nil, err
+	}
+	if refresher, ok := remote.(model.Refresher); ok {
+		toRefresh := credential.DeepCopy()
+		if err := utils.DoTokenRefresh(sourceCodeCredentials, toRefresh, refresher); err != nil {
+			return nil, err
+		}
+		accessToken = toRefresh.Spec.AccessToken
 	}
 	content, err := remote.GetPipelineFileInRepo(repoURL, branch, accessToken)
 	if err != nil {
@@ -52,13 +61,20 @@ func GetPipelineConfigByBranch(sourceCodeCredentialLister v3.SourceCodeCredentia
 
 }
 
-func RefreshReposByCredential(sourceCodeRepositories v3.SourceCodeRepositoryInterface, sourceCodeRepositoryLister v3.SourceCodeRepositoryLister, credential *v3.SourceCodeCredential, sourceCodeProviderConfig interface{}) ([]*v3.SourceCodeRepository, error) {
+func RefreshReposByCredential(sourceCodeRepositories v3.SourceCodeRepositoryInterface, sourceCodeRepositoryLister v3.SourceCodeRepositoryLister, sourceCodeCredentials v3.SourceCodeCredentialInterface, credential *v3.SourceCodeCredential, sourceCodeProviderConfig interface{}) ([]*v3.SourceCodeRepository, error) {
 	namespace := credential.Namespace
 	credentialID := ref.Ref(credential)
 
 	remote, err := remote.New(sourceCodeProviderConfig)
 	if err != nil {
 		return nil, err
+	}
+	if refresher, ok := remote.(model.Refresher); ok {
+		toRefresh := credential.DeepCopy()
+		if err := utils.DoTokenRefresh(sourceCodeCredentials, toRefresh, refresher); err != nil {
+			return nil, err
+		}
+		credential = toRefresh
 	}
 	repos, err := remote.Repos(credential)
 	if err != nil {

@@ -89,7 +89,7 @@ func (h *SourceCodeCredentialHandler) refreshrepos(apiContext *types.APIContext)
 		return err
 	}
 
-	if _, err := providers.RefreshReposByCredential(h.SourceCodeRepositories, h.SourceCodeRepositoryLister, credential, scpConfig); err != nil {
+	if _, err := providers.RefreshReposByCredential(h.SourceCodeRepositories, h.SourceCodeRepositoryLister, h.SourceCodeCredentials, credential, scpConfig); err != nil {
 		return err
 	}
 	data := []map[string]interface{}{}
