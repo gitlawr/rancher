@@ -13,8 +13,9 @@ const (
 	BitbucketServerPipelineConfigFieldNamespaceId     = "namespaceId"
 	BitbucketServerPipelineConfigFieldOwnerReferences = "ownerReferences"
 	BitbucketServerPipelineConfigFieldPassword        = "password"
-	BitbucketServerPipelineConfigFieldPrivateKey      = "publicKey"
+	BitbucketServerPipelineConfigFieldPrivateKey      = "privateKey"
 	BitbucketServerPipelineConfigFieldProjectID       = "projectId"
+	BitbucketServerPipelineConfigFieldPublicKey       = "publicKey"
 	BitbucketServerPipelineConfigFieldRedirectURL     = "redirectUrl"
 	BitbucketServerPipelineConfigFieldRemoved         = "removed"
 	BitbucketServerPipelineConfigFieldTLS             = "tls"
@@ -35,8 +36,9 @@ type BitbucketServerPipelineConfig struct {
 	NamespaceId     string            `json:"namespaceId,omitempty" yaml:"namespaceId,omitempty"`
 	OwnerReferences []OwnerReference  `json:"ownerReferences,omitempty" yaml:"ownerReferences,omitempty"`
 	Password        string            `json:"password,omitempty" yaml:"password,omitempty"`
-	PrivateKey      string            `json:"publicKey,omitempty" yaml:"publicKey,omitempty"`
+	PrivateKey      string            `json:"privateKey,omitempty" yaml:"privateKey,omitempty"`
 	ProjectID       string            `json:"projectId,omitempty" yaml:"projectId,omitempty"`
+	PublicKey       string            `json:"publicKey,omitempty" yaml:"publicKey,omitempty"`
 	RedirectURL     string            `json:"redirectUrl,omitempty" yaml:"redirectUrl,omitempty"`
 	Removed         string            `json:"removed,omitempty" yaml:"removed,omitempty"`
 	TLS             bool              `json:"tls,omitempty" yaml:"tls,omitempty"`

@@ -103,7 +103,7 @@ type BitbucketServerPipelineConfig struct {
 	TLS         bool   `json:"tls,omitempty"`
 	ConsumerKey string `json:"consumerKey,omitempty"`
 	PublicKey   string `json:"publicKey,omitempty"`
-	PrivateKey  string `json:"publicKey,omitempty" norman:"type=password"`
+	PrivateKey  string `json:"privateKey,omitempty" norman:"type=password"`
 	RedirectURL string `json:"redirectUrl,omitempty"`
 	UserName    string `json:"username,omitempty" norman:"type=password"`
 	Password    string `json:"password,omitempty" norman:"type=password"`
