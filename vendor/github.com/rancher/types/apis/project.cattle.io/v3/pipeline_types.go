@@ -99,13 +99,14 @@ type BitbucketServerPipelineConfig struct {
 	metav1.ObjectMeta        `json:"metadata,omitempty"`
 	SourceCodeProviderConfig `json:",inline" mapstructure:",squash"`
 
-	Hostname     string `json:"hostname,omitempty" norman:"noupdate"`
-	TLS          bool   `json:"tls,omitempty" norman:"noupdate"`
-	ClientID     string `json:"clientId,omitempty" norman:"noupdate"`
-	ClientSecret string `json:"clientSecret,omitempty" norman:"noupdate,type=password"`
-	RedirectURL  string `json:"redirectUrl,omitempty" norman:"noupdate"`
-	UserName     string `json:"username,omitempty" norman:"type=password"`
-	Password     string `json:"password,omitempty" norman:"type=password"`
+	Hostname    string `json:"hostname,omitempty"`
+	TLS         bool   `json:"tls,omitempty"`
+	ConsumerKey string `json:"consumerKey,omitempty"`
+	PublicKey   string `json:"publicKey,omitempty"`
+	PrivateKey  string `json:"publicKey,omitempty" norman:"type=password"`
+	RedirectURL string `json:"redirectUrl,omitempty"`
+	UserName    string `json:"username,omitempty" norman:"type=password"`
+	Password    string `json:"password,omitempty" norman:"type=password"`
 }
 
 type Pipeline struct {

@@ -3,8 +3,7 @@ package client
 const (
 	BitbucketServerPipelineConfigType                 = "bitbucketServerPipelineConfig"
 	BitbucketServerPipelineConfigFieldAnnotations     = "annotations"
-	BitbucketServerPipelineConfigFieldClientID        = "clientId"
-	BitbucketServerPipelineConfigFieldClientSecret    = "clientSecret"
+	BitbucketServerPipelineConfigFieldConsumerKey     = "consumerKey"
 	BitbucketServerPipelineConfigFieldCreated         = "created"
 	BitbucketServerPipelineConfigFieldCreatorID       = "creatorId"
 	BitbucketServerPipelineConfigFieldEnabled         = "enabled"
@@ -14,6 +13,7 @@ const (
 	BitbucketServerPipelineConfigFieldNamespaceId     = "namespaceId"
 	BitbucketServerPipelineConfigFieldOwnerReferences = "ownerReferences"
 	BitbucketServerPipelineConfigFieldPassword        = "password"
+	BitbucketServerPipelineConfigFieldPrivateKey      = "publicKey"
 	BitbucketServerPipelineConfigFieldProjectID       = "projectId"
 	BitbucketServerPipelineConfigFieldRedirectURL     = "redirectUrl"
 	BitbucketServerPipelineConfigFieldRemoved         = "removed"
@@ -25,8 +25,7 @@ const (
 
 type BitbucketServerPipelineConfig struct {
 	Annotations     map[string]string `json:"annotations,omitempty" yaml:"annotations,omitempty"`
-	ClientID        string            `json:"clientId,omitempty" yaml:"clientId,omitempty"`
-	ClientSecret    string            `json:"clientSecret,omitempty" yaml:"clientSecret,omitempty"`
+	ConsumerKey     string            `json:"consumerKey,omitempty" yaml:"consumerKey,omitempty"`
 	Created         string            `json:"created,omitempty" yaml:"created,omitempty"`
 	CreatorID       string            `json:"creatorId,omitempty" yaml:"creatorId,omitempty"`
 	Enabled         bool              `json:"enabled,omitempty" yaml:"enabled,omitempty"`
@@ -36,6 +35,7 @@ type BitbucketServerPipelineConfig struct {
 	NamespaceId     string            `json:"namespaceId,omitempty" yaml:"namespaceId,omitempty"`
 	OwnerReferences []OwnerReference  `json:"ownerReferences,omitempty" yaml:"ownerReferences,omitempty"`
 	Password        string            `json:"password,omitempty" yaml:"password,omitempty"`
+	PrivateKey      string            `json:"publicKey,omitempty" yaml:"publicKey,omitempty"`
 	ProjectID       string            `json:"projectId,omitempty" yaml:"projectId,omitempty"`
 	RedirectURL     string            `json:"redirectUrl,omitempty" yaml:"redirectUrl,omitempty"`
 	Removed         string            `json:"removed,omitempty" yaml:"removed,omitempty"`
