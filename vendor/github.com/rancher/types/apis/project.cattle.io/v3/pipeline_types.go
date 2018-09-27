@@ -392,8 +392,15 @@ type BitbucketCloudApplyInput struct {
 }
 
 type BitbucketServerApplyInput struct {
-	BitbucketConfig BitbucketServerPipelineConfig `json:"bitbucketConfig, omitempty"`
-	Code            string                        `json:"code,omitempty"`
+	Hostname    string `json:"hostname,omitempty"`
+	TLS         bool   `json:"tls,omitempty"`
+	RedirectURL string `json:"redirectUrl,omitempty"`
+	UserName    string `json:"username,omitempty"`
+	Password    string `json:"password,omitempty"`
+}
+
+type BitbucketServerRequestLoginOutput struct {
+	LoginURL string `json:"loginUrl"`
 }
 
 type EnvFrom struct {

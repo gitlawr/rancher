@@ -801,6 +801,7 @@ func pipelineTypes(schema *types.Schemas) *types.Schemas {
 		MustImport(&Version, v3.GitlabPipelineConfigApplyInput{}).
 		MustImport(&Version, v3.BitbucketCloudApplyInput{}).
 		MustImport(&Version, v3.BitbucketServerApplyInput{}).
+		MustImport(&Version, v3.BitbucketServerRequestLoginOutput{}).
 		MustImportAndCustomize(&Version, v3.SourceCodeProvider{}, func(schema *types.Schema) {
 			schema.CollectionMethods = []string{http.MethodGet}
 		}).
@@ -887,7 +888,12 @@ func pipelineTypes(schema *types.Schemas) *types.Schemas {
 		}).MustImportAndCustomize(&Version, v3.BitbucketServerPipelineConfig{}, func(schema *types.Schema) {
 		schema.BaseType = "sourceCodeProviderConfig"
 		schema.ResourceActions = map[string]types.Action{
-			"disable": {},
+			"disable":      {},
+			"generateKeys": {},
+			"requestLogin": {
+				Input:  "bitbucketServerApplyInput",
+				Output: "bitbucketServerRequestLoginOutput",
+			},
 			"testAndApply": {
 				Input: "bitbucketServerApplyInput",
 			},
