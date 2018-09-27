@@ -1,21 +1,21 @@
 package client
 
 const (
-	BitbucketProviderType                 = "bitbucketProvider"
-	BitbucketProviderFieldAnnotations     = "annotations"
-	BitbucketProviderFieldCreated         = "created"
-	BitbucketProviderFieldCreatorID       = "creatorId"
-	BitbucketProviderFieldLabels          = "labels"
-	BitbucketProviderFieldName            = "name"
-	BitbucketProviderFieldOwnerReferences = "ownerReferences"
-	BitbucketProviderFieldProjectID       = "projectId"
-	BitbucketProviderFieldRedirectURL     = "redirectUrl"
-	BitbucketProviderFieldRemoved         = "removed"
-	BitbucketProviderFieldType            = "type"
-	BitbucketProviderFieldUUID            = "uuid"
+	BitbucketServerProviderType                 = "bitbucketServerProvider"
+	BitbucketServerProviderFieldAnnotations     = "annotations"
+	BitbucketServerProviderFieldCreated         = "created"
+	BitbucketServerProviderFieldCreatorID       = "creatorId"
+	BitbucketServerProviderFieldLabels          = "labels"
+	BitbucketServerProviderFieldName            = "name"
+	BitbucketServerProviderFieldOwnerReferences = "ownerReferences"
+	BitbucketServerProviderFieldProjectID       = "projectId"
+	BitbucketServerProviderFieldRedirectURL     = "redirectUrl"
+	BitbucketServerProviderFieldRemoved         = "removed"
+	BitbucketServerProviderFieldType            = "type"
+	BitbucketServerProviderFieldUUID            = "uuid"
 )
 
-type BitbucketProvider struct {
+type BitbucketServerProvider struct {
 	Annotations     map[string]string `json:"annotations,omitempty" yaml:"annotations,omitempty"`
 	Created         string            `json:"created,omitempty" yaml:"created,omitempty"`
 	CreatorID       string            `json:"creatorId,omitempty" yaml:"creatorId,omitempty"`
