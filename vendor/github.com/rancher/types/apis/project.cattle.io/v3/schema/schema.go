@@ -801,6 +801,7 @@ func pipelineTypes(schema *types.Schemas) *types.Schemas {
 		MustImport(&Version, v3.GitlabPipelineConfigApplyInput{}).
 		MustImport(&Version, v3.BitbucketCloudApplyInput{}).
 		MustImport(&Version, v3.BitbucketServerApplyInput{}).
+		MustImport(&Version, v3.BitbucketServerLoginInput{}).
 		MustImport(&Version, v3.BitbucketServerRequestLoginOutput{}).
 		MustImportAndCustomize(&Version, v3.SourceCodeProvider{}, func(schema *types.Schema) {
 			schema.CollectionMethods = []string{http.MethodGet}

@@ -397,6 +397,12 @@ type BitbucketServerApplyInput struct {
 	RedirectURL string `json:"redirectUrl,omitempty"`
 	UserName    string `json:"username,omitempty"`
 	Password    string `json:"password,omitempty"`
+	BitbucketServerLoginInput
+}
+
+type BitbucketServerLoginInput struct {
+	OAuthToken    string `json:"oauthToken,omitempty"`
+	OAuthVerifier string `json:"oauthVerifier,omitempty"`
 }
 
 type BitbucketServerRequestLoginOutput struct {
