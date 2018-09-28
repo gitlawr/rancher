@@ -405,6 +405,12 @@ type BitbucketServerLoginInput struct {
 	OAuthVerifier string `json:"oauthVerifier,omitempty"`
 }
 
+type BitbucketServerRequestLoginInput struct {
+	Hostname    string `json:"hostname,omitempty"`
+	TLS         bool   `json:"tls,omitempty"`
+	RedirectURL string `json:"redirectUrl,omitempty"`
+}
+
 type BitbucketServerRequestLoginOutput struct {
 	LoginURL string `json:"loginUrl"`
 }

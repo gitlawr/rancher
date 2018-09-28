@@ -802,6 +802,7 @@ func pipelineTypes(schema *types.Schemas) *types.Schemas {
 		MustImport(&Version, v3.BitbucketCloudApplyInput{}).
 		MustImport(&Version, v3.BitbucketServerApplyInput{}).
 		MustImport(&Version, v3.BitbucketServerLoginInput{}).
+		MustImport(&Version, v3.BitbucketServerRequestLoginInput{}).
 		MustImport(&Version, v3.BitbucketServerRequestLoginOutput{}).
 		MustImportAndCustomize(&Version, v3.SourceCodeProvider{}, func(schema *types.Schema) {
 			schema.CollectionMethods = []string{http.MethodGet}
@@ -892,7 +893,7 @@ func pipelineTypes(schema *types.Schemas) *types.Schemas {
 			"disable":      {},
 			"generateKeys": {},
 			"requestLogin": {
-				Input:  "bitbucketServerApplyInput",
+				Input:  "bitbucketServerRequestLoginInput",
 				Output: "bitbucketServerRequestLoginOutput",
 			},
 			"testAndApply": {
