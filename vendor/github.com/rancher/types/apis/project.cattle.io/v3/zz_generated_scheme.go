@@ -59,6 +59,8 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 		&AppList{},
 		&AppRevision{},
 		&AppRevisionList{},
+		&BitbucketCloudApplyInput{},
+		&BitbucketCloudApplyInputList{},
 		&SourceCodeProvider{},
 		&SourceCodeProviderList{},
 		&SourceCodeProviderConfig{},

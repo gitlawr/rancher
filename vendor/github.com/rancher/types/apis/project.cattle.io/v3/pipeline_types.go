@@ -387,8 +387,8 @@ type GitlabPipelineConfigApplyInput struct {
 }
 
 type BitbucketCloudApplyInput struct {
-	BitbucketConfig BitbucketCloudPipelineConfig `json:"bitbucketConfig, omitempty"`
-	Code            string                       `json:"code,omitempty"`
+	BitbucketCloudPipelineConfig `json:",inline"`
+	Code                         string `json:"code,omitempty"`
 }
 
 type BitbucketServerApplyInput struct {
