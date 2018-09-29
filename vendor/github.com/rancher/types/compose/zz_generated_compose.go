@@ -78,7 +78,6 @@ type Config struct {
 	Workloads                      map[string]projectClient.Workload                      `json:"workloads,omitempty" yaml:"workloads,omitempty"`
 	Apps                           map[string]projectClient.App                           `json:"apps,omitempty" yaml:"apps,omitempty"`
 	AppRevisions                   map[string]projectClient.AppRevision                   `json:"appRevisions,omitempty" yaml:"appRevisions,omitempty"`
-	BitbucketCloudApplyInputs      map[string]projectClient.BitbucketCloudApplyInput      `json:"bitbucketCloudApplyInputs,omitempty" yaml:"bitbucketCloudApplyInputs,omitempty"`
 	SourceCodeProviders            map[string]projectClient.SourceCodeProvider            `json:"sourceCodeProviders,omitempty" yaml:"sourceCodeProviders,omitempty"`
 	SourceCodeProviderConfigs      map[string]projectClient.SourceCodeProviderConfig      `json:"sourceCodeProviderConfigs,omitempty" yaml:"sourceCodeProviderConfigs,omitempty"`
 	SourceCodeCredentials          map[string]projectClient.SourceCodeCredential          `json:"sourceCodeCredentials,omitempty" yaml:"sourceCodeCredentials,omitempty"`

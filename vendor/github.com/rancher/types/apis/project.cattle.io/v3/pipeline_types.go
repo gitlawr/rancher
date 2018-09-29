@@ -387,8 +387,10 @@ type GitlabPipelineConfigApplyInput struct {
 }
 
 type BitbucketCloudApplyInput struct {
-	BitbucketCloudPipelineConfig `json:",inline"`
-	Code                         string `json:"code,omitempty"`
+	ClientID     string `json:"clientId,omitempty" norman:"required"`
+	ClientSecret string `json:"clientSecret,omitempty" norman:"required"`
+	RedirectURL  string `json:"redirectUrl,omitempty" norman:"required"`
+	Code         string `json:"code,omitempty" norman:"required"`
 }
 
 type BitbucketServerApplyInput struct {

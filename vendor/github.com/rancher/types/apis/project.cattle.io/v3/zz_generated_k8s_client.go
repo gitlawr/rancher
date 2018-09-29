@@ -28,7 +28,6 @@ type Interface interface {
 	WorkloadsGetter
 	AppsGetter
 	AppRevisionsGetter
-	BitbucketCloudApplyInputsGetter
 	SourceCodeProvidersGetter
 	SourceCodeProviderConfigsGetter
 	SourceCodeCredentialsGetter
@@ -56,7 +55,6 @@ type Client struct {
 	workloadControllers                      map[string]WorkloadController
 	appControllers                           map[string]AppController
 	appRevisionControllers                   map[string]AppRevisionController
-	bitbucketCloudApplyInputControllers      map[string]BitbucketCloudApplyInputController
 	sourceCodeProviderControllers            map[string]SourceCodeProviderController
 	sourceCodeProviderConfigControllers      map[string]SourceCodeProviderConfigController
 	sourceCodeCredentialControllers          map[string]SourceCodeCredentialController
@@ -93,7 +91,6 @@ func NewForConfig(config rest.Config) (Interface, error) {
 		workloadControllers:                      map[string]WorkloadController{},
 		appControllers:                           map[string]AppController{},
 		appRevisionControllers:                   map[string]AppRevisionController{},
-		bitbucketCloudApplyInputControllers:      map[string]BitbucketCloudApplyInputController{},
 		sourceCodeProviderControllers:            map[string]SourceCodeProviderController{},
 		sourceCodeProviderConfigControllers:      map[string]SourceCodeProviderConfigController{},
 		sourceCodeCredentialControllers:          map[string]SourceCodeCredentialController{},
@@ -279,19 +276,6 @@ type AppRevisionsGetter interface {
 func (c *Client) AppRevisions(namespace string) AppRevisionInterface {
 	objectClient := objectclient.NewObjectClient(namespace, c.restClient, &AppRevisionResource, AppRevisionGroupVersionKind, appRevisionFactory{})
 	return &appRevisionClient{
-		ns:           namespace,
-		client:       c,
-		objectClient: objectClient,
-	}
-}
-
-type BitbucketCloudApplyInputsGetter interface {
-	BitbucketCloudApplyInputs(namespace string) BitbucketCloudApplyInputInterface
-}
-
-func (c *Client) BitbucketCloudApplyInputs(namespace string) BitbucketCloudApplyInputInterface {
-	objectClient := objectclient.NewObjectClient(namespace, c.restClient, &BitbucketCloudApplyInputResource, BitbucketCloudApplyInputGroupVersionKind, bitbucketCloudApplyInputFactory{})
-	return &bitbucketCloudApplyInputClient{
 		ns:           namespace,
 		client:       c,
 		objectClient: objectClient,

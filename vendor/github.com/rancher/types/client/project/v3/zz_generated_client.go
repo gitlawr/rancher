@@ -35,7 +35,6 @@ type Client struct {
 	Workload                      WorkloadOperations
 	App                           AppOperations
 	AppRevision                   AppRevisionOperations
-	BitbucketCloudApplyInput      BitbucketCloudApplyInputOperations
 	SourceCodeProvider            SourceCodeProviderOperations
 	SourceCodeProviderConfig      SourceCodeProviderConfigOperations
 	SourceCodeCredential          SourceCodeCredentialOperations
@@ -83,7 +82,6 @@ func NewClient(opts *clientbase.ClientOpts) (*Client, error) {
 	client.Workload = newWorkloadClient(client)
 	client.App = newAppClient(client)
 	client.AppRevision = newAppRevisionClient(client)
-	client.BitbucketCloudApplyInput = newBitbucketCloudApplyInputClient(client)
 	client.SourceCodeProvider = newSourceCodeProviderClient(client)
 	client.SourceCodeProviderConfig = newSourceCodeProviderConfigClient(client)
 	client.SourceCodeCredential = newSourceCodeCredentialClient(client)
