@@ -47,6 +47,7 @@ var transitioningMap = map[string]string{
 	"Initialized":                 "initializing",
 	"Installed":                   "installing",
 	"NodesCreated":                "provisioning",
+	"Notified":                    "notifying",
 	"Pending":                     "pending",
 	"PodScheduled":                "scheduling",
 	"Provisioned":                 "provisioning",
