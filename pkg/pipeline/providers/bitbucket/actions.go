@@ -86,9 +86,9 @@ func (b *BitbucketProvider) testAndApply(actionName string, action *types.Action
 		return fmt.Errorf("Failed to get github provider config")
 	}
 	toUpdate := storedBitbucketPipelineConfig.DeepCopy()
-	toUpdate.ClientID = applyInput.BitbucketConfig.ClientID
-	toUpdate.ClientSecret = applyInput.BitbucketConfig.ClientSecret
-	toUpdate.RedirectURL = applyInput.BitbucketConfig.RedirectURL
+	toUpdate.ClientID = applyInput.ClientID
+	toUpdate.ClientSecret = applyInput.ClientSecret
+	toUpdate.RedirectURL = applyInput.RedirectURL
 
 	//oauth and add user
 	userName := apiContext.Request.Header.Get("Impersonate-User")
