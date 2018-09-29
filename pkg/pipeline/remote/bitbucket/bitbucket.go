@@ -356,7 +356,11 @@ func convertRepos(repos []Repository) []v3.SourceCodeRepository {
 		r := v3.SourceCodeRepository{}
 		for _, link := range repo.Links.Clone {
 			if link.Name == "https" {
-				r.Spec.URL = link.Href
+				u, _ := url.Parse(link.Href)
+				if u != nil {
+					u.User = nil
+					r.Spec.URL = u.String()
+				}
 				break
 			}
 		}

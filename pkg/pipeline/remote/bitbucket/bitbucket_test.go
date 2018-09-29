@@ -7,6 +7,7 @@ import (
 	"github.com/rancher/types/apis/project.cattle.io/v3"
 	"github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/apis/meta/v1"
+	"net/url"
 	"testing"
 )
 
@@ -107,4 +108,12 @@ func Test_Head(t *testing.T) {
 	}
 	b, _ := json.Marshal(info)
 	logrus.Error(string(b))
+}
+
+func Test_uu(t *testing.T) {
+	u, _ := url.Parse("https://lawrlee@bitbucket.org/lawrlee/test.git")
+	logrus.Info(u.User)
+	logrus.Info(u.String())
+	u.User = nil
+	logrus.Info(u.String())
 }
