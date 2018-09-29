@@ -30,7 +30,7 @@ func Test_User(t *testing.T) {
 
 func Test_Repos(t *testing.T) {
 	cred := &v3.SourceCodeCredential{
-		Spec: v3.SourceCodeCredentialSpec{ProjectName: "p-abc", SourceCodeType: model.BitbucketType, UserName: "lawrlee", DisplayName: "lawrence li", AvatarURL: "", HTMLURL: "", LoginName: "lawrlee", GitLoginName: cloneUserName, AccessToken: accessToken},
+		Spec: v3.SourceCodeCredentialSpec{ProjectName: "p-abc", SourceCodeType: model.BitbucketCloudType, UserName: "lawrlee", DisplayName: "lawrence li", AvatarURL: "", HTMLURL: "", LoginName: "lawrlee", GitLoginName: cloneUserName, AccessToken: accessToken},
 	}
 	repos, err := c.Repos(cred)
 	if err != nil {

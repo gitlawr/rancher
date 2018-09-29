@@ -31,7 +31,13 @@ func RegisterDrivers(Management *config.ScaledContext) {
 		SourceCodeCredentials:      sourceCodeCredentials,
 		SourceCodeCredentialLister: sourceCodeCredentialLister,
 	}
-	Drivers[drivers.BitbucketWebhookHeader] = drivers.BitbucketDriver{
+	Drivers[drivers.BitbucketCloudWebhookHeader] = drivers.BitbucketCloudDriver{
+		PipelineLister:             pipelineLister,
+		PipelineExecutions:         pipelineExecutions,
+		SourceCodeCredentials:      sourceCodeCredentials,
+		SourceCodeCredentialLister: sourceCodeCredentialLister,
+	}
+	Drivers[drivers.BitbucketServerWebhookHeader] = drivers.BitbucketServerDriver{
 		PipelineLister:             pipelineLister,
 		PipelineExecutions:         pipelineExecutions,
 		SourceCodeCredentials:      sourceCodeCredentials,

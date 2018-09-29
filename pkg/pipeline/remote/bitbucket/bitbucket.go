@@ -36,7 +36,7 @@ type client struct {
 	RedirectURL  string
 }
 
-func New(config *v3.BitbucketPipelineConfig) (model.Remote, error) {
+func New(config *v3.BitbucketCloudPipelineConfig) (model.Remote, error) {
 	if config == nil {
 		return nil, errors.New("empty gitlab config")
 	}
@@ -49,7 +49,7 @@ func New(config *v3.BitbucketPipelineConfig) (model.Remote, error) {
 }
 
 func (c *client) Type() string {
-	return model.BitbucketType
+	return model.BitbucketCloudType
 }
 
 func (c *client) CanLogin() bool {
@@ -321,7 +321,7 @@ func convertUser(bitbucketUser *User) *v3.SourceCodeCredential {
 		return nil
 	}
 	cred := &v3.SourceCodeCredential{}
-	cred.Spec.SourceCodeType = model.BitbucketType
+	cred.Spec.SourceCodeType = model.BitbucketCloudType
 
 	cred.Spec.AvatarURL = bitbucketUser.Links.Avatar.Href
 	cred.Spec.HTMLURL = bitbucketUser.Links.Html.Href

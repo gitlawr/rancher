@@ -1,4 +1,4 @@
-package bitbucket
+package bitbucketserver
 
 import (
 	"fmt"
@@ -15,7 +15,7 @@ import (
 	"k8s.io/client-go/tools/cache"
 )
 
-type BitbucketProvider struct {
+type BitbucketServerProvider struct {
 	SourceCodeProviderConfigs  v3.SourceCodeProviderConfigInterface
 	SourceCodeCredentials      v3.SourceCodeCredentialInterface
 	SourceCodeCredentialLister v3.SourceCodeCredentialLister
@@ -29,48 +29,41 @@ type BitbucketProvider struct {
 	SourceCodeRepositoryIndexer cache.Indexer
 }
 
-func (b *BitbucketProvider) CustomizeSchemas(schemas *types.Schemas) {
+func (b *BitbucketServerProvider) CustomizeSchemas(schemas *types.Schemas) {
 	scpConfigBaseSchema := schemas.Schema(&schema.Version, client.SourceCodeProviderConfigType)
-	configSchema := schemas.Schema(&schema.Version, client.BitbucketCloudPipelineConfigType)
+	configSchema := schemas.Schema(&schema.Version, client.BitbucketServerPipelineConfigType)
 	configSchema.ActionHandler = b.ActionHandler
 	configSchema.Formatter = b.Formatter
-	configSchema.Store = subtype.NewSubTypeStore(client.BitbucketCloudPipelineConfigType, scpConfigBaseSchema.Store)
+	configSchema.Store = subtype.NewSubTypeStore(client.BitbucketServerPipelineConfigType, scpConfigBaseSchema.Store)
 
 	providerBaseSchema := schemas.Schema(&schema.Version, client.SourceCodeProviderType)
-	providerSchema := schemas.Schema(&schema.Version, client.BitbucketCloudProviderType)
+	providerSchema := schemas.Schema(&schema.Version, client.BitbucketServerProviderType)
 	providerSchema.Formatter = b.providerFormatter
 	providerSchema.ActionHandler = b.providerActionHandler
-	providerSchema.Store = subtype.NewSubTypeStore(client.BitbucketCloudProviderType, providerBaseSchema.Store)
+	providerSchema.Store = subtype.NewSubTypeStore(client.BitbucketServerProviderType, providerBaseSchema.Store)
 }
 
-func (b *BitbucketProvider) GetName() string {
-	return model.BitbucketCloudType
+func (b *BitbucketServerProvider) GetName() string {
+	return model.BitbucketServerType
 }
 
-func (b *BitbucketProvider) TransformToSourceCodeProvider(config map[string]interface{}) map[string]interface{} {
-	p := transformToSourceCodeProvider(config)
-	p[client.BitbucketCloudProviderFieldRedirectURL] = formBitbucketRedirectURLFromMap(config)
-	return p
-}
-
-func transformToSourceCodeProvider(config map[string]interface{}) map[string]interface{} {
+func (b *BitbucketServerProvider) TransformToSourceCodeProvider(config map[string]interface{}) map[string]interface{} {
 	result := map[string]interface{}{}
 	if m, ok := config["metadata"].(map[string]interface{}); ok {
 		result["id"] = fmt.Sprintf("%v:%v", m[client.ObjectMetaFieldNamespace], m[client.ObjectMetaFieldName])
 	}
 	if t := convert.ToString(config[client.SourceCodeProviderFieldType]); t != "" {
-		result[client.SourceCodeProviderFieldType] = client.BitbucketCloudProviderType
+		result[client.SourceCodeProviderFieldType] = client.BitbucketServerProviderType
 	}
 	if t := convert.ToString(config[projectNameField]); t != "" {
 		result["projectId"] = t
 	}
-	result[client.BitbucketCloudProviderFieldRedirectURL] = formBitbucketRedirectURLFromMap(config)
 
 	return result
 }
 
-func (b *BitbucketProvider) GetProviderConfig(projectID string) (interface{}, error) {
-	scpConfigObj, err := b.SourceCodeProviderConfigs.ObjectClient().UnstructuredClient().GetNamespaced(projectID, model.BitbucketCloudType, metav1.GetOptions{})
+func (b *BitbucketServerProvider) GetProviderConfig(projectID string) (interface{}, error) {
+	scpConfigObj, err := b.SourceCodeProviderConfigs.ObjectClient().UnstructuredClient().GetNamespaced(projectID, model.BitbucketServerType, metav1.GetOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve BitbucketConfig, error: %v", err)
 	}
@@ -81,7 +74,7 @@ func (b *BitbucketProvider) GetProviderConfig(projectID string) (interface{}, er
 	}
 	storedBitbucketPipelineConfigMap := u.UnstructuredContent()
 
-	storedBitbucketPipelineConfig := &v3.BitbucketCloudPipelineConfig{}
+	storedBitbucketPipelineConfig := &v3.BitbucketServerPipelineConfig{}
 	if err := mapstructure.Decode(storedBitbucketPipelineConfigMap, storedBitbucketPipelineConfig); err != nil {
 		return nil, fmt.Errorf("failed to decode the config, error: %v", err)
 	}

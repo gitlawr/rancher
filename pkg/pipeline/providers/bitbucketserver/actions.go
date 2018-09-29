@@ -1,8 +1,12 @@
-package bitbucket
+package bitbucketserver
 
 import (
+	"crypto/x509"
 	"encoding/json"
+	"encoding/pem"
 	"fmt"
+	"github.com/mrjones/oauth"
+	"github.com/rancher/rancher/pkg/randomtoken"
 	"net/http"
 
 	"github.com/pkg/errors"
@@ -29,47 +33,142 @@ const (
 	bitbucketDefaultHostName = "https://bitbucket.org"
 	actionDisable            = "disable"
 	actionTestAndApply       = "testAndApply"
+	actionGenerateKeys       = "generateKeys"
+	actionRequestLogin       = "requestLogin"
 	actionLogin              = "login"
 	projectNameField         = "projectName"
 )
 
-func (b *BitbucketProvider) Formatter(apiContext *types.APIContext, resource *types.RawResource) {
+func (b *BitbucketServerProvider) Formatter(apiContext *types.APIContext, resource *types.RawResource) {
 	if convert.ToBool(resource.Values["enabled"]) {
 		resource.AddAction(apiContext, actionDisable)
 	}
 
+	resource.AddAction(apiContext, actionGenerateKeys)
+	resource.AddAction(apiContext, actionRequestLogin)
 	resource.AddAction(apiContext, actionTestAndApply)
 }
 
-func (b *BitbucketProvider) ActionHandler(actionName string, action *types.Action, request *types.APIContext) error {
+func (b *BitbucketServerProvider) ActionHandler(actionName string, action *types.Action, request *types.APIContext) error {
 	if actionName == actionTestAndApply {
 		return b.testAndApply(actionName, action, request)
 	} else if actionName == actionDisable {
 		return b.disableAction(request)
+	} else if actionName == actionGenerateKeys {
+		return b.generateKeys(actionName, action, request)
+	} else if actionName == actionRequestLogin {
+		return b.requestLogin(actionName, action, request)
 	}
 
 	return httperror.NewAPIError(httperror.ActionNotAvailable, "")
 }
 
-func (b *BitbucketProvider) providerFormatter(apiContext *types.APIContext, resource *types.RawResource) {
+func (b *BitbucketServerProvider) providerFormatter(apiContext *types.APIContext, resource *types.RawResource) {
 	resource.AddAction(apiContext, actionLogin)
 }
 
-func (b *BitbucketProvider) providerActionHandler(actionName string, action *types.Action, request *types.APIContext) error {
+func (b *BitbucketServerProvider) providerActionHandler(actionName string, action *types.Action, request *types.APIContext) error {
 	if actionName == actionLogin {
-		return b.authuser(request)
+		return b.login(request)
 	}
 
 	return httperror.NewAPIError(httperror.ActionNotAvailable, "")
 }
 
-func formBitbucketRedirectURLFromMap(config map[string]interface{}) string {
-	clientID := convert.ToString(config[client.BitbucketCloudPipelineConfigFieldClientID])
-	return fmt.Sprintf("%s/site/oauth2/authorize?client_id=%s&response_type=code", bitbucketDefaultHostName, clientID)
+func (b *BitbucketServerProvider) generateKeys(actionName string, action *types.Action, apiContext *types.APIContext) error {
+	ns, _ := ref.Parse(apiContext.ID)
+	pConfig, err := b.GetProviderConfig(ns)
+	if err != nil {
+		return err
+	}
+	storedBitbucketPipelineConfig, ok := pConfig.(*v3.BitbucketServerPipelineConfig)
+	if !ok {
+		return fmt.Errorf("Failed to get bitbucket server provider config")
+	}
+	toUpdate := storedBitbucketPipelineConfig.DeepCopy()
+	token, err := randomtoken.Generate()
+	if err != nil {
+		return err
+	}
+	toUpdate.ConsumerKey = token
+	//FIXME
+	pub, private, _ := generateKeyPair()
+	toUpdate.PrivateKey = private
+	toUpdate.PublicKey = pub
+	if _, err = b.SourceCodeProviderConfigs.ObjectClient().Update(toUpdate.Name, toUpdate); err != nil {
+		return err
+	}
+
+	return nil
 }
 
-func (b *BitbucketProvider) testAndApply(actionName string, action *types.Action, apiContext *types.APIContext) error {
-	applyInput := &v3.BitbucketCloudApplyInput{}
+func generateKeyPair() (string, string, error) {
+	privateKey := `-----BEGIN RSA PRIVATE KEY-----
+MIICXgIBAAKBgQDNUw3p7+ZGX2mPKV27PUSyZWEcL+/ut78A1sfzuEv31DtHYFei
+XV29/H/SUzqstr9OzdzGrwxXVBKPQXk53wAQ7eOWacUjQVqeL9HsC1+2c06pOuup
+brUsAUe1o2n0juYwI7Olgynw2h5hfGwnlh27vJAURHjk3lbEWLnXVRuQwwIDAQAB
+AoGBAI4aw3B7dtaRxo8sxBCI8Pi/LZzCmL6RMYK1JCJMFVfq7TQTO9PF5tFM5nJ8
+5AkRWgqCdCCWmmX+a/H2EJ669mGDxeBe1lbXEBGW0dqTqIU7Rgs4ZdYoM3d5aIZg
+I7HhUb11VqZlSL2q5wZPeSGf3Bxj8kLvljzWrkA7YoIWw+yRAkEA50GNXsAG4hrM
+EmXB2jAVo8KTpUu9D+IE0CIXVlKmfGIAzBHSwf8GLizOeJhwTt87J2Lo9fW5HmfR
+17wMHjemVwJBAONLMjTN1d7pQslXbqUp7xr0eQSLsS/1kmw9UCOyl/JHsDMjMj1r
+VPBMuqfPgrdEe8YSgIJZ96aKY4sxCGwC7XUCQQCsYXzT6Cg5WuhLvnZmAfnffCc6
+y94+fKhBzWe//RQFG7ikZZTI7yTYPqYZ1ufAoz4g+eXVkjlPpOwS+CXAUJM5AkEA
+iC5rnFufQnl7vGqYLnkbe4jyYRjZRqTZ3+Q0ec7tXwo4tcrmtQnz0C4Iv7aC2Q89
+IYXAXVlOGghcb+8m3qA6aQJAFSvcj/+cZPKPbMQqjbgCjyb3eBimMBo/cSY7Ogfp
+Xd+ZSRUTPQ/LnfwS+bEuj7xYBD3y+pWOLqsIkRbfzziLNg==
+-----END RSA PRIVATE KEY-----`
+	publicKey := `-----BEGIN PUBLIC KEY-----
+MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDNUw3p7+ZGX2mPKV27PUSyZWEc
+L+/ut78A1sfzuEv31DtHYFeiXV29/H/SUzqstr9OzdzGrwxXVBKPQXk53wAQ7eOW
+acUjQVqeL9HsC1+2c06pOuupbrUsAUe1o2n0juYwI7Olgynw2h5hfGwnlh27vJAU
+RHjk3lbEWLnXVRuQwwIDAQAB
+-----END PUBLIC KEY-----`
+	return publicKey, privateKey, nil
+}
+
+func (b *BitbucketServerProvider) requestLogin(actionName string, action *types.Action, apiContext *types.APIContext) error {
+	input := &v3.BitbucketServerRequestLoginInput{}
+	if err := json.NewDecoder(apiContext.Request.Body).Decode(input); err != nil {
+		return httperror.NewAPIError(httperror.InvalidBodyContent,
+			fmt.Sprintf("Failed to parse body: %v", err))
+	}
+
+	ns, _ := ref.Parse(apiContext.ID)
+	pConfig, err := b.GetProviderConfig(ns)
+	if err != nil {
+		return err
+	}
+	storedBitbucketPipelineConfig, ok := pConfig.(*v3.BitbucketServerPipelineConfig)
+	if !ok {
+		return fmt.Errorf("Failed to get bitbucket server provider config")
+	}
+	consumerKey := storedBitbucketPipelineConfig.ConsumerKey
+	rsaKey := storedBitbucketPipelineConfig.PrivateKey
+	host := ""
+	if input.TLS {
+		host = "https://" + input.Hostname
+	} else {
+		host = "http://" + input.Hostname
+	}
+	consumer, err := getOauthConsumer(consumerKey, rsaKey, host)
+	if err != nil {
+		return err
+	}
+	_, loginURL, err := consumer.GetRequestTokenAndUrl(input.RedirectURL)
+	if err != nil {
+		return err
+	}
+	data := map[string]interface{}{
+		"loginUrl": loginURL,
+		"type":     "bitbucketServerRequestLoginOutput",
+	}
+	apiContext.WriteResponse(http.StatusOK, data)
+	return nil
+}
+
+func (b *BitbucketServerProvider) testAndApply(actionName string, action *types.Action, apiContext *types.APIContext) error {
+	applyInput := &v3.BitbucketServerApplyInput{}
 
 	if err := json.NewDecoder(apiContext.Request.Body).Decode(applyInput); err != nil {
 		return httperror.NewAPIError(httperror.InvalidBodyContent,
@@ -81,18 +180,21 @@ func (b *BitbucketProvider) testAndApply(actionName string, action *types.Action
 	if err != nil {
 		return err
 	}
-	storedBitbucketPipelineConfig, ok := pConfig.(*v3.BitbucketCloudPipelineConfig)
+	storedBitbucketPipelineConfig, ok := pConfig.(*v3.BitbucketServerPipelineConfig)
 	if !ok {
-		return fmt.Errorf("Failed to get github provider config")
+		return fmt.Errorf("Failed to get bitbucket server provider config")
 	}
 	toUpdate := storedBitbucketPipelineConfig.DeepCopy()
-	toUpdate.ClientID = applyInput.BitbucketConfig.ClientID
-	toUpdate.ClientSecret = applyInput.BitbucketConfig.ClientSecret
-	toUpdate.RedirectURL = applyInput.BitbucketConfig.RedirectURL
+	toUpdate.Hostname = applyInput.Hostname
+	toUpdate.TLS = applyInput.TLS
+	toUpdate.UserName = applyInput.UserName
+	toUpdate.Password = applyInput.Password
+	toUpdate.RedirectURL = applyInput.RedirectURL
 
+	code := fmt.Sprintf("%s:%s", applyInput.OAuthToken, applyInput.OAuthVerifier)
 	//oauth and add user
 	userName := apiContext.Request.Header.Get("Impersonate-User")
-	sourceCodeCredential, err := b.authAddAccount(userName, applyInput.Code, toUpdate)
+	sourceCodeCredential, err := b.authAddAccount(userName, code, toUpdate)
 	if err != nil {
 		return err
 	}
@@ -110,13 +212,13 @@ func (b *BitbucketProvider) testAndApply(actionName string, action *types.Action
 	return nil
 }
 
-func (b *BitbucketProvider) authuser(apiContext *types.APIContext) error {
-	authUserInput := v3.AuthUserInput{}
+func (b *BitbucketServerProvider) login(apiContext *types.APIContext) error {
+	loginInput := v3.BitbucketServerLoginInput{}
 	requestBytes, err := ioutil.ReadAll(apiContext.Request.Body)
 	if err != nil {
 		return err
 	}
-	if err := json.Unmarshal(requestBytes, &authUserInput); err != nil {
+	if err := json.Unmarshal(requestBytes, &loginInput); err != nil {
 		return err
 	}
 
@@ -125,7 +227,7 @@ func (b *BitbucketProvider) authuser(apiContext *types.APIContext) error {
 	if err != nil {
 		return err
 	}
-	config, ok := pConfig.(*v3.BitbucketCloudPipelineConfig)
+	config, ok := pConfig.(*v3.BitbucketServerPipelineConfig)
 	if !ok {
 		return fmt.Errorf("Failed to get bitbucket provider config")
 	}
@@ -135,7 +237,8 @@ func (b *BitbucketProvider) authuser(apiContext *types.APIContext) error {
 
 	//oauth and add user
 	userName := apiContext.Request.Header.Get("Impersonate-User")
-	account, err := b.authAddAccount(userName, authUserInput.Code, config)
+	code := fmt.Sprintf("%s:%s", loginInput.OAuthToken, loginInput.OAuthVerifier)
+	account, err := b.authAddAccount(userName, code, config)
 	if err != nil {
 		return err
 	}
@@ -152,7 +255,7 @@ func (b *BitbucketProvider) authuser(apiContext *types.APIContext) error {
 	return nil
 }
 
-func (b *BitbucketProvider) authAddAccount(userID string, code string, config *v3.BitbucketCloudPipelineConfig) (*v3.SourceCodeCredential, error) {
+func (b *BitbucketServerProvider) authAddAccount(userID string, code string, config *v3.BitbucketServerPipelineConfig) (*v3.SourceCodeCredential, error) {
 	if userID == "" {
 		return nil, errors.New("unauth")
 	}
@@ -165,7 +268,7 @@ func (b *BitbucketProvider) authAddAccount(userID string, code string, config *v
 	if err != nil {
 		return nil, err
 	}
-	account.Name = strings.ToLower(fmt.Sprintf("%s-%s-%s", config.Namespace, model.BitbucketCloudType, account.Spec.LoginName))
+	account.Name = strings.ToLower(fmt.Sprintf("%s-%s-%s", config.Namespace, model.BitbucketServerType, account.Spec.LoginName))
 	account.Namespace = userID
 	account.Spec.UserName = userID
 	account.Spec.ProjectName = config.ProjectName
@@ -183,9 +286,9 @@ func (b *BitbucketProvider) authAddAccount(userID string, code string, config *v
 	return account, nil
 }
 
-func (b *BitbucketProvider) disableAction(request *types.APIContext) error {
+func (b *BitbucketServerProvider) disableAction(request *types.APIContext) error {
 	ns, _ := ref.Parse(request.ID)
-	o, err := b.SourceCodeProviderConfigs.ObjectClient().UnstructuredClient().GetNamespaced(ns, model.BitbucketCloudType, metav1.GetOptions{})
+	o, err := b.SourceCodeProviderConfigs.ObjectClient().UnstructuredClient().GetNamespaced(ns, model.BitbucketServerType, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
@@ -193,7 +296,7 @@ func (b *BitbucketProvider) disableAction(request *types.APIContext) error {
 	config := u.UnstructuredContent()
 	if convert.ToBool(config[client.SourceCodeProviderConfigFieldEnabled]) {
 		config[client.SourceCodeProviderConfigFieldEnabled] = false
-		if _, err := b.SourceCodeProviderConfigs.ObjectClient().Update(model.BitbucketCloudType, o); err != nil {
+		if _, err := b.SourceCodeProviderConfigs.ObjectClient().Update(model.BitbucketServerType, o); err != nil {
 			return err
 		}
 		if t := convert.ToString(config[projectNameField]); t != "" {
@@ -204,7 +307,7 @@ func (b *BitbucketProvider) disableAction(request *types.APIContext) error {
 	return nil
 }
 
-func (b *BitbucketProvider) cleanup(projectID string) error {
+func (b *BitbucketServerProvider) cleanup(projectID string) error {
 	pipelines, err := b.PipelineIndexer.ByIndex(utils.PipelineByProjectIndex, projectID)
 	if err != nil {
 		return err
@@ -227,7 +330,7 @@ func (b *BitbucketProvider) cleanup(projectID string) error {
 		}
 	}
 
-	crdKey := utils.ProjectNameAndSourceCodeTypeKey(projectID, model.BitbucketCloudType)
+	crdKey := utils.ProjectNameAndSourceCodeTypeKey(projectID, model.BitbucketServerType)
 	credentials, err := b.SourceCodeCredentialIndexer.ByIndex(utils.SourceCodeCredentialByProjectAndTypeIndex, crdKey)
 	if err != nil {
 		return err
@@ -239,7 +342,7 @@ func (b *BitbucketProvider) cleanup(projectID string) error {
 		}
 	}
 
-	repoKey := utils.ProjectNameAndSourceCodeTypeKey(projectID, model.BitbucketCloudType)
+	repoKey := utils.ProjectNameAndSourceCodeTypeKey(projectID, model.BitbucketServerType)
 	repositories, err := b.SourceCodeRepositoryIndexer.ByIndex(utils.SourceCodeRepositoryByProjectAndTypeIndex, repoKey)
 	if err != nil {
 		return err
@@ -254,7 +357,7 @@ func (b *BitbucketProvider) cleanup(projectID string) error {
 	return nil
 }
 
-func (b *BitbucketProvider) refreshReposByCredentialAndConfig(credential *v3.SourceCodeCredential, config *v3.BitbucketCloudPipelineConfig) ([]v3.SourceCodeRepository, error) {
+func (b *BitbucketServerProvider) refreshReposByCredentialAndConfig(credential *v3.SourceCodeCredential, config *v3.BitbucketServerPipelineConfig) ([]v3.SourceCodeRepository, error) {
 	namespace := credential.Namespace
 	credentialID := ref.Ref(credential)
 	remote, err := remote.New(config)
@@ -296,4 +399,24 @@ func (b *BitbucketProvider) refreshReposByCredentialAndConfig(credential *v3.Sou
 	}
 
 	return repos, nil
+}
+
+func getOauthConsumer(consumerKey, rsaKey, hostURL string) (*oauth.Consumer, error) {
+	keyBytes := []byte(rsaKey)
+	block, _ := pem.Decode(keyBytes)
+	privateKey, err := x509.ParsePKCS1PrivateKey(block.Bytes)
+	if err != nil {
+		return nil, err
+	}
+
+	bitbucketOauthConsumer := oauth.NewRSAConsumer(
+		consumerKey,
+		privateKey,
+		oauth.ServiceProvider{
+			RequestTokenUrl:   fmt.Sprintf("%s/plugins/servlet/oauth/request-token", hostURL),
+			AuthorizeTokenUrl: fmt.Sprintf("%s/plugins/servlet/oauth/authorize", hostURL),
+			AccessTokenUrl:    fmt.Sprintf("%s/plugins/servlet/oauth/access-token", hostURL),
+			HttpMethod:        http.MethodPost,
+		})
+	return bitbucketOauthConsumer, nil
 }

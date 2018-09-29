@@ -31,25 +31,25 @@ type BitbucketProvider struct {
 
 func (b *BitbucketProvider) CustomizeSchemas(schemas *types.Schemas) {
 	scpConfigBaseSchema := schemas.Schema(&schema.Version, client.SourceCodeProviderConfigType)
-	configSchema := schemas.Schema(&schema.Version, client.BitbucketPipelineConfigType)
+	configSchema := schemas.Schema(&schema.Version, client.BitbucketCloudPipelineConfigType)
 	configSchema.ActionHandler = b.ActionHandler
 	configSchema.Formatter = b.Formatter
-	configSchema.Store = subtype.NewSubTypeStore(client.BitbucketPipelineConfigType, scpConfigBaseSchema.Store)
+	configSchema.Store = subtype.NewSubTypeStore(client.BitbucketCloudPipelineConfigType, scpConfigBaseSchema.Store)
 
 	providerBaseSchema := schemas.Schema(&schema.Version, client.SourceCodeProviderType)
-	providerSchema := schemas.Schema(&schema.Version, client.BitbucketProviderType)
+	providerSchema := schemas.Schema(&schema.Version, client.BitbucketCloudProviderType)
 	providerSchema.Formatter = b.providerFormatter
 	providerSchema.ActionHandler = b.providerActionHandler
-	providerSchema.Store = subtype.NewSubTypeStore(client.BitbucketProviderType, providerBaseSchema.Store)
+	providerSchema.Store = subtype.NewSubTypeStore(client.BitbucketCloudProviderType, providerBaseSchema.Store)
 }
 
 func (b *BitbucketProvider) GetName() string {
-	return model.BitbucketType
+	return model.BitbucketCloudType
 }
 
 func (b *BitbucketProvider) TransformToSourceCodeProvider(config map[string]interface{}) map[string]interface{} {
 	p := transformToSourceCodeProvider(config)
-	p[client.BitbucketProviderFieldRedirectURL] = formBitbucketRedirectURLFromMap(config)
+	p[client.BitbucketCloudProviderFieldRedirectURL] = formBitbucketRedirectURLFromMap(config)
 	return p
 }
 
@@ -59,18 +59,18 @@ func transformToSourceCodeProvider(config map[string]interface{}) map[string]int
 		result["id"] = fmt.Sprintf("%v:%v", m[client.ObjectMetaFieldNamespace], m[client.ObjectMetaFieldName])
 	}
 	if t := convert.ToString(config[client.SourceCodeProviderFieldType]); t != "" {
-		result[client.SourceCodeProviderFieldType] = client.BitbucketProviderType
+		result[client.SourceCodeProviderFieldType] = client.BitbucketCloudProviderType
 	}
 	if t := convert.ToString(config[projectNameField]); t != "" {
 		result["projectId"] = t
 	}
-	result[client.BitbucketProviderFieldRedirectURL] = formBitbucketRedirectURLFromMap(config)
+	result[client.BitbucketCloudProviderFieldRedirectURL] = formBitbucketRedirectURLFromMap(config)
 
 	return result
 }
 
 func (b *BitbucketProvider) GetProviderConfig(projectID string) (interface{}, error) {
-	scpConfigObj, err := b.SourceCodeProviderConfigs.ObjectClient().UnstructuredClient().GetNamespaced(projectID, model.BitbucketType, metav1.GetOptions{})
+	scpConfigObj, err := b.SourceCodeProviderConfigs.ObjectClient().UnstructuredClient().GetNamespaced(projectID, model.BitbucketCloudType, metav1.GetOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve BitbucketConfig, error: %v", err)
 	}
@@ -81,7 +81,7 @@ func (b *BitbucketProvider) GetProviderConfig(projectID string) (interface{}, er
 	}
 	storedBitbucketPipelineConfigMap := u.UnstructuredContent()
 
-	storedBitbucketPipelineConfig := &v3.BitbucketPipelineConfig{}
+	storedBitbucketPipelineConfig := &v3.BitbucketCloudPipelineConfig{}
 	if err := mapstructure.Decode(storedBitbucketPipelineConfigMap, storedBitbucketPipelineConfig); err != nil {
 		return nil, fmt.Errorf("failed to decode the config, error: %v", err)
 	}

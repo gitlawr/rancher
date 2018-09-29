@@ -15,23 +15,24 @@ import (
 )
 
 const (
-	BitbucketWebhookHeader  = "X-Event-Key"
-	bitbucketPushEvent      = "repo:push"
-	bitbucketPRCreatedEvent = "pullrequest:created"
-	bitbucketPRUpdatedEvent = "pullrequest:updated"
-	bitbucketStateOpen      = "OPEN"
+	BitbucketCloudWebhookHeader  = "X-Hook-UUID"
+	bitbucketCloudEventHeader    = "X-Event-Key"
+	bitbucketCloudPushEvent      = "repo:push"
+	bitbucketCloudPrCreatedEvent = "pullrequest:created"
+	bitbucketCloudPrUpdatedEvent = "pullrequest:updated"
+	bitbucketCloudStateOpen      = "OPEN"
 )
 
-type BitbucketDriver struct {
+type BitbucketCloudDriver struct {
 	PipelineLister             v3.PipelineLister
 	PipelineExecutions         v3.PipelineExecutionInterface
 	SourceCodeCredentials      v3.SourceCodeCredentialInterface
 	SourceCodeCredentialLister v3.SourceCodeCredentialLister
 }
 
-func (b BitbucketDriver) Execute(req *http.Request) (int, error) {
-	event := req.Header.Get(BitbucketWebhookHeader)
-	if event != bitbucketPushEvent && event != bitbucketPRCreatedEvent && event != bitbucketPRUpdatedEvent {
+func (b BitbucketCloudDriver) Execute(req *http.Request) (int, error) {
+	event := req.Header.Get(bitbucketCloudEventHeader)
+	if event != bitbucketCloudPushEvent && event != bitbucketCloudPrCreatedEvent && event != bitbucketCloudPrUpdatedEvent {
 		return http.StatusUnprocessableEntity, fmt.Errorf("not trigger for event:%s", event)
 	}
 
@@ -48,12 +49,12 @@ func (b BitbucketDriver) Execute(req *http.Request) (int, error) {
 	logrus.Infof("get body:%s", string(body))
 
 	info := &model.BuildInfo{}
-	if event == bitbucketPushEvent {
+	if event == bitbucketCloudPushEvent {
 		info, err = parseBitbucketPushPayload(body)
 		if err != nil {
 			return http.StatusUnprocessableEntity, err
 		}
-	} else if event == bitbucketPRCreatedEvent || event == bitbucketPRUpdatedEvent {
+	} else if event == bitbucketCloudPrCreatedEvent || event == bitbucketCloudPrUpdatedEvent {
 		info, err = parseBitbucketPullRequestPayload(body)
 		if err != nil {
 			return http.StatusUnprocessableEntity, err
@@ -122,7 +123,7 @@ func parseBitbucketPullRequestPayload(raw []byte) (*model.BuildInfo, error) {
 		return nil, err
 	}
 
-	if payload.PullRequest.State != bitbucketStateOpen {
+	if payload.PullRequest.State != bitbucketCloudStateOpen {
 		return nil, fmt.Errorf("no trigger for closed pull requests")
 	}
 

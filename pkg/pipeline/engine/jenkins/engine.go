@@ -3,6 +3,7 @@ package jenkins
 import (
 	"encoding/xml"
 	"fmt"
+	"github.com/rancher/rancher/pkg/pipeline/remote/model"
 
 	"bytes"
 	"encoding/json"
@@ -625,8 +626,13 @@ func (j Engine) setCredential(client *Client, execution *v3.PipelineExecution, c
 	jenkinsCred.Scope = "GLOBAL"
 	jenkinsCred.ID = execution.Name
 
+	//FIXME does not fit bitbucket server
 	jenkinsCred.Username = souceCodeCredential.Spec.GitLoginName
 	jenkinsCred.Password = souceCodeCredential.Spec.AccessToken
+	if souceCodeCredential.Spec.SourceCodeType == model.BitbucketServerType {
+		jenkinsCred.Username = "test"
+		jenkinsCred.Password = "test"
+	}
 
 	bodyContent := map[string]interface{}{}
 	bodyContent["credentials"] = jenkinsCred

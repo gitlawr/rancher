@@ -64,29 +64,12 @@ func (b *BitbucketProvider) providerActionHandler(actionName string, action *typ
 }
 
 func formBitbucketRedirectURLFromMap(config map[string]interface{}) string {
-	hostname := convert.ToString(config[client.BitbucketPipelineConfigFieldHostname])
-	clientID := convert.ToString(config[client.BitbucketPipelineConfigFieldClientID])
-	tls := convert.ToBool(config[client.BitbucketPipelineConfigFieldTLS])
-	return bitbucketRedirectURL(hostname, clientID, tls)
-}
-
-func bitbucketRedirectURL(hostname, clientID string, tls bool) string {
-	redirect := ""
-	if hostname != "" {
-		scheme := "http://"
-		if tls {
-			scheme = "https://"
-		}
-		redirect = scheme + hostname
-	} else {
-		redirect = bitbucketDefaultHostName
-	}
-	redirect = redirect + "/site/oauth2/authorize?client_id=" + clientID + "&response_type=code"
-	return redirect
+	clientID := convert.ToString(config[client.BitbucketCloudPipelineConfigFieldClientID])
+	return fmt.Sprintf("%s/site/oauth2/authorize?client_id=%s&response_type=code", bitbucketDefaultHostName, clientID)
 }
 
 func (b *BitbucketProvider) testAndApply(actionName string, action *types.Action, apiContext *types.APIContext) error {
-	applyInput := &v3.BitbucketPipelineConfigApplyInput{}
+	applyInput := &v3.BitbucketCloudApplyInput{}
 
 	if err := json.NewDecoder(apiContext.Request.Body).Decode(applyInput); err != nil {
 		return httperror.NewAPIError(httperror.InvalidBodyContent,
@@ -98,15 +81,13 @@ func (b *BitbucketProvider) testAndApply(actionName string, action *types.Action
 	if err != nil {
 		return err
 	}
-	storedBitbucketPipelineConfig, ok := pConfig.(*v3.BitbucketPipelineConfig)
+	storedBitbucketPipelineConfig, ok := pConfig.(*v3.BitbucketCloudPipelineConfig)
 	if !ok {
 		return fmt.Errorf("Failed to get github provider config")
 	}
 	toUpdate := storedBitbucketPipelineConfig.DeepCopy()
 	toUpdate.ClientID = applyInput.BitbucketConfig.ClientID
 	toUpdate.ClientSecret = applyInput.BitbucketConfig.ClientSecret
-	toUpdate.Hostname = applyInput.BitbucketConfig.Hostname
-	toUpdate.TLS = applyInput.BitbucketConfig.TLS
 	toUpdate.RedirectURL = applyInput.BitbucketConfig.RedirectURL
 
 	//oauth and add user
@@ -144,7 +125,7 @@ func (b *BitbucketProvider) authuser(apiContext *types.APIContext) error {
 	if err != nil {
 		return err
 	}
-	config, ok := pConfig.(*v3.BitbucketPipelineConfig)
+	config, ok := pConfig.(*v3.BitbucketCloudPipelineConfig)
 	if !ok {
 		return fmt.Errorf("Failed to get bitbucket provider config")
 	}
@@ -171,7 +152,7 @@ func (b *BitbucketProvider) authuser(apiContext *types.APIContext) error {
 	return nil
 }
 
-func (b *BitbucketProvider) authAddAccount(userID string, code string, config *v3.BitbucketPipelineConfig) (*v3.SourceCodeCredential, error) {
+func (b *BitbucketProvider) authAddAccount(userID string, code string, config *v3.BitbucketCloudPipelineConfig) (*v3.SourceCodeCredential, error) {
 	if userID == "" {
 		return nil, errors.New("unauth")
 	}
@@ -184,7 +165,7 @@ func (b *BitbucketProvider) authAddAccount(userID string, code string, config *v
 	if err != nil {
 		return nil, err
 	}
-	account.Name = strings.ToLower(fmt.Sprintf("%s-%s-%s", config.Namespace, model.BitbucketType, account.Spec.LoginName))
+	account.Name = strings.ToLower(fmt.Sprintf("%s-%s-%s", config.Namespace, model.BitbucketCloudType, account.Spec.LoginName))
 	account.Namespace = userID
 	account.Spec.UserName = userID
 	account.Spec.ProjectName = config.ProjectName
@@ -204,7 +185,7 @@ func (b *BitbucketProvider) authAddAccount(userID string, code string, config *v
 
 func (b *BitbucketProvider) disableAction(request *types.APIContext) error {
 	ns, _ := ref.Parse(request.ID)
-	o, err := b.SourceCodeProviderConfigs.ObjectClient().UnstructuredClient().GetNamespaced(ns, model.BitbucketType, metav1.GetOptions{})
+	o, err := b.SourceCodeProviderConfigs.ObjectClient().UnstructuredClient().GetNamespaced(ns, model.BitbucketCloudType, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
@@ -212,7 +193,7 @@ func (b *BitbucketProvider) disableAction(request *types.APIContext) error {
 	config := u.UnstructuredContent()
 	if convert.ToBool(config[client.SourceCodeProviderConfigFieldEnabled]) {
 		config[client.SourceCodeProviderConfigFieldEnabled] = false
-		if _, err := b.SourceCodeProviderConfigs.ObjectClient().Update(model.BitbucketType, o); err != nil {
+		if _, err := b.SourceCodeProviderConfigs.ObjectClient().Update(model.BitbucketCloudType, o); err != nil {
 			return err
 		}
 		if t := convert.ToString(config[projectNameField]); t != "" {
@@ -246,7 +227,7 @@ func (b *BitbucketProvider) cleanup(projectID string) error {
 		}
 	}
 
-	crdKey := utils.ProjectNameAndSourceCodeTypeKey(projectID, model.BitbucketType)
+	crdKey := utils.ProjectNameAndSourceCodeTypeKey(projectID, model.BitbucketCloudType)
 	credentials, err := b.SourceCodeCredentialIndexer.ByIndex(utils.SourceCodeCredentialByProjectAndTypeIndex, crdKey)
 	if err != nil {
 		return err
@@ -258,7 +239,7 @@ func (b *BitbucketProvider) cleanup(projectID string) error {
 		}
 	}
 
-	repoKey := utils.ProjectNameAndSourceCodeTypeKey(projectID, model.BitbucketType)
+	repoKey := utils.ProjectNameAndSourceCodeTypeKey(projectID, model.BitbucketCloudType)
 	repositories, err := b.SourceCodeRepositoryIndexer.ByIndex(utils.SourceCodeRepositoryByProjectAndTypeIndex, repoKey)
 	if err != nil {
 		return err
@@ -273,7 +254,7 @@ func (b *BitbucketProvider) cleanup(projectID string) error {
 	return nil
 }
 
-func (b *BitbucketProvider) refreshReposByCredentialAndConfig(credential *v3.SourceCodeCredential, config *v3.BitbucketPipelineConfig) ([]v3.SourceCodeRepository, error) {
+func (b *BitbucketProvider) refreshReposByCredentialAndConfig(credential *v3.SourceCodeCredential, config *v3.BitbucketCloudPipelineConfig) ([]v3.SourceCodeRepository, error) {
 	namespace := credential.Namespace
 	credentialID := ref.Ref(credential)
 	remote, err := remote.New(config)
