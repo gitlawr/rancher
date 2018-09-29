@@ -93,6 +93,10 @@ func (c *client) Login(code string) (*v3.SourceCodeCredential, error) {
 	return cred, nil
 }
 
+func (c *client) GetCloneCredential(account *v3.SourceCodeCredential) (username, password string) {
+	return cloneUserName, account.Spec.AccessToken
+}
+
 func (c *client) Repos(account *v3.SourceCodeCredential) ([]v3.SourceCodeRepository, error) {
 	if account == nil {
 		return nil, fmt.Errorf("empty account")

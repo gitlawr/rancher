@@ -1,13 +1,16 @@
 package bitbucket
 
 import (
+	"bytes"
 	"encoding/json"
 	"github.com/rancher/rancher/pkg/pipeline/remote/model"
 	"github.com/rancher/rancher/pkg/settings"
 	"github.com/rancher/types/apis/project.cattle.io/v3"
 	"github.com/sirupsen/logrus"
+	"io"
+	"io/ioutil"
 	"k8s.io/apimachinery/pkg/apis/meta/v1"
-	"net/url"
+	"mime/multipart"
 	"testing"
 )
 
@@ -111,9 +114,28 @@ func Test_Head(t *testing.T) {
 }
 
 func Test_uu(t *testing.T) {
-	u, _ := url.Parse("https://lawrlee@bitbucket.org/lawrlee/test.git")
-	logrus.Info(u.User)
-	logrus.Info(u.String())
-	u.User = nil
-	logrus.Info(u.String())
+	var b bytes.Buffer
+	w := multipart.NewWriter(&b)
+	w.FormDataContentType()
+	values := map[string]string{
+		"content": "ccccc",
+		"branch":  "abc",
+		"message": "ddmmmdmdmd",
+		//TODO
+		//"sourceCommitId": "07f128843e5823f27709eb1ba522902f9497d2b2",
+	}
+	for key, v := range values {
+		var fw io.Writer
+		var err error
+		if fw, err = w.CreateFormField(key); err != nil {
+			logrus.Error(err)
+		}
+		fw.Write([]byte(v))
+	}
+	w.Close()
+	//header := map[string]string{"Content-Type": w.FormDataContentType()}
+	result, _ := ioutil.ReadAll(&b)
+	logrus.Infoln("to put body")
+	t.Log(string(result))
+	//logrus.Errorln(string(result))
 }

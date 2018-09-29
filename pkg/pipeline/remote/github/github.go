@@ -109,6 +109,10 @@ func (c *client) Login(code string) (*v3.SourceCodeCredential, error) {
 	return c.GetAccount(token.AccessToken)
 }
 
+func (c *client) GetCloneCredential(account *v3.SourceCodeCredential) (username, password string) {
+	return account.Spec.LoginName, account.Spec.AccessToken
+}
+
 func (c *client) CreateHook(pipeline *v3.Pipeline, accessToken string) (string, error) {
 	user, repo, err := getUserRepoFromURL(pipeline.Spec.RepositoryURL)
 	if err != nil {

@@ -29,6 +29,8 @@ type Remote interface {
 	GetBranches(repoURL string, accessToken string) ([]string, error)
 
 	GetHeadInfo(repoURL string, branch string, accessToken string) (*BuildInfo, error)
+
+	GetCloneCredential(account *v3.SourceCodeCredential) (username, password string)
 }
 
 type Refresher interface {

@@ -3,6 +3,8 @@ package jenkins
 import (
 	"encoding/xml"
 	"fmt"
+	"github.com/rancher/rancher/pkg/pipeline/providers"
+	"github.com/rancher/rancher/pkg/pipeline/remote"
 	"github.com/rancher/rancher/pkg/pipeline/remote/model"
 
 	"bytes"
@@ -38,6 +40,7 @@ type Engine struct {
 	Secrets                    v1.SecretInterface
 	SecretLister               v1.SecretLister
 	ManagementSecretLister     v1.SecretLister
+	SourceCodeCredentials      v3.SourceCodeCredentialInterface
 	SourceCodeCredentialLister v3.SourceCodeCredentialLister
 	PipelineLister             v3.PipelineLister
 
@@ -626,12 +629,24 @@ func (j Engine) setCredential(client *Client, execution *v3.PipelineExecution, c
 	jenkinsCred.Scope = "GLOBAL"
 	jenkinsCred.ID = execution.Name
 
-	//FIXME does not fit bitbucket server
-	jenkinsCred.Username = souceCodeCredential.Spec.GitLoginName
-	jenkinsCred.Password = souceCodeCredential.Spec.AccessToken
-	if souceCodeCredential.Spec.SourceCodeType == model.BitbucketServerType {
-		jenkinsCred.Username = "test"
-		jenkinsCred.Password = "test"
+	_, projID := ref.Parse(execution.Spec.ProjectName)
+	scpConfig, err := providers.GetSourceCodeProviderConfig(souceCodeCredential.Spec.SourceCodeType, projID)
+	if err != nil {
+		return err
+	}
+	remote, err := remote.New(scpConfig)
+	if err != nil {
+		return err
+	}
+	username, password := remote.GetCloneCredential(souceCodeCredential)
+	jenkinsCred.Username = username
+	jenkinsCred.Password = password
+	if refresher, ok := remote.(model.Refresher); ok {
+		toRefresh := souceCodeCredential.DeepCopy()
+		if err := utils.DoTokenRefresh(j.SourceCodeCredentials, toRefresh, refresher); err != nil {
+			return err
+		}
+		jenkinsCred.Password = toRefresh.Spec.AccessToken
 	}
 
 	bodyContent := map[string]interface{}{}

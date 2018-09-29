@@ -17,8 +17,8 @@ import (
 	"github.com/sirupsen/logrus"
 	"io"
 	"io/ioutil"
+	"mime/multipart"
 	"net/http"
-	"net/url"
 	"regexp"
 	"strconv"
 	"strings"
@@ -36,6 +36,8 @@ type client struct {
 	ConsumerKey string
 	PrivateKey  string
 	RedirectURL string
+	UserName    string
+	Password    string
 }
 
 func New(config *v3.BitbucketServerPipelineConfig) (model.Remote, error) {
@@ -46,6 +48,8 @@ func New(config *v3.BitbucketServerPipelineConfig) (model.Remote, error) {
 		ConsumerKey: config.ConsumerKey,
 		PrivateKey:  config.PrivateKey,
 		RedirectURL: config.RedirectURL,
+		UserName:    config.UserName,
+		Password:    config.Password,
 	}
 	if config.TLS {
 		bsClient.BaseURL = "https://" + config.Hostname
@@ -117,6 +121,10 @@ func (c *client) Login(code string) (*v3.SourceCodeCredential, error) {
 	cred := convertUser(user)
 	cred.Spec.AccessToken = token.Token
 	return cred, nil
+}
+
+func (c *client) GetCloneCredential(account *v3.SourceCodeCredential) (username, password string) {
+	return c.UserName, c.Password
 }
 
 func (c *client) Repos(account *v3.SourceCodeCredential) ([]v3.SourceCodeRepository, error) {
@@ -246,7 +254,6 @@ func (c *client) GetPipelineFileInRepo(repoURL string, branch string, accessToke
 		logrus.Debugf("error GetPipelineFileInRepo - %v", err)
 		return nil, nil
 	}
-	logrus.Infof("I got pipeline content:%s", string(content))
 	return content, nil
 }
 
@@ -275,23 +282,57 @@ func (c *client) SetPipelineFileInRepo(repoURL string, branch string, accessToke
 
 	apiurl := fmt.Sprintf("%s/rest/api/1.0/projects/%s/repos/%s/browse/%s", c.BaseURL, owner, repo, currentFileName)
 	message := "Create .rancher-pipeline.yml file"
+	sourceCommitId := ""
 	if currentContent != nil {
 		//update pipeline file
 		message = fmt.Sprintf("Update %s file", currentFileName)
+		commitId, err := c.getFileLastCommit(owner, repo, branch, currentFileName, accessToken)
+		if err != nil {
+			return err
+		}
+		sourceCommitId = commitId
 	}
 
-	data := url.Values{}
-	data.Set("message", message)
-	data.Set("branch", branch)
-	data.Set("content", string(content))
-	//TODO
-	//data.Set("sourceCommitId","")
-	data.Encode()
-	reader := strings.NewReader(data.Encode())
-	header := map[string]string{"Content-Type": "application/x-www-form-urlencoded"}
-	_, err = c.doRequestToBitbucket(http.MethodPut, apiurl, accessToken, header, reader)
-
+	var b bytes.Buffer
+	w := multipart.NewWriter(&b)
+	w.FormDataContentType()
+	values := map[string]string{
+		"content":        string(content),
+		"branch":         branch,
+		"message":        message,
+		"sourceCommitId": sourceCommitId,
+	}
+	for key, v := range values {
+		var fw io.Writer
+		if fw, err = w.CreateFormField(key); err != nil {
+			return err
+		}
+		fw.Write([]byte(v))
+	}
+	if err := w.Close(); err != nil {
+		return err
+	}
+	header := map[string]string{"Content-Type": w.FormDataContentType()}
+	_, err = c.doRequestToBitbucket(http.MethodPut, apiurl, accessToken, header, &b)
 	return err
+}
+
+func (c *client) getFileLastCommit(owner string, repo string, branch string, fileName string, accessToken string) (string, error) {
+	url := fmt.Sprintf("%s/rest/api/1.0/projects/%s/repos/%s/last-modified?at=%s", c.BaseURL, owner, repo, branch)
+	b, err := c.getFromBitbucket(url, accessToken)
+	if err != nil {
+		return "", err
+	}
+	var lastModified LastModified
+	if err := json.Unmarshal(b, &lastModified); err != nil {
+		return "", err
+	}
+	for fname, commit := range lastModified.Files {
+		if fname == fileName {
+			return commit.ID, nil
+		}
+	}
+	return "", fmt.Errorf("fail to get last commit id of '%s' file", fileName)
 }
 
 func (c *client) GetBranches(repoURL string, accessToken string) ([]string, error) {
@@ -357,7 +398,7 @@ func (c *client) GetHeadInfo(repoURL string, branch string, accessToken string) 
 	}
 	info := &model.BuildInfo{}
 	info.Commit = commit.ID
-	info.Ref = "refs/head/" + branch
+	info.Ref = "refs/heads/" + branch
 	info.Branch = branch
 	info.Message = commit.Message
 	info.HTMLLink = fmt.Sprintf("%s/projects/%s/repos/%s/commits/%s", c.BaseURL, owner, repo, headCommit)
@@ -376,7 +417,10 @@ func convertUser(bitbucketUser *User) *v3.SourceCodeCredential {
 	cred.Spec.SourceCodeType = model.BitbucketServerType
 
 	cred.Spec.AvatarURL = bitbucketUser.Links.Avatar.Href
-	cred.Spec.HTMLURL = bitbucketUser.Links.Html.Href
+	if len(bitbucketUser.Links.Self) > 0 {
+		cred.Spec.HTMLURL = bitbucketUser.Links.Self[0].Href
+		cred.Spec.AvatarURL = cred.Spec.HTMLURL + "/avatar.png"
+	}
 	cred.Spec.LoginName = bitbucketUser.Name
 	cred.Spec.DisplayName = bitbucketUser.DisplayName
 

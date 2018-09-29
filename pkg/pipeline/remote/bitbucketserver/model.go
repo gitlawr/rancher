@@ -1,7 +1,7 @@
 package bitbucketserver
 
 type Links struct {
-	Self   Link   `json:"self"`
+	Self   []Link `json:"self"`
 	Html   Link   `json:"html"`
 	Avatar Link   `json:"avatar"`
 	Clone  []Link `json:"clone"`
@@ -150,4 +150,9 @@ type Ref struct {
 	DisplayID    string     `json:"displayId"`
 	LatestCommit string     `json:"latestCommit"`
 	Repository   Repository `json:"repository"`
+}
+
+type LastModified struct {
+	Files        map[string]Commit `json:"files"`
+	LatestCommit Commit            `json:"latestCommit"`
 }

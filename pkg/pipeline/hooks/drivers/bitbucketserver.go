@@ -110,8 +110,9 @@ func parseBitbucketServerPushPayload(raw []byte) (*model.BuildInfo, error) {
 		info.Ref = change.RefID
 		//info.Message = change.New.Target.Message
 		info.Author = payload.Actor.Name
-		info.AvatarURL = payload.Actor.Links.Self.Href + "/avatar.png"
-		//info.HTMLLink = change.New.Target.Links.Html.Href
+		if len(payload.Actor.Links.Self) > 0 {
+			info.AvatarURL = payload.Actor.Links.Self[0].Href + "/avatar.png"
+		}
 
 		if strings.HasPrefix(change.RefID, RefsTagPrefix) {
 			//git tag is triggered as a push event
@@ -146,11 +147,15 @@ func parseBitbucketServerPullRequestPayload(raw []byte) (*model.BuildInfo, error
 	info.Event = utils.WebhookEventPullRequest
 	info.Branch = payload.PullRequest.ToRef.DisplayID
 	info.Ref = fmt.Sprintf("refs/pull-requests/%d/from", payload.PullRequest.ID)
-	info.HTMLLink = payload.PullRequest.Links.Self.Href
+	if len(payload.PullRequest.Links.Self) > 0 {
+		info.HTMLLink = payload.PullRequest.Links.Self[0].Href
+	}
 	info.Title = payload.PullRequest.Title
 	info.Message = payload.PullRequest.Title
 	info.Commit = payload.PullRequest.FromRef.LatestCommit
 	info.Author = payload.PullRequest.Author.User.Name
-	info.AvatarURL = payload.PullRequest.Author.User.Links.Self.Href + "/avatar.png"
+	if len(payload.PullRequest.Author.User.Links.Self) > 0 {
+		info.AvatarURL = payload.PullRequest.Author.User.Links.Self[0].Href + "/avatar.png"
+	}
 	return info, nil
 }
