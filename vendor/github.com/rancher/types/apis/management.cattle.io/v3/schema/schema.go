@@ -36,8 +36,8 @@ var (
 		Init(alertTypes).
 		Init(composeType).
 		Init(projectCatalogTypes).
-		Init(clusterCatalogTypes)
-
+		Init(clusterCatalogTypes).
+		Init(kontainerTypes)
 	TokenSchemas = factory.Schemas(&Version).
 			Init(tokens)
 )
@@ -145,14 +145,6 @@ func clusterTypes(schemas *types.Schemas) *types.Schemas {
 		MustImport(&Version, v3.ImportClusterYamlInput{}).
 		MustImport(&Version, v3.ImportYamlOutput{}).
 		MustImport(&Version, v3.ExportOutput{}).
-		MustImportAndCustomize(&Version, v3.ETCDService{}, func(schema *types.Schema) {
-			schema.MustCustomizeField("extraArgs", func(field types.Field) types.Field {
-				field.Default = map[string]interface{}{
-					"election-timeout":   "5000",
-					"heartbeat-interval": "500"}
-				return field
-			})
-		}).
 		MustImportAndCustomize(&Version, v3.Cluster{}, func(schema *types.Schema) {
 			schema.MustCustomizeField("name", func(field types.Field) types.Field {
 				field.Type = "dnsLabel"
@@ -219,7 +211,6 @@ func nodeTypes(schemas *types.Schemas) *types.Schemas {
 		AddMapperForType(&Version, v3.NodeStatus{},
 			&m.Drop{Field: "nodeTemplateSpec"},
 			&m.Embed{Field: "internalNodeStatus"},
-			&m.Drop{Field: "config"},
 			&m.SliceMerge{From: []string{"conditions", "nodeConditions"}, To: "conditions"}).
 		AddMapperForType(&Version, v3.Node{},
 			&m.Embed{Field: "status"},
@@ -256,7 +247,6 @@ func nodeTypes(schemas *types.Schemas) *types.Schemas {
 			schema.ResourceFields["clusterId"] = clusterField
 			schema.ResourceActions["cordon"] = types.Action{}
 			schema.ResourceActions["uncordon"] = types.Action{}
-			schema.ResourceActions["stopDrain"] = types.Action{}
 			schema.ResourceActions["drain"] = types.Action{
 				Input: "nodeDrainInput",
 			}
@@ -426,7 +416,6 @@ func authnTypes(schemas *types.Schemas) *types.Schemas {
 		MustImport(&Version, v3.FreeIpaTestAndApplyInput{}).
 		// Saml Config
 		// Ping-Saml Config
-		// KeyCloak-Saml Configs
 		MustImportAndCustomize(&Version, v3.PingConfig{}, configSchema).
 		MustImportAndCustomize(&Version, v3.ADFSConfig{}, configSchema).
 		MustImportAndCustomize(&Version, v3.KeyCloakConfig{}, configSchema).
@@ -580,4 +569,10 @@ func clusterCatalogTypes(schemas *types.Schemas) *types.Schemas {
 				"refresh": {},
 			}
 		})
+}
+
+func kontainerTypes(schemas *types.Schemas) *types.Schemas {
+	return schemas.
+		AddMapperForType(&Version, v3.KontainerDriver{}, m.DisplayName{}, &m.Embed{Field: "status"}).
+		MustImport(&Version, v3.KontainerDriver{})
 }
