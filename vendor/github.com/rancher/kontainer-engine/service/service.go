@@ -161,8 +161,8 @@ func toMap(obj interface{}, format string) (map[string]interface{}, error) {
 }
 
 type EngineService interface {
-	Create(ctx context.Context, name string, kontainerDriver *v3.KontainerDriver, clusterSpec v3.ClusterSpec) (string, string, string, error)
-	Update(ctx context.Context, name string, kontainerDriver *v3.KontainerDriver, clusterSpec v3.ClusterSpec) (string, string, string, error)
+	Create(ctx context.Context, name string, kontainerDriver *v3.KontainerDriver, clusterSpec v3.ClusterSpec) (string, string, string,string, string, error)
+	Update(ctx context.Context, name string, kontainerDriver *v3.KontainerDriver, clusterSpec v3.ClusterSpec) (string, string, string,string, string, error)
 	Remove(ctx context.Context, name string, kontainerDriver *v3.KontainerDriver, clusterSpec v3.ClusterSpec) error
 	GetDriverCreateOptions(ctx context.Context, name string, kontainerDriver *v3.KontainerDriver, clusterSpec v3.ClusterSpec) (*types.DriverFlags, error)
 	GetDriverUpdateOptions(ctx context.Context, name string, kontainerDriver *v3.KontainerDriver, clusterSpec v3.ClusterSpec) (*types.DriverFlags, error)
@@ -224,32 +224,33 @@ func (e *engineService) convertCluster(name string, listenAddr string, spec v3.C
 }
 
 // Create creates the stub for cluster manager to call
-func (e *engineService) Create(ctx context.Context, name string, kontainerDriver *v3.KontainerDriver, clusterSpec v3.ClusterSpec) (string, string, string, error) {
+func (e *engineService) Create(ctx context.Context, name string, kontainerDriver *v3.KontainerDriver, clusterSpec v3.ClusterSpec) (string, string, string,string, string, error) {
 	runningDriver, err := e.getRunningDriver(kontainerDriver, clusterSpec)
 	if err != nil {
-		return "", "", "", err
+		return "", "", "","","", err
 	}
 
 	listenAddr, err := runningDriver.Start()
 	if err != nil {
-		return "", "", "", fmt.Errorf("error starting driver: %v", err)
+		return "", "", "","", "", fmt.Errorf("error starting driver: %v", err)
 	}
 
 	defer runningDriver.Stop()
 
 	cls, err := e.convertCluster(name, listenAddr, clusterSpec)
 	if err != nil {
-		return "", "", "", err
+		return "", "", "","", "", err
 	}
 
 	if err := cls.Create(ctx); err != nil {
-		return "", "", "", err
+		return "", "", "","", "", err
 	}
 	endpoint := cls.Endpoint
 	if !strings.HasPrefix(endpoint, "https://") {
 		endpoint = fmt.Sprintf("https://%s", cls.Endpoint)
 	}
-	return endpoint, cls.ServiceAccountToken, cls.RootCACert, nil
+	logrus.Infof("ke: get:%s,%s,%s,%s",cls.ServiceAccountToken, cls.RootCACert,cls.ClientCertificate,cls.ClientKey)
+	return endpoint, cls.ServiceAccountToken, cls.RootCACert,cls.ClientCertificate,cls.ClientKey, nil
 }
 
 func (e *engineService) getRunningDriver(kontainerDriver *v3.KontainerDriver, clusterSpec v3.ClusterSpec) (*RunningDriver, error) {
@@ -261,31 +262,31 @@ func (e *engineService) getRunningDriver(kontainerDriver *v3.KontainerDriver, cl
 }
 
 // Update creates the stub for cluster manager to call
-func (e *engineService) Update(ctx context.Context, name string, kontainerDriver *v3.KontainerDriver, clusterSpec v3.ClusterSpec) (string, string, string, error) {
+func (e *engineService) Update(ctx context.Context, name string, kontainerDriver *v3.KontainerDriver, clusterSpec v3.ClusterSpec) (string, string, string,string, string, error) {
 	runningDriver, err := e.getRunningDriver(kontainerDriver, clusterSpec)
 	if err != nil {
-		return "", "", "", err
+		return "", "", "","","" ,err
 	}
 
 	listenAddr, err := runningDriver.Start()
 	if err != nil {
-		return "", "", "", fmt.Errorf("error starting driver: %v", err)
+		return "", "", "","","" , fmt.Errorf("error starting driver: %v", err)
 	}
 
 	defer runningDriver.Stop()
 
 	cls, err := e.convertCluster(name, listenAddr, clusterSpec)
 	if err != nil {
-		return "", "", "", err
+		return "", "", "","","" , err
 	}
 	if err := cls.Update(ctx); err != nil {
-		return "", "", "", err
+		return "", "", "","","" , err
 	}
 	endpoint := cls.Endpoint
 	if !strings.HasPrefix(endpoint, "https://") {
 		endpoint = fmt.Sprintf("https://%s", cls.Endpoint)
 	}
-	return endpoint, cls.ServiceAccountToken, cls.RootCACert, nil
+	return endpoint, cls.ServiceAccountToken, cls.RootCACert,cls.ClientCertificate,cls.ClientKey, nil
 }
 
 // Remove removes stub for cluster manager to call
