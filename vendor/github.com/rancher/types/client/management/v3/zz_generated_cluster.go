@@ -16,6 +16,8 @@ const (
 	ClusterFieldCACert                               = "caCert"
 	ClusterFieldCapabilities                         = "capabilities"
 	ClusterFieldCapacity                             = "capacity"
+	ClusterFieldClientCert                           = "clientCert"
+	ClusterFieldClientKey                            = "clientKey"
 	ClusterFieldComponentStatuses                    = "componentStatuses"
 	ClusterFieldConditions                           = "conditions"
 	ClusterFieldCreated                              = "created"
@@ -57,6 +59,8 @@ type Cluster struct {
 	CACert                               string                         `json:"caCert,omitempty" yaml:"caCert,omitempty"`
 	Capabilities                         *Capabilities                  `json:"capabilities,omitempty" yaml:"capabilities,omitempty"`
 	Capacity                             map[string]string              `json:"capacity,omitempty" yaml:"capacity,omitempty"`
+	ClientCert                           string                         `json:"clientCert,omitempty" yaml:"clientCert,omitempty"`
+	ClientKey                            string                         `json:"clientKey,omitempty" yaml:"clientKey,omitempty"`
 	ComponentStatuses                    []ClusterComponentStatus       `json:"componentStatuses,omitempty" yaml:"componentStatuses,omitempty"`
 	Conditions                           []ClusterCondition             `json:"conditions,omitempty" yaml:"conditions,omitempty"`
 	Created                              string                         `json:"created,omitempty" yaml:"created,omitempty"`

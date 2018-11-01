@@ -99,6 +99,8 @@ type ClusterStatus struct {
 	APIEndpoint                          string                   `json:"apiEndpoint,omitempty"`
 	ServiceAccountToken                  string                   `json:"serviceAccountToken,omitempty"`
 	CACert                               string                   `json:"caCert,omitempty"`
+	ClientCert                           string                   `json:"clientCert,omitempty"`
+	ClientKey                            string                   `json:"clientKey,omitempty"`
 	Capacity                             v1.ResourceList          `json:"capacity,omitempty"`
 	Allocatable                          v1.ResourceList          `json:"allocatable,omitempty"`
 	AppliedSpec                          ClusterSpec              `json:"appliedSpec,omitempty"`
