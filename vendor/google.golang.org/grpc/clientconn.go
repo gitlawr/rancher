@@ -1155,7 +1155,8 @@ func (ac *addrConn) createTransport(connectRetryNum, ridx int, backoffDeadline, 
 				return false, errConnClosing
 			}
 			ac.mu.Unlock()
-			grpclog.Warningf("grpc: addrConn.createTransport failed to connect to %v. Err :%v. Reconnecting...", addr, err)
+			//FIXME
+			//grpclog.Warningf("grpc: addrConn.createTransport failed to connect to %v. Err :%v. Reconnecting...", addr, err)
 			continue
 		}
 		if ac.dopts.waitForHandshake {
