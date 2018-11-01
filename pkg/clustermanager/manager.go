@@ -259,7 +259,19 @@ func ToRESTConfig(cluster *v3.Cluster, context *config.ScaledContext) (*rest.Con
 			return rt
 		},
 	}
-
+	//FIXME
+	if cluster.Status.ClientCert != "" {
+		certBytes, err := base64.StdEncoding.DecodeString(cluster.Status.ClientCert)
+		if err != nil {
+			return nil, err
+		}
+		keyBytes, err := base64.StdEncoding.DecodeString(cluster.Status.ClientKey)
+		if err != nil {
+			return nil, err
+		}
+		rc.TLSClientConfig.CertData = certBytes
+		rc.TLSClientConfig.KeyData = keyBytes
+	}
 	return rc, nil
 }
 

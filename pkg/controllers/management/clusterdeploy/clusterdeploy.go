@@ -2,6 +2,7 @@ package clusterdeploy
 
 import (
 	"bytes"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"reflect"
@@ -110,6 +111,21 @@ func (cd *clusterDeploy) deployAgent(cluster *v3.Cluster) error {
 		return err
 	}
 
+	//FIXME workaround.
+	if cluster.Status.ClientCert != "" {
+		certBytes, err := base64.StdEncoding.DecodeString(cluster.Status.ClientCert)
+		if err != nil {
+			return err
+		}
+		keyBytes, err := base64.StdEncoding.DecodeString(cluster.Status.ClientKey)
+		if err != nil {
+			return err
+		}
+		kubeConfig.AuthInfos["user"].Token = ""
+		kubeConfig.AuthInfos["user"].ClientCertificateData = certBytes
+		kubeConfig.AuthInfos["user"].ClientKeyData = keyBytes
+
+	}
 	_, err = v3.ClusterConditionAgentDeployed.Do(cluster, func() (runtime.Object, error) {
 		yaml, err := cd.getYAML(cluster, desired)
 		if err != nil {
@@ -161,6 +177,10 @@ func (cd *clusterDeploy) setNetworkPolicyAnn(cluster *v3.Cluster) error {
 }
 
 func (cd *clusterDeploy) getKubeConfig(cluster *v3.Cluster) (*clientcmdapi.Config, error) {
+	if cluster.Status.APIEndpoint != "" && cluster.Status.ClientCert != "" {
+		return getKubeConfigFromCluster(cluster)
+	}
+
 	user, err := cd.systemAccountManager.GetSystemUser(cluster)
 	if err != nil {
 		return nil, err
@@ -172,6 +192,43 @@ func (cd *clusterDeploy) getKubeConfig(cluster *v3.Cluster) (*clientcmdapi.Confi
 	}
 
 	return cd.clusterManager.KubeConfig(cluster.Name, token), nil
+}
+
+func getKubeConfigFromCluster(cluster *v3.Cluster) (*clientcmdapi.Config, error) {
+
+	certBytes, err := base64.StdEncoding.DecodeString(cluster.Status.ClientCert)
+	if err != nil {
+		return nil, err
+	}
+	keyBytes, err := base64.StdEncoding.DecodeString(cluster.Status.ClientKey)
+	if err != nil {
+		return nil, err
+	}
+
+	config := &clientcmdapi.Config{
+		CurrentContext: "default",
+		APIVersion:     "v1",
+		Kind:           "Config",
+		Clusters: map[string]*clientcmdapi.Cluster{
+			"default": {
+				Server:                cluster.Status.APIEndpoint,
+				InsecureSkipTLSVerify: true,
+			},
+		},
+		Contexts: map[string]*clientcmdapi.Context{
+			"default": {
+				AuthInfo: "user",
+				Cluster:  "default",
+			},
+		},
+		AuthInfos: map[string]*clientcmdapi.AuthInfo{
+			"user": {
+				ClientCertificateData: certBytes,
+				ClientKeyData:         keyBytes,
+			},
+		},
+	}
+	return config, nil
 }
 
 func (cd *clusterDeploy) getYAML(cluster *v3.Cluster, agentImage string) ([]byte, error) {

@@ -222,8 +222,8 @@ func (p *Provisioner) reconcileCluster(cluster *v3.Cluster, create bool) (*v3.Cl
 	}
 
 	var (
-		apiEndpoint, serviceAccountToken, caCert string
-		err                                      error
+		apiEndpoint, serviceAccountToken, caCert, clientCert, clientKey string
+		err                                                             error
 	)
 
 	spec, err := p.getSpec(cluster)
@@ -239,14 +239,14 @@ func (p *Provisioner) reconcileCluster(cluster *v3.Cluster, create bool) (*v3.Cl
 
 	if create {
 		logrus.Infof("Creating cluster [%s]", cluster.Name)
-		apiEndpoint, serviceAccountToken, caCert, err = p.driverCreate(cluster, *spec)
+		apiEndpoint, serviceAccountToken, caCert, clientCert, clientKey, err = p.driverCreate(cluster, *spec)
 		if err != nil && err.Error() == "cluster already exists" {
 			logrus.Infof("Create done, Updating cluster [%s]", cluster.Name)
-			apiEndpoint, serviceAccountToken, caCert, err = p.driverUpdate(cluster, *spec)
+			apiEndpoint, serviceAccountToken, caCert, clientCert, clientKey, err = p.driverUpdate(cluster, *spec)
 		}
 	} else {
 		logrus.Infof("Updating cluster [%s]", cluster.Name)
-		apiEndpoint, serviceAccountToken, caCert, err = p.driverUpdate(cluster, *spec)
+		apiEndpoint, serviceAccountToken, caCert, clientCert, clientKey, err = p.driverUpdate(cluster, *spec)
 	}
 
 	// at this point we know the cluster has been modified in driverCreate/Update so reload
@@ -276,6 +276,8 @@ func (p *Provisioner) reconcileCluster(cluster *v3.Cluster, create bool) (*v3.Cl
 		cluster.Status.APIEndpoint = apiEndpoint
 		cluster.Status.ServiceAccountToken = serviceAccountToken
 		cluster.Status.CACert = caCert
+		cluster.Status.ClientCert = clientCert
+		cluster.Status.ClientKey = clientKey
 
 		if cluster, err = p.Clusters.Update(cluster); err == nil {
 			saved = true
