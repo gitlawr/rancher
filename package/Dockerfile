@@ -4,7 +4,9 @@ RUN apt-get update && apt-get install -y git curl ca-certificates unzip xz-utils
     mkdir -p /var/lib/rancher/etcd /var/lib/cattle && \
     chown -R rancher /var/lib/rancher /var/lib/cattle /usr/local/bin
 RUN mkdir /root/.kube && \
-    ln -s /usr/bin/rancher /usr/bin/kubectl && \
+    mkdir -p /usr/local/go/lib/time && \
+    curl -sLf https://storage.googleapis.com/kubernetes-release/release/v1.10.5/bin/linux/amd64/kubectl > /usr/bin/kubectl && \
+    chmod +x /usr/bin/kubectl && \
     ln -s /var/lib/rancher/kube_config_cluster.yml /root/.kube/config && \
     ln -s /usr/bin/rancher /usr/bin/reset-password && \
     ln -s /usr/bin/rancher /usr/bin/ensure-default-admin
@@ -49,6 +51,7 @@ ENV CATTLE_CLI_URL_WINDOWS https://releases.rancher.com/cli2/${CATTLE_CLI_VERSIO
 ARG VERSION=dev
 ENV CATTLE_SERVER_VERSION ${VERSION}
 COPY entrypoint.sh rancher /usr/bin/
+COPY zoneinfo.zip /usr/local/go/lib/time/
 RUN chmod +x /usr/bin/entrypoint.sh
 
 ENV CATTLE_AGENT_IMAGE rancher/rancher-agent:${VERSION}
