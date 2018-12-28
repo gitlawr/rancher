@@ -183,4 +183,29 @@ Logs: {{ (index .Alerts 0).Labels.logs}}
 {{ end}}
 {{ end}}
 `
+
+	MicrosoftTeamsTemplate = `
+{
+    "@type": "MessageCard",
+    "@context": "http://schema.org/extensions",
+    "themeColor": "8C1A1A",
+    "summary": "Server High Memory usage",
+    "title": "Prometheus Alert (firing)",
+    "sections": [
+        {
+			{{$size := len (index .Alerts 0).Labels}}
+			{{$cur := 0}}
+            "facts": [
+				{{range $key, $value := (index .Alerts 0).Labels }}
+				{{$cur = add $cur 1}}
+				{
+					"name":"{{$key}}",
+					"value":"{{$value}}"
+				}{{if lt $cur $size}},{{end}}
+				{{end}}
+            ],
+            "markdown": false
+        }
+    ]
+}`
 )

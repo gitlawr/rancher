@@ -29,10 +29,13 @@ import (
 )
 
 var (
-	defaultGroupInterval  = 10
-	eventGroupInterval    = 1
-	defaultGroupWait      = 10
-	defaultRepeatInterval = 10
+	defaultGroupInterval      = 10
+	eventGroupInterval        = 1
+	defaultGroupWait          = 10
+	defaultRepeatInterval     = 10
+	webhookTemplateAdapterURL = "http://alertmanager-webhook-adapter:7890"
+
+	TemplateKindMicrosoftTeams = "microsoftteams"
 )
 
 func NewConfigSyncer(ctx context.Context, cluster *config.UserContext, alertManager *manager.AlertManager, operatorCRDManager *manager.PromOperatorCRDManager) *ConfigSyncer {
@@ -161,6 +164,12 @@ func (d *ConfigSyncer) sync() error {
 		return errors.Wrapf(err, "Marshal secrets")
 	}
 
+	webhookTemplateConfigs := d.getWebhookTemplateConfig(notifiers)
+	webhookTemplateData, err := yaml.Marshal(webhookTemplateConfigs)
+	if err != nil {
+		return errors.Wrapf(err, "Marshal webhook template configs")
+	}
+
 	altermanagerAppName, altermanagerAppNamespace := monitorutil.ClusterAlertManagerInfo()
 	secretClient := d.secretsGetter.Secrets(altermanagerAppNamespace)
 	secretName := common.GetAlertManagerSecretName(altermanagerAppName)
@@ -169,10 +178,12 @@ func (d *ConfigSyncer) sync() error {
 		return errors.Wrapf(err, "Get secrets")
 	}
 
-	if string(configSecret.Data["alertmanager.yaml"]) != string(data) {
+	if string(configSecret.Data["alertmanager.yaml"]) != string(data) ||
+		string(configSecret.Data["webhooktemplates.yaml"]) != string(webhookTemplateData) {
 		newConfigSecret := configSecret.DeepCopy()
 		newConfigSecret.Data["alertmanager.yaml"] = data
 		newConfigSecret.Data["notification.tmpl"] = []byte(deployer.NotificationTmpl)
+		newConfigSecret.Data["webhooktemplates.yaml"] = []byte(webhookTemplateData)
 
 		_, err = secretClient.Update(newConfigSecret)
 		if err != nil {
@@ -415,6 +426,15 @@ func (d *ConfigSyncer) addRecipients(notifiers []*v3.Notifier, receiver *alertco
 				}
 				receiver.WebhookConfigs = append(receiver.WebhookConfigs, webhook)
 				receiverExist = true
+			} else if notifier.Spec.WebhookTemplateConfig != nil {
+				webhook := &alertconfig.WebhookConfig{
+					URL: fmt.Sprintf("%s?notifier=%s", webhookTemplateAdapterURL, notifier.Name),
+				}
+				if r.Recipient != "" {
+					webhook.URL = r.Recipient
+				}
+				receiver.WebhookConfigs = append(receiver.WebhookConfigs, webhook)
+				receiverExist = true
 			} else if notifier.Spec.SlackConfig != nil {
 				slack := &alertconfig.SlackConfig{
 					APIURL:    alertconfig.Secret(notifier.Spec.SlackConfig.URL),
@@ -455,6 +475,20 @@ func (d *ConfigSyncer) addRecipients(notifiers []*v3.Notifier, receiver *alertco
 
 	return receiverExist
 
+}
+
+func (d *ConfigSyncer) getWebhookTemplateConfig(notifiers []*v3.Notifier) map[string]*v3.WebhookTemplateConfig {
+	configs := map[string]*v3.WebhookTemplateConfig{}
+	for _, notifier := range notifiers {
+		if notifier.Spec.WebhookTemplateConfig != nil {
+			configs[notifier.Name] = notifier.Spec.WebhookTemplateConfig
+			if notifier.Spec.WebhookTemplateConfig.TemplateKind == TemplateKindMicrosoftTeams &&
+				notifier.Spec.WebhookTemplateConfig.Template == "" {
+				configs[notifier.Name].Template = deployer.MicrosoftTeamsTemplate
+			}
+		}
+	}
+	return configs
 }
 
 func includeProjectMetrics(projectAlerts []*v3.ProjectAlertRule) bool {
