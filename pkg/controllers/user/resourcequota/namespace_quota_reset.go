@@ -33,7 +33,7 @@ func (c *quotaResetController) resetNamespaceQuota(key string, project *v3.Proje
 	}
 	for _, n := range namespaces {
 		ns := n.(*corev1.Namespace)
-		quota := getNamespaceResourceQuota(ns)
+		quota := GetNamespaceResourceQuota(ns)
 		if quota == "" {
 			continue
 		}

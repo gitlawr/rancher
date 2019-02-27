@@ -13,7 +13,6 @@ import (
 	"github.com/rancher/rancher/pkg/controllers/user/nslabels"
 	"github.com/rancher/rancher/pkg/controllers/user/resourcequota"
 	images "github.com/rancher/rancher/pkg/image"
-	namespaceutil "github.com/rancher/rancher/pkg/namespace"
 	"github.com/rancher/rancher/pkg/pipeline/utils"
 	"github.com/rancher/rancher/pkg/randomtoken"
 	"github.com/rancher/rancher/pkg/ref"
@@ -50,7 +49,11 @@ func (l *Lifecycle) deploy(projectName string) error {
 	if _, err := l.namespaces.Create(ns); err != nil && !apierrors.IsAlreadyExists(err) {
 		return errors.Wrapf(err, "Error create ns")
 	}
-	if err := l.waitResourceQuotaInitCondition(ns.Name); err != nil {
+	project, err := l.projectLister.Get(clusterID, projectID)
+	if err != nil {
+		return err
+	}
+	if err := l.waitResourceQuotaApplied(project, ns.Name); err != nil {
 		return err
 	}
 	token, err := randomtoken.Generate()
@@ -133,21 +136,34 @@ func (l *Lifecycle) deploy(projectName string) error {
 	return l.reconcileRb(projectName)
 }
 
-func (l *Lifecycle) waitResourceQuotaInitCondition(namespace string) error {
+func (l *Lifecycle) waitResourceQuotaApplied(project *mv3.Project, namespace string) error {
+	if project.Spec.ResourceQuota == nil || project.Spec.NamespaceDefaultResourceQuota == nil {
+		// quota is not set, simply return
+		return nil
+	}
 	tries := 0
 	for tries <= 3 {
 		ns, err := l.namespaces.Get(namespace, metav1.GetOptions{})
 		if err != nil {
 			return err
 		}
-		set, err := namespaceutil.IsNamespaceConditionSet(ns, resourcequota.ResourceQuotaInitCondition, true)
-		if err != nil {
-			return err
+		quotaAnno := resourcequota.GetNamespaceResourceQuota(ns)
+		if quotaAnno != "" {
+			nsQuota := &mv3.NamespaceResourceQuota{}
+			err := json.Unmarshal([]byte(quotaAnno), nsQuota)
+			if err != nil {
+				return err
+			}
+			toUpdate, err := resourcequota.CompleteQuota(nsQuota, project.Spec.NamespaceDefaultResourceQuota)
+			logrus.Infof("resourcequota not ready!!!")
+			if err != nil {
+				return err
+			}
+			if toUpdate == nil {
+				break
+			}
 		}
-		if set {
-			break
-		}
-		time.Sleep(2 * time.Second)
+		time.Sleep(time.Second * 2)
 		tries++
 	}
 	return nil

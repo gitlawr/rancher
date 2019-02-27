@@ -384,7 +384,7 @@ func (c *SyncController) setValidated(ns *corev1.Namespace, value bool, msg stri
 }
 
 func (c *SyncController) getResourceQuotaToUpdate(ns *corev1.Namespace) (string, error) {
-	quota := getNamespaceResourceQuota(ns)
+	quota := GetNamespaceResourceQuota(ns)
 	defaultQuota, err := getProjectNamespaceDefaultQuota(ns, c.ProjectLister)
 	if err != nil {
 		return "", err
@@ -402,7 +402,7 @@ func (c *SyncController) getResourceQuotaToUpdate(ns *corev1.Namespace) (string,
 		if err != nil {
 			return "", err
 		}
-		updatedQuota, err = completeQuota(&existingQuota, defaultQuota)
+		updatedQuota, err = CompleteQuota(&existingQuota, defaultQuota)
 		if updatedQuota == nil || err != nil {
 			return "", err
 		}
@@ -453,7 +453,7 @@ func (c *SyncController) getResourceLimitToUpdate(ns *corev1.Namespace) (*corev1
 	return nil, nil
 }
 
-func completeQuota(existingQuota *v3.NamespaceResourceQuota, defaultQuota *v3.NamespaceResourceQuota) (*v3.NamespaceResourceQuota, error) {
+func CompleteQuota(existingQuota *v3.NamespaceResourceQuota, defaultQuota *v3.NamespaceResourceQuota) (*v3.NamespaceResourceQuota, error) {
 	if defaultQuota == nil {
 		return nil, nil
 	}

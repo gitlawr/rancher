@@ -137,7 +137,7 @@ var resourceQuotaConversion = map[string]string{
 	"limitsMemory":           "limits.memory",
 }
 
-func getNamespaceResourceQuota(ns *corev1.Namespace) string {
+func GetNamespaceResourceQuota(ns *corev1.Namespace) string {
 	if ns.Annotations == nil {
 		return ""
 	}
@@ -200,7 +200,7 @@ func getProjectContainerDefaultLimit(ns *corev1.Namespace, projectLister v3.Proj
 }
 
 func getNamespaceResourceQuotaLimit(ns *corev1.Namespace) (*v3.ResourceQuotaLimit, error) {
-	value := getNamespaceResourceQuota(ns)
+	value := GetNamespaceResourceQuota(ns)
 	if value == "" {
 		return nil, nil
 	}

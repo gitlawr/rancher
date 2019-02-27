@@ -91,6 +91,7 @@ type Lifecycle struct {
 	pipelineExecutions         v3.PipelineExecutionInterface
 	pipelineSettingLister      v3.PipelineSettingLister
 	pipelineEngine             engine.PipelineEngine
+	projectLister              mv3.ProjectLister
 	sourceCodeCredentialLister v3.SourceCodeCredentialLister
 }
 
@@ -121,6 +122,7 @@ func Register(ctx context.Context, cluster *config.UserContext) {
 	pipelineExecutions := cluster.Management.Project.PipelineExecutions("")
 	pipelineExecutionLister := pipelineExecutions.Controller().Lister()
 	pipelineSettingLister := cluster.Management.Project.PipelineSettings("").Controller().Lister()
+	projectLister := cluster.Management.Management.Projects("").Controller().Lister()
 	sourceCodeCredentialLister := cluster.Management.Project.SourceCodeCredentials("").Controller().Lister()
 	notifierLister := cluster.Management.Management.Notifiers("").Controller().Lister()
 
@@ -150,6 +152,7 @@ func Register(ctx context.Context, cluster *config.UserContext) {
 		pipelineExecutions:         pipelineExecutions,
 		pipelineSettingLister:      pipelineSettingLister,
 		pipelineEngine:             pipelineEngine,
+		projectLister:              projectLister,
 		sourceCodeCredentialLister: sourceCodeCredentialLister,
 		notifierLister:             notifierLister,
 	}
