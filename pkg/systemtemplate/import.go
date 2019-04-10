@@ -19,13 +19,14 @@ var (
 )
 
 type context struct {
-	CAChecksum string
-	AgentImage string
-	AuthImage  string
-	TokenKey   string
-	Token      string
-	URL        string
-	URLPlain   string
+	CAChecksum     string
+	AgentImage     string
+	AuthImage      string
+	TokenKey       string
+	Token          string
+	URL            string
+	URLPlain       string
+	ServerHostname string
 }
 
 func SystemTemplate(resp io.Writer, agentImage, authImage, token, url string) error {
@@ -35,15 +36,17 @@ func SystemTemplate(resp io.Writer, agentImage, authImage, token, url string) er
 	if authImage == "fixed" {
 		authImage = settings.AuthImage.Get()
 	}
+	serverHostname := strings.TrimPrefix(url, "https://")
 
 	context := &context{
-		CAChecksum: CAChecksum(),
-		AgentImage: agentImage,
-		AuthImage:  authImage,
-		TokenKey:   tokenKey,
-		Token:      base64.StdEncoding.EncodeToString([]byte(token)),
-		URL:        base64.StdEncoding.EncodeToString([]byte(url)),
-		URLPlain:   url,
+		CAChecksum:     CAChecksum(),
+		AgentImage:     agentImage,
+		AuthImage:      authImage,
+		TokenKey:       tokenKey,
+		Token:          base64.StdEncoding.EncodeToString([]byte(token)),
+		URL:            base64.StdEncoding.EncodeToString([]byte(url)),
+		URLPlain:       url,
+		ServerHostname: serverHostname,
 	}
 
 	return t.Execute(resp, context)

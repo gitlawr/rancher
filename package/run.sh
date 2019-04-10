@@ -245,7 +245,7 @@ if [ -n "$CATTLE_CA_CHECKSUM" ]; then
         exit 1
     else
         mkdir -p /etc/kubernetes/ssl/certs
-        mv $temp /etc/kubernetes/ssl/certs/serverca
+        mv $temp /etc/kubernetes/ssl/certs/ca.crt
     fi
 fi
 

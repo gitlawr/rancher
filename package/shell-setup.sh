@@ -13,8 +13,8 @@ mkdir -p .kube/certs
 
 SERVER="${CATTLE_SERVER}/k8s/clusters/${cluster}"
 
-if [ -f /etc/kubernetes/ssl/certs/serverca ]; then
-    cp /etc/kubernetes/ssl/certs/serverca .kube/certs/ca.crt
+if [ -f /etc/kubernetes/ssl/certs/ca.crt ]; then
+    cp /etc/kubernetes/ssl/certs/ca.crt .kube/certs/ca.crt
     chmod 666 .kube/certs/ca.crt
 
 elif [ -n "${cacerts}" ]; then
