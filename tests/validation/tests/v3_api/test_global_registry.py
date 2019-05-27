@@ -1,5 +1,6 @@
 import pytest
 import errno
+import warnings
 from distutils.spawn import find_executable
 from .common import * # NOQA
 
@@ -7,7 +8,9 @@ setup = {"p_client": None, "project": None,
          "admin_client": None, "server_url": None,
          "server_host": None}
 
-TEMP_VER = "cattle-global-data:library-wordpress-2.1.10"
+DISTRIBUTION_HEADER = "docker-distribution-api-version"
+REGISTRY_TEMP_ID = "catalog://?catalog=system-library&template=harbor" \
+                   "&version=1.7.5-rancher1"
 
 
 def test_global_registry_enable():
@@ -18,11 +21,10 @@ def test_global_registry_enable():
     setting = admin_client.by_id_setting(id="global-registry-enabled")
     assert setting is not None, \
         "Expected to find global-registry-enabled setting"
-    external_id = "catalog://?catalog=system-library&template=harbor" \
-                  "&version=0.0.1&namespace=cattle-global-data"
+
     p_client.create_app(
         name="global-registry",
-        externalId=external_id,
+        externalId=REGISTRY_TEMP_ID,
         targetNamespace="cattle-system",
         projectId=p.id,
         answers={
@@ -84,7 +86,8 @@ def check_global_registry():
     else:
         response = requests.get(setup["server_url"] + "/v2/",
                                 verify=False)
-        assert response.status_code == 200
+        assert response.status_code == 401
+        assert response.headers[DISTRIBUTION_HEADER] == 'registry/2.0'
 
 
 def docker_exist():
@@ -105,7 +108,7 @@ def prepare_ca_crt():
         os.chmod(certpath, 0o600)
     except IOError as e:
         if (e.errno == errno.EACCES):
-            print("need root permissions to prepare ca cert")
+            warnings.warn("no permission to prepare cacert")
             return False
     return True
 
