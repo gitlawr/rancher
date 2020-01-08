@@ -111,6 +111,16 @@ type QueryGraphInput struct {
 	IsDetails    bool              `json:"isDetails,omitempty"`
 }
 
+type QueryGlobalGraphOutput struct {
+	Type string             `json:"type,omitempty"`
+	Data []QueryGlobalGraph `json:"data,omitempty"`
+}
+
+type QueryGlobalGraph struct {
+	GraphName string        `json:"graphID" norman:"type=reference[globalMonitorGraph]"`
+	Series    []*TimeSeries `json:"series" norman:"type=array[reference[timeSeries]]"`
+}
+
 type QueryClusterGraphOutput struct {
 	Type string              `json:"type,omitempty"`
 	Data []QueryClusterGraph `json:"data,omitempty"`

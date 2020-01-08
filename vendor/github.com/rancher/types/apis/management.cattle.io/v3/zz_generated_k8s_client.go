@@ -74,6 +74,7 @@ type Interface interface {
 	EtcdBackupsGetter
 	ClusterScansGetter
 	MonitorMetricsGetter
+	GlobalMonitorGraphsGetter
 	ClusterMonitorGraphsGetter
 	ProjectMonitorGraphsGetter
 	CloudCredentialsGetter
@@ -141,6 +142,7 @@ type Clients struct {
 	EtcdBackup                              EtcdBackupClient
 	ClusterScan                             ClusterScanClient
 	MonitorMetric                           MonitorMetricClient
+	GlobalMonitorGraph                      GlobalMonitorGraphClient
 	ClusterMonitorGraph                     ClusterMonitorGraphClient
 	ProjectMonitorGraph                     ProjectMonitorGraphClient
 	CloudCredential                         CloudCredentialClient
@@ -210,6 +212,7 @@ type Client struct {
 	etcdBackupControllers                              map[string]EtcdBackupController
 	clusterScanControllers                             map[string]ClusterScanController
 	monitorMetricControllers                           map[string]MonitorMetricController
+	globalMonitorGraphControllers                      map[string]GlobalMonitorGraphController
 	clusterMonitorGraphControllers                     map[string]ClusterMonitorGraphController
 	projectMonitorGraphControllers                     map[string]ProjectMonitorGraphController
 	cloudCredentialControllers                         map[string]CloudCredentialController
@@ -415,6 +418,9 @@ func NewClientsFromInterface(iface Interface) *Clients {
 		MonitorMetric: &monitorMetricClient2{
 			iface: iface.MonitorMetrics(""),
 		},
+		GlobalMonitorGraph: &globalMonitorGraphClient2{
+			iface: iface.GlobalMonitorGraphs(""),
+		},
 		ClusterMonitorGraph: &clusterMonitorGraphClient2{
 			iface: iface.ClusterMonitorGraphs(""),
 		},
@@ -509,6 +515,7 @@ func NewForConfig(config rest.Config) (Interface, error) {
 		etcdBackupControllers:                              map[string]EtcdBackupController{},
 		clusterScanControllers:                             map[string]ClusterScanController{},
 		monitorMetricControllers:                           map[string]MonitorMetricController{},
+		globalMonitorGraphControllers:                      map[string]GlobalMonitorGraphController{},
 		clusterMonitorGraphControllers:                     map[string]ClusterMonitorGraphController{},
 		projectMonitorGraphControllers:                     map[string]ProjectMonitorGraphController{},
 		cloudCredentialControllers:                         map[string]CloudCredentialController{},
@@ -1228,6 +1235,19 @@ type MonitorMetricsGetter interface {
 func (c *Client) MonitorMetrics(namespace string) MonitorMetricInterface {
 	objectClient := objectclient.NewObjectClient(namespace, c.restClient, &MonitorMetricResource, MonitorMetricGroupVersionKind, monitorMetricFactory{})
 	return &monitorMetricClient{
+		ns:           namespace,
+		client:       c,
+		objectClient: objectClient,
+	}
+}
+
+type GlobalMonitorGraphsGetter interface {
+	GlobalMonitorGraphs(namespace string) GlobalMonitorGraphInterface
+}
+
+func (c *Client) GlobalMonitorGraphs(namespace string) GlobalMonitorGraphInterface {
+	objectClient := objectclient.NewObjectClient(namespace, c.restClient, &GlobalMonitorGraphResource, GlobalMonitorGraphGroupVersionKind, globalMonitorGraphFactory{})
+	return &globalMonitorGraphClient{
 		ns:           namespace,
 		client:       c,
 		objectClient: objectClient,
