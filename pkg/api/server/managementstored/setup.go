@@ -101,6 +101,7 @@ func Setup(ctx context.Context, apiContext *config.ScaledContext, clusterManager
 		client.DynamicSchemaType,
 		client.EtcdBackupType,
 		client.FeatureType,
+		client.GlobalMonitorGraphType,
 		client.GlobalRoleBindingType,
 		client.GlobalRoleType,
 		client.GroupMemberType,
@@ -581,11 +582,16 @@ func Alert(schemas *types.Schemas, management *config.ScaledContext) {
 }
 
 func Monitor(schemas *types.Schemas, management *config.ScaledContext, clusterManager *clustermanager.Manager) {
+	globalGraphHandler := monitor.NewGlobalGraphHandler(management.Dialer, clusterManager)
 	clusterGraphHandler := monitor.NewClusterGraphHandler(management.Dialer, clusterManager)
 	projectGraphHandler := monitor.NewProjectGraphHandler(management.Dialer, clusterManager)
 	metricHandler := monitor.NewMetricHandler(management.Dialer, clusterManager)
 
-	schema := schemas.Schema(&managementschema.Version, client.ClusterMonitorGraphType)
+	schema := schemas.Schema(&managementschema.Version, client.GlobalMonitorGraphType)
+	schema.CollectionFormatter = monitor.QueryGraphCollectionFormatter
+	schema.ActionHandler = globalGraphHandler.QuerySeriesAction
+
+	schema = schemas.Schema(&managementschema.Version, client.ClusterMonitorGraphType)
 	schema.CollectionFormatter = monitor.QueryGraphCollectionFormatter
 	schema.ActionHandler = clusterGraphHandler.QuerySeriesAction
 

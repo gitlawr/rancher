@@ -15,6 +15,7 @@ var (
 	provider       Provider
 	InjectDefaults string
 
+	AdminClusterID                    = NewSetting("admin-cluster-id", "")
 	AgentImage                        = NewSetting("agent-image", "rancher/rancher-agent:master")
 	AuthImage                         = NewSetting("auth-image", v3.ToolsSystemImages.AuthSystemImages.KubeAPIAuth)
 	CACerts                           = NewSetting("cacerts", "")
@@ -27,6 +28,7 @@ var (
 	EngineSupportedRange              = NewSetting("engine-supported-range", "~v1.11.2 || ~v1.12.0 || ~v1.13.0 || ~v17.03.0 || ~v17.06.0 || ~v17.09.0 || ~v18.06.0 || ~v18.09.0 || ~v19.03.0 ")
 	FirstLogin                        = NewSetting("first-login", "true")
 	GlobalRegistryEnabled             = NewSetting("global-registry-enabled", "false")
+	GlobalMonitoringEnabled           = NewSetting("global-monitoring-enabled", "false")
 	HelmVersion                       = NewSetting("helm-version", "dev")
 	IngressIPDomain                   = NewSetting("ingress-ip-domain", "xip.io")
 	InstallUUID                       = NewSetting("install-uuid", "")

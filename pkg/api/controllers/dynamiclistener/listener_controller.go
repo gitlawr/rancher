@@ -8,6 +8,7 @@ import (
 
 	"github.com/rancher/norman/types/convert"
 	"github.com/rancher/rancher/pkg/cert"
+	"github.com/rancher/rancher/pkg/clustermanager"
 	"github.com/rancher/rancher/pkg/controllers/management/clusterdeploy"
 	"github.com/rancher/rancher/pkg/dynamiclistener"
 	"github.com/rancher/rancher/pkg/settings"
@@ -41,13 +42,13 @@ type storage struct {
 	v3.ListenConfigLister
 }
 
-func Start(ctx context.Context, context *config.ScaledContext, httpPort, httpsPort int, handler http.Handler) {
+func Start(ctx context.Context, context *config.ScaledContext, manager *clustermanager.Manager, httpPort, httpsPort int, handler http.Handler) {
 	s := storage{
 		storageUpdater:     context.Management.ListenConfigs(""),
 		ListenConfigLister: context.Management.ListenConfigs("").Controller().Lister(),
 	}
 	c := &Controller{
-		server:             dynamiclistener.NewServer(ctx, s, handler, httpPort, httpsPort),
+		server:             dynamiclistener.NewServer(ctx, context, manager, s, handler, httpPort, httpsPort),
 		secrets:            context.Core.Secrets(""),
 		clusterLister:      context.Management.Clusters("").Controller().Lister(),
 		clusters:           context.Management.Clusters(""),

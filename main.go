@@ -148,7 +148,7 @@ func main() {
 	app.Action = func(c *cli.Context) error {
 		// enable profiler
 		go func() {
-			log.Println(http.ListenAndServe("localhost:6060", nil))
+			log.Println(http.ListenAndServe(":6060", nil))
 		}()
 
 		config.ACMEDomains = c.GlobalStringSlice("acme-domain")

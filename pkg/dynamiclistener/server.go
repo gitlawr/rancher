@@ -20,9 +20,12 @@ import (
 	"sync"
 	"time"
 
+	"github.com/rancher/types/config"
+
 	lru "github.com/hashicorp/golang-lru"
 	"github.com/rancher/norman/types/set"
 	"github.com/rancher/norman/types/slice"
+	"github.com/rancher/rancher/pkg/clustermanager"
 	"github.com/rancher/rancher/pkg/settings"
 	v3 "github.com/rancher/types/apis/management.cattle.io/v3"
 	"github.com/sirupsen/logrus"
@@ -85,6 +88,8 @@ type Server struct {
 	sync.Mutex
 
 	listenConfigStorage ListenConfigStorage
+	context             *config.ScaledContext
+	manager             *clustermanager.Manager
 	handler             http.Handler
 	httpPort, httpsPort int
 	certs               map[string]*tls.Certificate
@@ -104,9 +109,11 @@ type Server struct {
 	tosAll      bool
 }
 
-func NewServer(ctx context.Context, listenConfigStorage ListenConfigStorage,
+func NewServer(ctx context.Context, context *config.ScaledContext, manager *clustermanager.Manager, listenConfigStorage ListenConfigStorage,
 	handler http.Handler, httpPort, httpsPort int) ServerInterface {
 	s := &Server{
+		context:             context,
+		manager:             manager,
 		listenConfigStorage: listenConfigStorage,
 		handler:             handler,
 		httpPort:            httpPort,
@@ -454,6 +461,7 @@ func (s *Server) serveHTTPS(config *v3.ListenConfig) error {
 		PreferServerCipherSuites: true,
 		MinVersion:               TLSMinVersion,
 		CipherSuites:             TLSCiphers,
+		NextProtos:               []string{"h2", "http/1.1"},
 	}
 	listener, err := s.newListener(s.httpsPort, conf)
 	if err != nil {
