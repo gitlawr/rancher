@@ -37,6 +37,7 @@ func NewClusterGraphHandler(dialerFactory dialer.Factory, clustermanager *cluste
 		clustermanager: clustermanager,
 		projectLister:  clustermanager.ScaledContext.Management.Projects(metav1.NamespaceAll).Controller().Lister(),
 		appLister:      clustermanager.ScaledContext.Project.Apps(metav1.NamespaceAll).Controller().Lister(),
+		graphLister:    clustermanager.ScaledContext.Management.ClusterMonitorGraphs("").Controller().Lister(),
 	}
 }
 
@@ -45,6 +46,7 @@ type ClusterGraphHandler struct {
 	clustermanager *clustermanager.Manager
 	projectLister  v3.ProjectLister
 	appLister      pv3.AppLister
+	graphLister    v3.ClusterMonitorGraphLister
 }
 
 func (h *ClusterGraphHandler) QuerySeriesAction(actionName string, action *types.Action, apiContext *types.APIContext) error {
@@ -127,8 +129,9 @@ func (h *ClusterGraphHandler) QuerySeriesAction(actionName string, action *types
 
 	seriesSlice, err := prometheusQuery.Do(queries)
 	if err != nil {
+		logrus.Error(err)
 		logrus.WithError(err).Warn("query series failed")
-		return httperror.NewAPIError(httperror.ServerError, "Failed to obtain metrics. The metrics service may not be available.")
+		return httperror.NewAPIError(httperror.ServerError, "Failed to obtain metrics. The metrics service may not be available."+err.Error())
 	}
 
 	if seriesSlice == nil {

@@ -7,6 +7,8 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/rancher/rancher/pkg/settings"
+
 	"github.com/pkg/errors"
 	kcluster "github.com/rancher/kontainer-engine/cluster"
 	"github.com/rancher/rancher/pkg/app/utils"
@@ -31,6 +33,7 @@ const (
 	controlplane         = "controlplane"
 	windowsNode          = "windowsNode"
 	creatorIDAnno        = "field.cattle.io/creatorId"
+	delegateAnswerPrefix = "delegate."
 )
 
 type etcdTLSConfig struct {
@@ -390,6 +393,25 @@ func (ch *clusterHandler) deployApp(appName, appTargetNamespace string, appProje
 				key := fmt.Sprintf("exporter-node-windows.endpoints[%d]", k)
 				appAnswers[key] = v
 			}
+		}
+	}
+
+	//global monitoring answers
+	adminClusterID := settings.AdminClusterID.Get()
+	if adminClusterID != "" {
+		adminClusterSystemProjectID, err := utils.GetSystemProjectID(adminClusterID, ch.app.projectLister)
+		if err != nil {
+			return nil, err
+		}
+		if globalMonitoringApp, err := ch.app.cattleAppClient.GetNamespaced(adminClusterSystemProjectID, "global-monitoring", metav1.GetOptions{}); err == nil {
+			appAnswers["prometheus.thanos.enabled"] = "true"
+			for k, v := range globalMonitoringApp.Spec.Answers {
+				if strings.HasPrefix(k, delegateAnswerPrefix) {
+					appAnswers[strings.TrimPrefix(k, delegateAnswerPrefix)] = v
+				}
+			}
+		} else if err != nil && !k8serrors.IsNotFound(err) {
+			return nil, err
 		}
 	}
 
