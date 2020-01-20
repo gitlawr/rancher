@@ -25,9 +25,9 @@ import (
 )
 
 const (
-	ThanosEnabledAnswerKey = "prometheus.thanos.enabled"
-	rancherHostnameKey     = "rancherHostname"
-	delegateAnswerPrefix   = "delegate."
+	ThanosEnabledAnswerKey   = "prometheus.thanos.enabled"
+	rancherHostnameKey       = "rancherHostname"
+	objectConfigAnswerPrefix = "thanos.objectConfig"
 )
 
 type appHandler struct {
@@ -55,8 +55,8 @@ func (ah *appHandler) sync(key string, app *v3.App) (runtime.Object, error) {
 
 	delegateAnswers := map[string]string{}
 	for k, v := range app.Spec.Answers {
-		if strings.HasPrefix(k, delegateAnswerPrefix) {
-			delegateAnswers[strings.TrimPrefix(k, delegateAnswerPrefix)] = v
+		if strings.HasPrefix(k, objectConfigAnswerPrefix) {
+			delegateAnswers["prometheus."+k] = v
 		}
 	}
 
@@ -169,6 +169,7 @@ func (ah *appHandler) UpdateAppThanosAnswers(app *v3.App, answers map[string]str
 	for k, v := range answers {
 		toUpdate.Spec.Answers[k] = v
 	}
+	v3.AppConditionUserTriggeredAction.True(toUpdate)
 	if _, err := ah.appClient.Update(toUpdate); err != nil {
 		return err
 	}

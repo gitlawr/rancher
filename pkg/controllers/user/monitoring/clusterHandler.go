@@ -28,12 +28,12 @@ import (
 )
 
 const (
-	exporterEtcdCertName = "exporter-etcd-cert"
-	etcd                 = "etcd"
-	controlplane         = "controlplane"
-	windowsNode          = "windowsNode"
-	creatorIDAnno        = "field.cattle.io/creatorId"
-	delegateAnswerPrefix = "delegate."
+	exporterEtcdCertName     = "exporter-etcd-cert"
+	etcd                     = "etcd"
+	controlplane             = "controlplane"
+	windowsNode              = "windowsNode"
+	creatorIDAnno            = "field.cattle.io/creatorId"
+	objectConfigAnswerPrefix = "thanos.objectConfig"
 )
 
 type etcdTLSConfig struct {
@@ -406,8 +406,8 @@ func (ch *clusterHandler) deployApp(appName, appTargetNamespace string, appProje
 		if globalMonitoringApp, err := ch.app.cattleAppClient.GetNamespaced(adminClusterSystemProjectID, "global-monitoring", metav1.GetOptions{}); err == nil {
 			appAnswers["prometheus.thanos.enabled"] = "true"
 			for k, v := range globalMonitoringApp.Spec.Answers {
-				if strings.HasPrefix(k, delegateAnswerPrefix) {
-					appAnswers[strings.TrimPrefix(k, delegateAnswerPrefix)] = v
+				if strings.HasPrefix(k, objectConfigAnswerPrefix) {
+					appAnswers["prometheus."+k] = v
 				}
 			}
 		} else if err != nil && !k8serrors.IsNotFound(err) {
