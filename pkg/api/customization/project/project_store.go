@@ -131,7 +131,7 @@ func (s *projectStore) validateProjectDisplayName(apiContext *types.APIContext, 
 
 	for _, project := range projects {
 		if project.Spec.DisplayName == name {
-			return errors.New("duplicate project name")
+			return httperror.NewAPIError(httperror.Conflict, "duplicate project name")
 		}
 	}
 
