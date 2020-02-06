@@ -26,6 +26,7 @@ import (
 	"github.com/rancher/rancher/pkg/telemetry"
 	"github.com/rancher/rancher/pkg/websocket"
 	"github.com/rancher/rancher/server/capabilities"
+	"github.com/rancher/rancher/server/grpc"
 	"github.com/rancher/rancher/server/responsewriter"
 	"github.com/rancher/rancher/server/ui"
 	"github.com/rancher/rancher/server/whitelist"
@@ -117,7 +118,8 @@ func Start(ctx context.Context, httpPort, httpsPort int, localClusterEnabled boo
 
 	registerHealth(root)
 
-	dynamiclistener.Start(ctx, scaledContext, httpPort, httpsPort, root)
+	dynamiclistener.Start(ctx, scaledContext, clusterManager, httpPort, httpsPort, grpc.NewMultiplexHandler(scaledContext, clusterManager, root))
+	grpc.Start(ctx, scaledContext, clusterManager)
 	return nil
 }
 

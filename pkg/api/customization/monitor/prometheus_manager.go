@@ -99,7 +99,6 @@ func (q *Queries) Do(querys []*PrometheusQuery) (map[string][]*TimeSeries, error
 			if err != nil {
 				return err
 			}
-
 			if seriesSlice != nil {
 				smap.Store(query.ID, seriesSlice)
 			}
