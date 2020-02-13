@@ -3,6 +3,8 @@ package management
 import (
 	"context"
 
+	"github.com/rancher/rancher/pkg/controllers/management/globalmonitoring"
+
 	"github.com/rancher/rancher/pkg/clustermanager"
 	"github.com/rancher/rancher/pkg/controllers/management/auth"
 	"github.com/rancher/rancher/pkg/controllers/management/catalog"
@@ -53,6 +55,7 @@ func Register(ctx context.Context, management *config.ManagementContext, manager
 	podsecuritypolicy.Register(ctx, management)
 	etcdbackup.Register(ctx, management)
 	globaldns.Register(ctx, management)
+	globalmonitoring.Register(ctx, management)
 	multiclusterapp.Register(ctx, management, manager)
 	clustertemplate.Register(ctx, management)
 	nodetemplate.Register(ctx, management)
