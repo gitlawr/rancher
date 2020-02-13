@@ -10,6 +10,8 @@ replace (
 	github.com/matryer/moq => github.com/rancher/moq v0.0.0-20190404221404-ee5226d43009
 
 	github.com/prometheus/client_golang => github.com/prometheus/client_golang v0.9.3
+	github.com/rancher/kontainer-engine => github.com/cnrancher/kontainer-engine v0.0.4-dev.0.20191204042250-90231896884d
+	github.com/rancher/types => github.com/cnrancher/pandaria-types v0.0.0-20200103034626-d43194c2a690
 
 	k8s.io/api => k8s.io/api v0.0.0-20190918155943-95b840bb6a1f
 	k8s.io/apiextensions-apiserver => k8s.io/apiextensions-apiserver v0.0.0-20190918161926-8f644eb6e783
@@ -36,7 +38,7 @@ replace (
 )
 
 require (
-	github.com/Azure/azure-sdk-for-go v32.5.0+incompatible
+	github.com/Azure/azure-sdk-for-go v36.2.0+incompatible
 	github.com/Azure/go-autorest/autorest v0.9.0
 	github.com/Azure/go-autorest/autorest/adal v0.5.0
 	github.com/DataDog/zstd v1.4.1 // indirect
@@ -89,6 +91,7 @@ require (
 	github.com/stretchr/testify v1.4.0
 	github.com/tomnomnom/linkheader v0.0.0-20180905144013-02ca5825eb80
 	github.com/urfave/cli v1.21.0
+	github.com/vgough/grpc-proxy v0.0.0-20191207203309-13d1aa04a5a6
 	github.com/vmihailenco/msgpack v4.0.1+incompatible
 	github.com/vmware/govmomi v0.21.1-0.20191006164024-1d61d1ba0200
 	github.com/vmware/kube-fluentd-operator v0.0.0-20190307154903-bf9de7e79eaf
@@ -97,10 +100,12 @@ require (
 	go.uber.org/multierr v1.1.0 // indirect
 	go.uber.org/zap v1.10.0 // indirect
 	golang.org/x/crypto v0.0.0-20191011191535-87dc89f01550
+	golang.org/x/net v0.0.0-20191207000613-e7e4b65ae663
 	golang.org/x/oauth2 v0.0.0-20190604053449-0f29369cfe45
-	golang.org/x/sync v0.0.0-20190423024810-112230192c58
+	golang.org/x/sync v0.0.0-20190911185100-cd5d95a43a6e
+	golang.org/x/time v0.0.0-20190308202827-9d24e82272b4
 	google.golang.org/api v0.6.1-0.20190607001116-5213b8090861
-	google.golang.org/grpc v1.23.0
+	google.golang.org/grpc v1.25.1
 	gopkg.in/asn1-ber.v1 v1.0.0-20150924051756-4e86f4367175 // indirect
 	gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127
 	gopkg.in/ldap.v2 v2.5.0

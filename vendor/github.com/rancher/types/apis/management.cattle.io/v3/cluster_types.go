@@ -64,6 +64,7 @@ const (
 	ClusterConditionPrometheusOperatorDeployed condition.Cond = "PrometheusOperatorDeployed"
 	ClusterConditionMonitoringEnabled          condition.Cond = "MonitoringEnabled"
 	ClusterConditionAlertingEnabled            condition.Cond = "AlertingEnabled"
+	ClusterConditionGPUManagementEnabled       condition.Cond = "GPUManagementEnabled"
 
 	ClusterDriverImported = "imported"
 	ClusterDriverLocal    = "local"
@@ -98,6 +99,8 @@ type ClusterSpecBase struct {
 	EnableClusterMonitoring              bool                           `json:"enableClusterMonitoring" norman:"default=false"`
 	WindowsPreferedCluster               bool                           `json:"windowsPreferedCluster" norman:"noupdate"`
 	LocalClusterAuthEndpoint             LocalClusterAuthEndpoint       `json:"localClusterAuthEndpoint,omitempty"`
+	EnableGPUManagement                  bool                           `json:"enableGPUManagement" norman:"default=false"`
+	GPUSchedulerNodePort                 string                         `json:"gpuSchedulerNodePort" norman:"default=32666"`
 }
 
 type ClusterSpec struct {
