@@ -159,8 +159,13 @@ func (h *Handler) ProjectAlertRuleActionHandler(actionName string, action *types
 }
 
 func canUpdateAlert(apiContext *types.APIContext, resource *types.RawResource) bool {
-	var groupName, resourceName string
-	switch apiContext.Type {
+	var groupName, resourceName, resourceType string
+	if resource!=nil{
+		resourceType = resource.Type
+	}else{
+		resourceType = apiContext.Type
+	}
+	switch resourceType {
 	case client.ClusterAlertRuleType:
 		groupName, resourceName = v3.ClusterAlertRuleGroupVersionKind.Group, v3.ClusterAlertRuleResource.Name
 	case client.ProjectAlertRuleType:
