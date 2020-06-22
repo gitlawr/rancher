@@ -11,6 +11,7 @@ replace (
 	github.com/prometheus/client_golang => github.com/prometheus/client_golang v0.9.3
 
 	github.com/rancher/rancher/pkg/auth => ./pkg/auth
+	github.com/rancher/types => github.com/GGGitBoy/types v0.0.0-20200622025033-4070f3c04cf8
 
 	k8s.io/api => k8s.io/api v0.18.0
 	k8s.io/apiextensions-apiserver => k8s.io/apiextensions-apiserver v0.18.0
