@@ -7,6 +7,7 @@ import (
 	"sort"
 	"strconv"
 	"time"
+	"bytes"
 
 	"github.com/pkg/errors"
 	"github.com/prometheus/common/model"
@@ -57,11 +58,6 @@ type Receiver struct {
 	Provider string `yaml:"provider"`
 }
 
-type SyncReceiver struct {
-	NotifierType string          `yaml:"notifierType"`
-	NotifierName string          `yaml:"notifierName"`
-	Spec         v3.NotifierSpec `yaml:"spec"`
-}
 
 func NewConfigSyncer(ctx context.Context, cluster *config.UserContext, alertManager *manager.AlertManager, operatorCRDManager *manager.PromOperatorCRDManager) *ConfigSyncer {
 	return &ConfigSyncer{
@@ -258,9 +254,9 @@ func (d *ConfigSyncer) sync() error {
 		logrus.Debug("The config stay the same, will not update the secret")
 	}
 
-	err = d.updateWebhookConfig(notifiers, clusterAlertGroup, projectAlertGroup)
-	if err != nil {
-		return errors.Wrapf(err, "Update Webhook Config")
+
+	if err := d.syncReceiver(notifiers, cAlertGroupsMap, pAlertGroupsMap);err != nil {
+		return errors.Wrapf(err, "Update Webhook Receiver Config")
 	}
 
 	return nil
@@ -711,109 +707,76 @@ func toAlertManagerURL(urlStr string) (*alertconfig.URL, error) {
 	return &alertconfig.URL{URL: url}, nil
 }
 
-func (d *ConfigSyncer) updateWebhookConfig(notifiers []*v3.Notifier, clusterAlertGroup []*v3.ClusterAlertGroup, projectAlertGroup []*v3.ProjectAlertGroup) error {
-	var syncReceivers []SyncReceiver
-	for _, vCluster := range clusterAlertGroup {
-		for _, r := range vCluster.Spec.Recipients {
-			syncReceivers = d.getReceiver(r.NotifierName, notifiers, syncReceivers)
-		}
+func (d *ConfigSyncer) syncReceiver(notifiers []*v3.Notifier, cAlertGroupsMap map[string]*v3.ClusterAlertGroup, pAlertGroupsMap map[string]*v3.ProjectAlertGroup) error {
+	var recipients []v3.Recipient
+	for _, group := range cAlertGroupsMap {
+		recipients = append(recipients, group.Spec.Recipients...)
 	}
-
-	for _, vProject := range projectAlertGroup {
-		for _, r := range vProject.Spec.Recipients {
-			syncReceivers = d.getReceiver(r.NotifierName, notifiers, syncReceivers)
-		}
+	for _, group := range pAlertGroupsMap {
+		recipients = append(recipients, group.Spec.Recipients...)
 	}
-
-	if len(syncReceivers) > 0 {
-		err := d.syncReceiver(syncReceivers)
-		if err != nil {
-			return errors.Wrapf(err, "Failed to sync receiver")
-		}
-	}
-
-	return nil
-}
-
-func (d *ConfigSyncer) getReceiver(notifierName string, notifiers []*v3.Notifier, syncReceivers []SyncReceiver) []SyncReceiver {
-	notifier := d.getNotifier(notifierName, notifiers)
-	if notifier == nil {
-		return syncReceivers
-	}
-
-	if notifier.Spec.DingtalkConfig != nil {
-		syncReceiver := SyncReceiver{DingTalk, notifierName, notifier.Spec}
-		syncReceivers = append(syncReceivers, syncReceiver)
-
-	} else if notifier.Spec.MSTeamsConfig != nil {
-		syncReceiver := SyncReceiver{MicrosoftTeams, notifierName, notifier.Spec}
-		syncReceivers = append(syncReceivers, syncReceiver)
-	}
-	return syncReceivers
-}
-
-func (d *ConfigSyncer) syncReceiver(syncReceivers []SyncReceiver) error {
 	webhookSecreteName, altermanagerAppNamespace := monitorutil.SecretWebhook()
 	secretClient := d.secretsGetter.Secrets(altermanagerAppNamespace)
 	configSecret, err := secretClient.Get(webhookSecreteName, metav1.GetOptions{})
 	if err != nil {
 		return errors.Wrapf(err, "Get secret")
 	}
+	oldConfig := configSecret.Data["config.yaml"]
 
+	providers := make(map[string]*Provider)
+	receivers := make(map[string]*Receiver)
+	for _, r := range recipients {
+		if r.NotifierName != "" {
+			notifier := d.getNotifier(r.NotifierName, notifiers)
+			if notifier == nil {
+				logrus.Debugf("Can not find the notifier %s", r.NotifierName)
+				continue
+			}
+			if notifier.Spec.DingtalkConfig != nil {
+				provider := &Provider{
+					Type:       DingTalk,
+					WebHookURL: notifier.Spec.DingtalkConfig.URL,
+				}
+				if notifier.Spec.DingtalkConfig.Secret != "" {
+					provider.Secret = notifier.Spec.DingtalkConfig.Secret
+				}
+				if notifier.Spec.DingtalkConfig.HTTPClientConfig != nil {
+					provider.ProxyURL = notifier.Spec.DingtalkConfig.HTTPClientConfig.ProxyURL
+				}
+				receiver := &Receiver{
+					Provider: r.NotifierName,
+				}
+				providers[r.NotifierName] = provider
+				receivers[r.NotifierName] = receiver
+			} else if notifier.Spec.MSTeamsConfig != nil {
+				provider := &Provider{
+					Type:       MicrosoftTeams,
+					WebHookURL: notifier.Spec.MSTeamsConfig.URL,
+				}
+				if notifier.Spec.MSTeamsConfig.HTTPClientConfig != nil {
+					provider.ProxyURL = notifier.Spec.MSTeamsConfig.HTTPClientConfig.ProxyURL
+				}
+				receiver := &Receiver{
+					Provider: r.NotifierName,
+				}
+				providers[r.NotifierName] = provider
+				receivers[r.NotifierName] = receiver
+			}
+		}
+	}
 	config := WebhookReceiverConfig{
-		Providers: make(map[string]*Provider),
-		Receivers: make(map[string]*Receiver),
+		Providers: providers,
+		Receivers: receivers,
 	}
 
-	for _, s := range syncReceivers {
-		if s.NotifierType == DingTalk {
-			config.Providers[s.NotifierName] = &Provider{
-				Type:       DingTalk,
-				WebHookURL: s.Spec.DingtalkConfig.URL,
-			}
-
-			if s.Spec.DingtalkConfig.Secret != "" {
-				config.Providers[s.NotifierName].Secret = s.Spec.DingtalkConfig.Secret
-			}
-
-			if notifierutil.IsHTTPClientConfigSet(s.Spec.DingtalkConfig.HTTPClientConfig) {
-				config.Providers[s.NotifierName].ProxyURL = s.Spec.DingtalkConfig.HTTPClientConfig.ProxyURL
-			}
-
-			config.Receivers[s.NotifierName] = &Receiver{
-				Provider: s.NotifierName,
-			}
-		} else if s.NotifierType == MicrosoftTeams {
-			config.Providers[s.NotifierName] = &Provider{
-				Type:       MicrosoftTeams,
-				WebHookURL: s.Spec.MSTeamsConfig.URL,
-			}
-
-			if notifierutil.IsHTTPClientConfigSet(s.Spec.MSTeamsConfig.HTTPClientConfig) {
-				config.Providers[s.NotifierName].ProxyURL = s.Spec.MSTeamsConfig.HTTPClientConfig.ProxyURL
-			}
-
-			config.Receivers[s.NotifierName] = &Receiver{
-				Provider: s.NotifierName,
-			}
+	//TODO check if configs needs to be sorted before comparision
+	newConfig, err := yaml.Marshal(config)
+	if !bytes.Equal(oldConfig, newConfig) {
+		configSecret.Data["config.yaml"] = newConfig
+		if _, err = secretClient.Update(configSecret); err != nil {
+			return errors.Wrapf(err, "Update secret")
 		}
-	}
 
-	data, err := yaml.Marshal(config)
-	if err != nil {
-		return errors.Wrapf(err, "Error yaml Unmarshal config")
-	}
-
-	if string(configSecret.Data["config.yaml"]) != string(data) {
-		newConfigSecret := configSecret.DeepCopy()
-		newConfigSecret.Data["config.yaml"] = data
-
-		_, err = secretClient.Update(newConfigSecret)
-		if err != nil {
-			return errors.Wrapf(err, "Update secrets")
-		}
-	} else {
-		logrus.Debug("The config stay the same, will not update the secret")
 	}
 
 	return nil
